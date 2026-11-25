@@ -10,6 +10,7 @@ import { sensFlower } from '../../../tests/hsp/chart.js';
 import { strengthWheel } from '../../../tests/strengths/chart.js';
 import { STRENGTH_ORDER } from '../../../tests/strengths/items.js';
 import { valueWheel } from '../../../tests/values/chart.js';
+import { interestHex } from '../../../tests/career/chart.js';
 
 const GLYPH = {
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),
@@ -30,6 +31,7 @@ const GLYPH = {
     const order = Object.keys(sc).sort((a, b) => sc[b] - sc[a]);
     return valueWheel(Object.fromEntries(order.map((k, i) => [k, { score: sc[k], rank: i + 1, tier: i < 3 ? 'core' : i > 6 ? 'low' : 'mid' }])), { size: 220, labels: false, title: '열 가지 가치 원형' });
   },
+  career: () => interestHex({ r: { score: 38, rank: 5 }, i: { score: 70, rank: 3 }, a: { score: 84, rank: 1 }, s: { score: 76, rank: 2 }, e: { score: 52, rank: 4 }, c: { score: 30, rank: 6 } }, { size: 220, labels: false, title: '여섯 흥미 육각형' }),
   attachment: () => attachMap([{ x: 30, y: 34, main: true }, { x: 22, y: 70 }, { x: 68, y: 40 }, { x: 40, y: 22 }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '불안과 회피 두 축의 애착 지도' }),
 };
 

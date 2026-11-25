@@ -72,7 +72,16 @@ export const TESTS = [
     parts: 1,
     gets: ['열 가치 순위', '핵심 가치 3개', '가치 원형', '네 방향과 두 축', '가치 갈등', '상담 메모'],
   },
-  { id: 'career', status: 'soon', title: '진로 흥미', desc: '어떤 종류의 일에 마음이 끌리는지 여섯 갈래로 봐요.' },
+  {
+    id: 'career',
+    status: 'open',
+    title: '진로 흥미 검사',
+    desc: '어떤 종류의 일에 마음이 끌리는지 여섯 흥미로 보고, 세 글자 흥미 코드와 어울리는 직업을 찾아요.',
+    items: 60,
+    minutes: 9,
+    parts: 2,
+    gets: ['흥미 코드 3글자', '흥미 육각형', '일관도와 변별도', '직업 예시', '탐색 실천', '상담 메모'],
+  },
 ];
 
 export function getTestMeta(id) {
