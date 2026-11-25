@@ -65,8 +65,10 @@ export async function checkForUpdate() {
     if (!v) return;
     const seen = read(SEEN);
     if (seen === v) return;
+    // 이 기기에서 처음 확인하는 경우: 예전 버전을 본 적이 없으니 안내 없이 기억만 한다
+    // (처음 화면에서 곧바로 다른 화면으로 넘어가도 '새 버전' 안내가 잘못 뜨지 않게)
+    if (seen === null) { write(SEEN, v); return; }
     const cached = servedFromCache();
-    if (seen === null && cached === false) { write(SEEN, v); return; } // 처음 온 기기: 전부 새로 받은 화면
     await refetchAll(files, url);
     write(SEEN, v);
     if (cached !== false) showBanner();

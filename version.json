@@ -1,5 +1,5 @@
 {
- "v": "20261125-233515",
+ "v": "20261125-235030",
  "files": [
   "./",
   "admin.html",
@@ -43,6 +43,12 @@
   "tests/career/items.js",
   "tests/career/report.js",
   "tests/career/scoring.js",
+  "tests/coping/chart.js",
+  "tests/coping/content.js",
+  "tests/coping/index.js",
+  "tests/coping/items.js",
+  "tests/coping/report.js",
+  "tests/coping/scoring.js",
   "tests/emotion/chart.js",
   "tests/emotion/content.js",
   "tests/emotion/index.js",
