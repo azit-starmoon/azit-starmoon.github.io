@@ -85,10 +85,10 @@ git add -A && git commit && git push origin HEAD:main
 1. **진단**: `origin/main`으로 `python3 tools/smoke.py`, `gh run list -R azit-starmoon/azit-starmoon.github.io -L 3`으로 배포 상태 확인.
    smoke가 실패하면 원인이 분명하고 작게 고칠 수 있을 때만 고쳐서 다시 smoke를 통과시킨 뒤 올린다.
 2. **작업 자리 잡기**: 원격에 `auto/*` 브랜치가 있으면,
-   - 마지막 커밋이 2시간 안이면 다른 회차가 작업 중이다. 진단만 하고 끝낸다.
-   - 2시간이 넘었으면 멈춘 작업이다. 그 브랜치를 이어받아 계속한다.
+   - 마지막 커밋이 90분 안이면 다른 회차가 작업 중이다. 진단만 하고 끝낸다.
+   - 90분이 넘었으면 멈춘 작업이다. 그 브랜치를 이어받아 계속한다(먼저 빈 커밋을 올려 자리를 표시).
    - 없으면 `registry.js`에서 첫 `soon` 검사를 골라 빈 커밋을 만들고
      `git push --force-with-lease=refs/heads/auto/<id>: origin HEAD:refs/heads/auto/<id>`로 자리를 잡는다(이미 있으면 실패하므로 겹치지 않는다).
-3. **만들기**: 이 문서대로 만든다. 30분쯤마다 브랜치에 커밋을 올려 진행을 남긴다.
+3. **만들기**: 이 문서대로 만든다. 30분을 넘기지 않게 브랜치에 커밋을 올려 진행을 남긴다(작업 중이라는 표시도 된다).
 4. **마무리**: 전체 smoke 통과 → `origin/main` 위에 squash로 합쳐 version 갱신 후 main에 올린다 → `auto/<id>` 브랜치 삭제.
 5. 열 검사가 더 없으면 진단만 한다.
