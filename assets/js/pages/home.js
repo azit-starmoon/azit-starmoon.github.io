@@ -4,10 +4,12 @@ import { TESTS } from '../registry.js';
 import { greetingName } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
+import { attachMap } from '../../../tests/attachment/chart.js';
 
 const GLYPH = {
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),
   bigfive: () => b5Star({ O: 78, C: 56, E: 64, A: 70, N: 40 }, { size: 220, showValues: false, title: '다섯 영역 별 모양' }),
+  attachment: () => attachMap([{ x: 30, y: 34, main: true }, { x: 22, y: 70 }, { x: 68, y: 40 }, { x: 40, y: 22 }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '불안과 회피 두 축의 애착 지도' }),
 };
 
 (async () => {

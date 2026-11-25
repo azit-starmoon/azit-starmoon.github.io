@@ -804,3 +804,76 @@ table.list .btn--small { min-height: 32px; padding: 0 12px; }
 .done-receipt div { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-s); }
 .done-receipt dt { color: var(--ink-3); }
 .done-receipt dd { margin: 0; font-weight: 600; color: var(--ink); text-align: right; }
+
+/* ── 애착 유형 검사 ─────────────────────────── */
+.am { display: block; width: 100%; height: auto; font-family: var(--font-sans); }
+.am-bg { fill: #fff; }
+.am-frame { fill: none; stroke: var(--line); }
+.am-cross { stroke: #c9cfe3; stroke-dasharray: 3 4; }
+.am-q { font-size: 11.5px; font-weight: 600; fill: var(--ink-2); }
+.am-ax { font-size: 11px; font-weight: 700; fill: var(--ink-2); }
+.am-tick { font-size: 10px; fill: var(--ink-3); }
+.am-dot { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.am-star { fill: var(--brand-deep); stroke: #fff; stroke-width: 2; stroke-linejoin: round; }
+.am-tag { font-size: 11.5px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 3.5px; stroke-linejoin: round; }
+.am-tag--main { fill: var(--brand-deep); }
+
+.att-kicker { display: flex; align-items: center; gap: 8px; font-size: var(--fs-s); font-weight: 600; color: var(--ink-2); }
+.att-kicker i { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.att-title { font-family: var(--font-display); font-size: var(--fs-l); line-height: 1.45; color: var(--ink-2); margin-top: 6px; max-width: 18em; word-break: keep-all; }
+.att-border { display: inline-flex; margin-top: 14px; padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, .85); border: 1px solid var(--line); font-size: var(--fs-s); color: var(--ink-2); }
+.att-cover-map { max-width: 300px; justify-self: center; }
+
+.att-dim { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 22px 22px 8px; box-shadow: var(--shadow-s); margin-bottom: 14px; }
+.att-dim .domain-head { margin-bottom: 4px; }
+.att-dim-title { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; }
+.att-meter { display: block; position: relative; height: 12px; background: var(--line-2); border-radius: 6px; margin: 6px 0 14px; }
+.att-meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--brand); min-width: 4px; }
+.att-meter .mid { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #b9c0d8; z-index: 1; border-radius: 1px; }
+.att-dim-read { line-height: 1.75; }
+.facet-what { display: block; color: var(--ink-3); font-size: var(--fs-xs); margin-top: 3px; }
+.att-amb { border: 1px dashed var(--line); border-radius: var(--r-l); padding: 16px 20px; }
+.att-amb .track { display: block; position: relative; height: 6px; background: var(--line-2); border-radius: 3px; margin: 8px 0; }
+.att-amb .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; min-width: 2px; }
+.att-amb p { font-size: var(--fs-s); color: var(--ink-2); line-height: 1.65; }
+
+.att-moments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0 0; }
+.att-moments div { background: var(--tint); border-radius: var(--r-m); padding: 14px 16px; }
+.att-moments dt { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); margin-bottom: 4px; }
+.att-moments dd { margin: 0; font-size: var(--fs-s); color: var(--ink-2); line-height: 1.65; }
+.att-h { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; margin: 30px 0 12px; }
+.att-beliefs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 26px; }
+.att-beliefs .quote { margin: 0; background: var(--card); border: 1px solid var(--line-2); border-left: 3px solid var(--star); border-radius: 0 var(--r-m) var(--r-m) 0; padding: 14px 18px; }
+.att-nb { margin-top: 24px; background: var(--brand-soft); border-radius: var(--r-l); padding: 18px 20px; }
+.att-nb h4 { font-weight: 700; color: var(--brand-deep); margin-bottom: 6px; }
+.att-nb p { color: var(--ink-2); font-size: var(--fs-s); line-height: 1.7; }
+
+.att-map-fig { margin: 0 auto 20px; max-width: 380px; }
+.att-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: var(--fs-xs); font-weight: 700; color: var(--ink); white-space: nowrap; justify-self: start; }
+.att-chip i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.att-rel { list-style: none; display: grid; gap: 8px; }
+.att-rel-row { display: grid; grid-template-columns: 128px auto 1fr; gap: 6px 12px; align-items: center; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 12px 16px; }
+.att-rel-row .nm { font-weight: 700; }
+.att-rel-row .nums { justify-self: end; color: var(--ink-3); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.att-rel-row p { grid-column: 1 / -1; color: var(--ink-2); font-size: var(--fs-s); line-height: 1.65; }
+.att-rel-row.is-main { background: var(--brand-soft); border-color: var(--brand-soft-2); }
+.att-rel-row.is-skipped { background: transparent; border-style: dashed; }
+.att-rel-row .skip { grid-column: 2 / -1; color: var(--ink-3); font-size: var(--fs-s); }
+
+.counsel-box { background: var(--card); border: 1px solid var(--brand-soft-2); border-radius: var(--r-l); padding: 22px 22px 6px; box-shadow: var(--shadow-s); }
+.counsel-box h3 { font-size: var(--fs-b); font-weight: 700; color: var(--brand-deep); margin-bottom: 10px; }
+.counsel-box ul { margin-bottom: 22px; }
+
+@media (max-width: 640px) {
+  .att-moments, .att-beliefs { grid-template-columns: 1fr; }
+  .att-rel-row { grid-template-columns: 1fr auto; }
+  .att-rel-row .nums { grid-column: 1 / -1; justify-self: start; }
+  .att-rel-row .skip { grid-column: 2; }
+}
+.part-intro .btn + .btn { margin-top: 8px; }
+.part-intro .skip-note { font-size: var(--fs-s); color: var(--ink-3); margin: -12px 0 14px; }
+@media print {
+  .att-rel-row, .att-beliefs .quote, .att-moments div, .att-nb, .att-amb, .att-map-fig, .counsel-box h3, .metric { break-inside: avoid; }
+  .att-dim, .counsel-box { box-shadow: none; }
+  .am rect, .am circle, .att-chip i, .att-kicker i, .att-rel-row.is-main, .counsel-box, .att-nb { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

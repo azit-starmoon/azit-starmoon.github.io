@@ -6,7 +6,14 @@ import { requireUnlock, watchLock } from '../lock.js';
 
 const box = document.querySelector('[data-list]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
-const glyph = (r) => (r.testId === 'enneagram' ? (r.scores && r.scores.core) || '?' : r.testId === 'bigfive' ? '★' : '·');
+const ATT = { secure: '안', anxious: '불', fearful: '두', avoidant: '회' };
+const glyph = (r) => {
+  const s = r.scores || {};
+  if (r.testId === 'enneagram') return s.core || '?';
+  if (r.testId === 'bigfive') return '★';
+  if (r.testId === 'attachment') return ATT[s.style] || '·';
+  return '·';
+};
 const view = { q: '', test: '' };
 let list = [];
 

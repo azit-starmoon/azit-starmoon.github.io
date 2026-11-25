@@ -100,7 +100,7 @@ export async function runTest(def, mount, opts = {}) {
       <h1 class="intro-title" id="intro-title" tabindex="-1" data-focus>${esc(def.title)}</h1>
       <p class="intro-lead">${esc(intro.lead)}</p>
       <dl class="intro-facts">${intro.facts.map((f) => `<div><dt>${esc(f.dt)}</dt><dd>${esc(f.dd)}</dd></div>`).join('')}</dl>
-      <ol class="parts-list">${def.parts.map((p) => `<li><div><strong>${esc(p.title)} <span class="tag">${p.count}문항</span></strong><span>${esc(p.summary)}</span></div></li>`).join('')}</ol>
+      <ol class="parts-list">${(intro.overview || def.parts).map((p) => `<li><div><strong>${esc(p.title)} <span class="tag">${p.count}문항</span></strong><span>${esc(p.summary)}</span></div></li>`).join('')}</ol>
       <div class="gets"><h3>결과지에 담기는 것</h3><ul>${intro.gets.map((g) => `<li class="tag">${esc(g)}</li>`).join('')}</ul></div>
       <div class="intro-actions">${actions}</div>
     </section>`;
@@ -138,16 +138,36 @@ export async function runTest(def, mount, opts = {}) {
     consentEl.addEventListener('change', sync);
   }
 
+  const isSkipped = (pi) => def.parts[pi].skippable && itemsFor(pi).every((it) => S.answers[it.id] === null);
+
   function renderPartIntro() {
     const p = def.parts[S.pi];
     stage.innerHTML = `<section class="part-intro" aria-labelledby="pi-title">
       <div class="part-meta"><button type="button" class="back-btn" data-act="back" ${S.pi === 0 ? 'hidden' : ''}>← 이전</button><span></span></div>
-      <span class="part-no">${S.pi + 1}부 / ${def.parts.length}부</span>
+      <span class="part-no">${esc(p.label || `${S.pi + 1}부 / ${def.parts.length}부`)}</span>
       <h1 id="pi-title" tabindex="-1" data-focus>${esc(p.title)}</h1>
       <p>${esc(p.desc)}</p>
       <div class="how">${p.how}</div>
-      <button type="button" class="btn btn--block" data-act="enter">${S.pi === 0 ? '첫 문항 보기' : '이어서 하기'}</button>
+      ${isSkipped(S.pi) ? '<p class="skip-note">지금은 건너뛴 상태예요. 답하려면 아래 버튼을 눌러 주세요.</p>' : ''}
+      <button type="button" class="btn btn--block" data-act="enter">${esc(p.enterLabel || (S.pi === 0 ? '첫 문항 보기' : '이어서 하기'))}</button>
+      ${p.skippable ? `<button type="button" class="btn btn--ghost btn--block" data-act="skip-part">${esc(p.skipLabel || '이 부분은 건너뛸게요')}</button>` : ''}
     </section>`;
+  }
+
+  // 건너뛸 수 있는 부: 문항 답을 null로 두면 저장할 때 '답하지 않음'과 구분된다
+  function skipPart() {
+    itemsFor(S.pi).forEach((it) => { S.answers[it.id] = null; });
+    if (!S.startedAt) S.startedAt = Date.now();
+    if (S.pi < def.parts.length - 1) {
+      S.pi++;
+      S.ii = 0;
+      S.step = 'part';
+      persist();
+      render();
+    } else {
+      persist();
+      finish();
+    }
   }
 
   function metaRow() {
@@ -289,7 +309,8 @@ export async function runTest(def, mount, opts = {}) {
       if (S.ii > 0) { S.ii--; render(); }
       else { S.step = 'part'; render(); }
     } else if (S.step === 'part') {
-      if (S.pi > 0) enterPart(S.pi - 1, true);
+      if (S.pi > 0 && isSkipped(S.pi - 1)) { S.pi--; render(); } // 건너뛴 부로 돌아가면 그 부의 소개로
+      else if (S.pi > 0) enterPart(S.pi - 1, true);
       else { S.step = 'profile'; render(); }
     }
   }
@@ -408,7 +429,11 @@ export async function runTest(def, mount, opts = {}) {
       S.step = 'part';
       persist();
       render();
-    } else if (act === 'enter') enterPart(S.pi);
+    } else if (act === 'enter') {
+      // 건너뛰었던 부에 다시 답하기로 하면, 중간에 멈춰도 빠진 문항으로 잡히도록 null을 지운다
+      if (def.parts[S.pi].skippable) itemsFor(S.pi).forEach((it) => { if (S.answers[it.id] === null) delete S.answers[it.id]; });
+      enterPart(S.pi);
+    } else if (act === 'skip-part') skipPart();
     else if (act === 'back') back();
     else if (act === 'retry') { S.step = 'working'; render(); save(); }
     else if (act === 'again') { S.step = 'intro'; render(); }
