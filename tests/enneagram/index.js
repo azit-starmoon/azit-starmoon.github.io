@@ -44,7 +44,7 @@ export default {
       short: '2부 동기',
       summary: '두 문장 중 더 가까운 쪽을 골라요',
       desc: '1부에서 가장 높게 나온 세 유형의 동기를 서로 맞대어 봐요. 행동이 비슷해 보여도 그 행동을 하는 이유는 유형마다 달라요. 이 단계가 핵심 유형을 가려내요.',
-      how: '두 문장 중 지금의 나에게 더 가까운 쪽에서 <strong>훨씬 가까워요</strong> 또는 <strong>조금 더 가까워요</strong>를 눌러 주세요. 둘 다 맞거나 둘 다 아니어도, 굳이 고른다면 어느 쪽인지 골라 주세요.',
+      how: '질문마다 두 문장 <strong>A</strong>와 <strong>B</strong>가 나와요. 둘 다 읽은 뒤, 아래 네 칸 가운데 하나를 골라 주세요. 왼쪽 끝은 <strong>A가 훨씬 더</strong>, 오른쪽 끝은 <strong>B가 훨씬 더</strong>예요. 둘 다 맞거나 둘 다 아니어도, 굳이 고른다면 어느 쪽인지 골라 주세요. 키보드에서는 숫자 1~4로도 고를 수 있어요.',
       count: 18,
       build: (answers) => buildMotiveItems(answers),
     },

@@ -215,24 +215,29 @@ export async function runTest(def, mount, opts = {}) {
         .join('')}</ul>`;
   }
 
+  // 두 문장 비교: A와 B를 먼저 읽고, 아래 네 칸(A가 훨씬 더 ~ B가 훨씬 더) 가운데 하나를 고른다
   function renderPair(it) {
     const v = S.answers[it.id];
-    const winner = typeof v === 'number' ? (v > 0 ? it.lo : it.hi) : null;
+    const picked = typeof v === 'number' ? (v > 0 ? it.lo : it.hi) : null;
+    const side = picked == null ? null : picked === it.a.type ? 'a' : 'b';
     const strength = typeof v === 'number' ? Math.abs(v) : 0;
-    const card = (side, data, keys) => {
-      const chosen = winner === data.type;
-      return `<div class="pair-card" data-chosen="${chosen}">
-        <p class="stmt" id="stmt-${side}">${esc(data.text)}</p>
-        <div class="strengths" role="group" aria-labelledby="stmt-${side}">
-          <button type="button" data-pair="${data.type}" data-s="2" aria-pressed="${chosen && strength === 2}">훨씬 가까워요<span class="sr-only"> (${keys[0]})</span></button>
-          <button type="button" data-pair="${data.type}" data-s="1" aria-pressed="${chosen && strength === 1}">조금 더 가까워요<span class="sr-only"> (${keys[1]})</span></button>
-        </div>
-      </div>`;
-    };
+    const opts = [
+      { side: 'a', s: 2, label: 'A가 훨씬 더' },
+      { side: 'a', s: 1, label: 'A가 조금 더' },
+      { side: 'b', s: 1, label: 'B가 조금 더' },
+      { side: 'b', s: 2, label: 'B가 훨씬 더' },
+    ];
     stage.innerHTML = `${metaRow()}
-      <h1 class="pair-prompt" tabindex="-1" data-focus>${esc(it.prompt)}</h1>
-      <p class="pair-help">둘 다 맞거나 둘 다 아니어도, 굳이 고른다면 어느 쪽인지 골라 주세요.</p>
-      <div class="pair-cards">${card('a', it.a, [1, 2])}<p class="pair-or" aria-hidden="true">또는</p>${card('b', it.b, [4, 3])}</div>`;
+      <h1 class="pair-prompt" tabindex="-1" data-focus id="pp-${esc(it.id)}">${esc(it.prompt)}</h1>
+      <p class="pair-help">두 문장을 읽고 아래에서 골라 주세요. 둘 다 맞거나 둘 다 아니어도, 굳이 고른다면 어느 쪽인지요.</p>
+      <div class="pair-stmts">
+        <div class="pair-stmt" data-side="a" data-chosen="${side === 'a'}"><span class="pair-badge" aria-hidden="true">A</span><p><span class="sr-only">A. </span>${esc(it.a.text)}</p></div>
+        <div class="pair-stmt" data-side="b" data-chosen="${side === 'b'}"><span class="pair-badge" aria-hidden="true">B</span><p><span class="sr-only">B. </span>${esc(it.b.text)}</p></div>
+      </div>
+      <div class="pair-scale" role="radiogroup" aria-labelledby="pp-${esc(it.id)}">${opts
+        .map((o, i) => `<button type="button" role="radio" class="pair-opt pair-opt--${o.side} pair-opt--s${o.s}" data-pair="${o.side === 'a' ? it.a.type : it.b.type}" data-s="${o.s}" aria-checked="${side === o.side && strength === o.s}">
+          <span class="dot" aria-hidden="true"></span><span class="lb">${o.label}</span><span class="key" aria-hidden="true">${i + 1}</span></button>`)
+        .join('')}</div>`;
   }
 
   function renderRank(it) {
@@ -482,8 +487,9 @@ export async function runTest(def, mount, opts = {}) {
       const it = S.items[S.ii];
       const type = Number(t.dataset.pair);
       const s = Number(t.dataset.s);
-      stage.querySelectorAll('[data-pair]').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
-      stage.querySelectorAll('.pair-card').forEach((c) => (c.dataset.chosen = String(c.contains(t))));
+      stage.querySelectorAll('[data-pair]').forEach((b) => b.setAttribute('aria-checked', String(b === t)));
+      const sideNow = t.classList.contains('pair-opt--a') ? 'a' : 'b';
+      stage.querySelectorAll('.pair-stmt').forEach((c) => (c.dataset.chosen = String(c.dataset.side === sideNow)));
       answer(it.id, type === it.lo ? s : -s);
     } else if (t.dataset.rankKey) {
       rankTap(t.dataset.rankKey);
