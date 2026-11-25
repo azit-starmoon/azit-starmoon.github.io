@@ -12,6 +12,7 @@ const glyph = (r) => {
   if (r.testId === 'enneagram') return s.core || '?';
   if (r.testId === 'bigfive') return '★';
   if (r.testId === 'attachment') return ATT[s.style] || '·';
+  if (r.testId === 'schema') return s.active && s.active.length ? (s.topNames && s.topNames[0] ? s.topNames[0].slice(0, 1) : '·') : '·';
   return '·';
 };
 const view = { q: '', test: '' };

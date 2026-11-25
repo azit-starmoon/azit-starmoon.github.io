@@ -6,7 +6,9 @@ import { requireApproved } from '../guard.js';
 import { requireUnlock, relock } from '../lock.js';
 
 const app = document.getElementById('app');
-const id = new URLSearchParams(location.search).get('t') || 'enneagram';
+const params = new URLSearchParams(location.search);
+const id = params.get('t') || 'enneagram';
+const resume = params.get('resume');
 
 (async () => {
   relock('result'); // 검사 화면에 들어오면 결과는 다시 잠근다 (검사자에게 기기를 건넬 때)
@@ -20,7 +22,8 @@ const id = new URLSearchParams(location.search).get('t') || 'enneagram';
     return;
   }
   document.title = `${def.title} | AZIT : Star&Moon`;
-  await runTest(def, app, { ownerName: greetingName(st) });
+  if (resume !== null) history.replaceState(null, '', `test.html?t=${encodeURIComponent(id)}`);
+  await runTest(def, app, { ownerName: greetingName(st), resume: resume === null ? undefined : resume });
   if (isDemo) {
     const bar = document.createElement('div');
     bar.className = 'demo-bar';

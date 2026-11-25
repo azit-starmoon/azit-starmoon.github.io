@@ -237,7 +237,9 @@ function exportCsv() {
   const rows = filtered();
   const head = ['검사자', '상담사', '상담사 이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
     '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심',
-    '개방성', '성실성', '외향성', '친화성', '신경성', '애착 유형', '애착 불안', '애착 회피', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
+    '개방성', '성실성', '외향성', '친화성', '신경성', '애착 유형', '애착 불안', '애착 회피', '작동하는 도식', '주된 대처', '도식 점수(18)', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
+  const COPE = { surrender: '굴복', avoid: '회피', over: '과잉보상' };
+  const SCH = [['ab', '유기'], ['mi', '불신'], ['ed', '정서적 결핍'], ['de', '결함'], ['si', '사회적 고립'], ['di', '의존'], ['vu', '취약성'], ['en', '융합'], ['fa', '실패'], ['et', '특권의식'], ['sc', '자기통제 부족'], ['sb', '복종'], ['ss', '자기희생'], ['as', '승인 추구'], ['np', '비관'], ['ei', '정서적 억제'], ['us', '엄격한 기준'], ['pu', '처벌']];
   const conf = { high: '뚜렷함', mid: '비교적 뚜렷함', low: '팽팽함' };
   const lines = [head.join(',')];
   rows.forEach((r) => {
@@ -252,6 +254,8 @@ function exportCsv() {
       isE && s.centers ? s.centers.gut : '', isE && s.centers ? s.centers.heart : '', isE && s.centers ? s.centers.head : '',
       ...['O', 'C', 'E', 'A', 'N'].map((d) => (r.testId === 'bigfive' && s.domains && s.domains[d] ? s.domains[d].score : '')),
       r.testId === 'attachment' ? s.styleName || '' : '', r.testId === 'attachment' ? s.anx : '', r.testId === 'attachment' ? s.avo : '',
+      r.testId === 'schema' ? (s.active || []).length : '', r.testId === 'schema' ? COPE[s.primaryCoping] || '' : '',
+      r.testId === 'schema' && s.schemas ? SCH.map(([k, n]) => `${n} ${s.schemas[k] ? s.schemas[k].score : ''}`).join('; ') : '',
       fmtDate(r.createdAt, true), r.durationSec ? Math.round(r.durationSec / 60) : '', resultCode(r.rid),
       r.shareToken ? shareUrl(r.shareToken) : '',
     ].map(csvCell).join(','));

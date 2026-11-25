@@ -2,7 +2,7 @@
 // 검사 정의(def)만 바꾸면 어떤 검사든 같은 흐름으로 진행된다.
 // 흐름: 소개 → 검사자 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → '검사 결과가 전송되었습니다'
 import { ready, onUser, currentUser, saveResult } from './backend.js';
-import { esc, toast, googleButton, brandHTML, login, fmtDate } from './ui.js';
+import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -17,6 +17,7 @@ export async function runTest(def, mount, opts = {}) {
     name: '',
     startedAt: 0,
     busy: false,
+    sid: '',
     wantStart: false,
     rankTemp: [],
     consent: false,
@@ -34,23 +35,48 @@ export async function runTest(def, mount, opts = {}) {
   const stage = mount.querySelector('[data-stage]');
   const bar = mount.querySelector('[data-progress]');
 
-  const key = () => {
+  // 진행 저장: 검사자마다 따로 (azit:progress:<검사>:<버전>:<계정>:<세션>). 예전 한 칸짜리 저장도 그대로 읽는다.
+  const KEEP_DAYS = 30;
+  const base = () => {
     const u = currentUser();
     return u ? `azit:progress:${def.id}:${def.version}:${u.uid}` : null;
   };
-  const loadProgress = () => {
-    const k = key();
+  const keyFor = (sid) => { const b = base(); return b ? (sid ? `${b}:${sid}` : b) : null; };
+  const newSid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const listSessions = () => {
+    const b = base();
+    if (!b) return [];
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k !== b && !k.startsWith(`${b}:`)) continue;
+        const v = JSON.parse(localStorage.getItem(k) || 'null');
+        if (!v || !v.answers) continue;
+        if (Date.now() - (v.savedAt || 0) > KEEP_DAYS * 864e5) { localStorage.removeItem(k); continue; }
+        out.push({ ...v, sid: k === b ? '' : k.slice(b.length + 1) });
+      }
+    } catch (e) { /* 저장소를 못 읽는 환경 */ }
+    return out.sort((a, b2) => (b2.savedAt || 0) - (a.savedAt || 0));
+  };
+  const loadSession = (sid) => {
+    const k = keyFor(sid);
     if (!k) return null;
     try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
   };
   const persist = () => {
-    const k = key();
+    const k = keyFor(S.sid);
     if (!k) return;
     try {
-      localStorage.setItem(k, JSON.stringify({ answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, startedAt: S.startedAt, savedAt: Date.now() }));
+      localStorage.setItem(k, JSON.stringify({
+        testId: def.id, version: def.version, title: def.title, total: totalCount,
+        answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, startedAt: S.startedAt, savedAt: Date.now(),
+      }));
     } catch (e) { /* 저장 공간 부족 */ }
   };
-  const clearProgress = () => { const k = key(); if (k) localStorage.removeItem(k); };
+  const clearProgress = (sid = S.sid) => { const k = keyFor(sid); if (k) localStorage.removeItem(k); };
+  const doneCount = (v) => Object.keys(v.answers || {}).length;
+  const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
   const itemsFor = (pi) => {
     const p = def.parts[pi];
@@ -82,16 +108,19 @@ export async function runTest(def, mount, opts = {}) {
   // ── 화면들 ───────────────────────────────────
   function renderIntro() {
     const u = currentUser();
-    const prog = u ? loadProgress() : null;
-    const done = prog ? Object.keys(prog.answers || {}).length : 0;
+    const sessions = u ? listSessions().filter((v) => doneCount(v) > 0) : [];
     const intro = def.intro;
     let actions;
     if (!u) {
       actions = `<a class="btn btn--block" href="login.html">로그인하러 가기</a>`;
-    } else if (prog && done > 0) {
-      actions = `<button type="button" class="btn btn--block" data-act="resume">${esc(prog.name || '이전 검사자')} 님 검사 이어서 하기 (${done}/${totalCount})</button>
-        <button type="button" class="btn btn--ghost btn--block" data-act="restart">새 검사자로 시작하기</button>
-        <p class="resume-note">이어서 하지 않고 새로 시작하면 진행 중이던 응답은 지워져요.</p>`;
+    } else if (sessions.length) {
+      actions = `<div class="resume-box"><p class="resume-h">이어서 할 수 있는 검사</p>
+        <ul class="resume-rows">${sessions.slice(0, 6).map((v) => `<li>
+          <button type="button" class="resume-row" data-act="resume" data-sid="${esc(v.sid)}" aria-label="${esc(v.name || '이름 없음')} 님 검사 이어서 하기"><strong>${esc(v.name || '이름 없음')} 님</strong><span class="cnt">${doneCount(v)}/${totalCount}</span><span class="when">${esc(when(v.savedAt))}에 멈춤</span></button>
+          <button type="button" class="btn btn--text btn--small" data-act="drop" data-sid="${esc(v.sid)}" aria-label="${esc(v.name || '')} 님 진행 기록 지우기">지우기</button>
+        </li>`).join('')}</ul></div>
+        <button type="button" class="btn btn--ghost btn--block" data-act="start">새 검사자로 시작하기</button>
+        <p class="resume-note">끝내지 못한 검사는 검사자마다 이 기기에 따로 저장되고, ${KEEP_DAYS}일이 지나면 지워져요.</p>`;
     } else {
       actions = `<button type="button" class="btn btn--block" data-act="start">검사 시작하기</button>`;
     }
@@ -380,9 +409,10 @@ export async function runTest(def, mount, opts = {}) {
     }
   }
 
-  function begin(fresh) {
-    const prog = fresh ? null : loadProgress();
+  function begin(fresh, sid = '') {
+    const prog = fresh ? null : loadSession(sid);
     if (prog) {
+      S.sid = sid;
       S.answers = prog.answers || {};
       S.name = prog.name || S.name;
       S.startedAt = prog.startedAt || Date.now();
@@ -394,7 +424,7 @@ export async function runTest(def, mount, opts = {}) {
       S.step = 'item';
       render();
     } else {
-      if (fresh) clearProgress();
+      S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
       S.answers = {};
       S.name = '';
       S.consent = false;
@@ -419,9 +449,16 @@ export async function runTest(def, mount, opts = {}) {
       return;
     }
     const act = t.dataset.act;
-    if (act === 'start') begin(true);
-    else if (act === 'resume') begin(false);
-    else if (act === 'restart') begin(true);
+    if (act === 'start' || act === 'restart') begin(true);
+    else if (act === 'resume') begin(false, t.dataset.sid || '');
+    else if (act === 'drop') {
+      const ok = await modal({
+        title: '진행 기록을 지울까요?',
+        body: '<p>지운 기록은 되돌릴 수 없어요. 이 검사자는 처음부터 다시 해야 해요.</p>',
+        actions: [{ label: '취소', value: false }, { label: '지우기', value: true, primary: true, danger: true }],
+      });
+      if (ok) { clearProgress(t.dataset.sid || ''); toast('진행 기록을 지웠어요.'); render(); }
+    }
     else if (act === 'to-intro') { S.step = 'intro'; render(); }
     else if (act === 'begin') {
       if (!S.startedAt) S.startedAt = Date.now();
@@ -502,6 +539,8 @@ export async function runTest(def, mount, opts = {}) {
 
   await ready();
   render();
+  // 첫 화면의 '이어서 할 검사'에서 들어오면 그 검사자의 자리로 바로 이어 간다
+  if (typeof opts.resume === 'string' && loadSession(opts.resume)) begin(false, opts.resume);
   onUser((u) => {
     if (!u) {
       if (S.step !== 'intro') { S.step = 'intro'; }
@@ -510,8 +549,7 @@ export async function runTest(def, mount, opts = {}) {
     }
     if (S.wantStart) {
       S.wantStart = false;
-      const prog = loadProgress();
-      if (prog && Object.keys(prog.answers || {}).length) { S.step = 'intro'; render(); }
+      if (listSessions().some((v) => doneCount(v) > 0)) { S.step = 'intro'; render(); }
       else begin(true);
       return;
     }
