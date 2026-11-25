@@ -217,12 +217,22 @@ async def run(args):
                 ok(f'결과지 목차 표시 ({title})', len(actives) >= min(3, toc), f'{len(actives)}개 항목이 차례로 표시됨')
                 await shot(f'result-{title}')
 
-            # 관리 화면
+            # 관리 화면 + CSV 내려받기(열 수가 머리줄과 모두 같은지)
             await unlock('result')
             await pg.goto(base + 'admin.html')
             await pg.wait_for_timeout(1500)
             ok('관리 화면', await pg.locator('main').count() > 0)
             await shot('admin')
+            if await pg.locator('[data-csv]').count():
+                import csv, io
+                async with pg.expect_download(timeout=10000) as dl:
+                    await pg.click('[data-csv]')
+                path = await (await dl.value).path()
+                text = pathlib.Path(path).read_text(encoding='utf-8-sig')
+                rows = list(csv.reader(io.StringIO(text)))
+                head = rows[0] if rows else []
+                bad = [i for i, r in enumerate(rows[1:], 1) if len(r) != len(head)]
+                ok('관리 CSV 열 맞춤', rows and not bad, f'머리줄 {len(head)}열, 결과 {len(rows) - 1}줄' + (f', 어긋난 줄 {bad[:5]}' if bad else ''))
             await browser.close()
     finally:
         srv.terminate()
