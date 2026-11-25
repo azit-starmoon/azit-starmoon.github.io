@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 에니어그램 채점
+// AZIT : Star&Moon — 한국형 성향검사 채점
 import { LIKERT_ITEMS, MOTIVE_DIMS, INSTINCT_SETS } from './items.js';
 
 export const TYPES = [1, 2, 3, 4, 5, 6, 7, 8, 9];

@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 에니어그램 결과지
+// AZIT : Star&Moon — 한국형 성향검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { constellation, barList, legend, starGlyph, arrowGlyph, centerColor } from '../../assets/js/charts.js';
 import { TYPES } from './content-types.js';
@@ -51,9 +51,9 @@ export function renderReport(el, rec, ctx = {}) {
   const tri = (s.tritype || []).map(Number);
 
   // ── 표지 ─────────────────────────────────────
-  const cover = `<header class="night on-night cover">
+  const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">에니어그램 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">한국형 성향검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님의 핵심 유형</p>
       <div class="cover-hero">
         <div>
@@ -230,8 +230,8 @@ export function renderReport(el, rec, ctx = {}) {
   const arrows = section(
     'arrows',
     '성장과 스트레스',
-    '에니어그램에서는 유형마다 성장할 때 닮아 가는 유형과, 지칠 때 기우는 유형이 정해져 있어요. 아래 그림의 금색 화살표가 성장 방향, 회색 화살표가 스트레스 방향이에요.',
-    `<div class="night on-night" style="border-radius:22px;padding:18px;margin-bottom:14px"><div style="max-width:300px;margin:0 auto">${constellation(ts, { core, growth: g, stress: st, size: 300, title: `${core}번의 성장 방향 ${g}번, 스트레스 방향 ${st}번` })}</div></div>
+    '유형마다 성장할 때 닮아 가는 유형과, 지칠 때 기우는 유형이 정해져 있어요. 그림에서 금색 화살표가 성장 방향, 회색 화살표가 스트레스 방향이에요.',
+    `<div class="figure-panel sky"><div>${constellation(ts, { core, growth: g, stress: st, size: 300, title: `${core}번의 성장 방향 ${g}번, 스트레스 방향 ${st}번` })}</div><p class="figure-legend"><span><i style="background:#d99a1e"></i>성장 방향</span><span><i style="background:#9aa0bd"></i>스트레스 방향</span></p></div>
     <div class="arrows">
       <div class="arrow-card arrow-card--growth"><p class="kind">성장할 때</p><div class="path">${core}${arrowGlyph('#e2b653')}${g}</div><p class="to">${esc(tName(g))}의 건강한 모습을 닮아 가요</p><p>${esc(T.growth)}</p></div>
       <div class="arrow-card"><p class="kind">지칠 때</p><div class="path">${core}${arrowGlyph('#8f96b8')}${st}</div><p class="to">${esc(tName(st))}의 힘든 모습으로 기울어요</p><p>${esc(T.stress)}</p></div>
@@ -281,7 +281,7 @@ export function renderReport(el, rec, ctx = {}) {
   const centersSec = section(
     'centers',
     '세 중심',
-    '에니어그램은 사람이 세상을 겪는 통로를 장(몸과 본능), 가슴(감정과 관계), 머리(생각과 분석) 세 가지로 나눠요. 각 중심에 속한 세 유형의 점수를 평균했어요.',
+    '사람이 세상을 겪는 통로는 장(몸과 본능), 가슴(감정과 관계), 머리(생각과 분석) 세 가지로 나눌 수 있어요. 각 중심에 속한 세 유형의 점수를 평균했어요.',
     `${barList(CENTER_KEYS.map((c) => ({ label: CENTERS[c].name, value: pick(cs, c), color: `var(--${c})`, core: c === top })), { aria: '세 중심 점수' })}
     <div class="prose" style="margin-top:18px">
       <p><strong>${esc(CENTERS[top].name)}이 가장 높아요.</strong> ${esc(CENTERS[top].text)}</p>
@@ -298,7 +298,7 @@ export function renderReport(el, rec, ctx = {}) {
     `<div class="inst-stack">${stack
       .map((k, i) => `${i ? '<span class="gt" aria-hidden="true">&gt;</span>' : ''}<span class="pill ${i === 0 ? 'pill--top' : ''}">${esc(INSTINCTS[k].name)} ${esc(INSTINCTS[k].short)}</span>`)
       .join('')}</div>
-    ${barList(stack.map((k, i) => ({ label: INSTINCTS[k].name, value: pick(inst.score, k), color: 'var(--night)', core: i === 0 })), { aria: '본능 점수' })}
+    ${barList(stack.map((k, i) => ({ label: INSTINCTS[k].name, value: pick(inst.score, k), color: 'var(--brand)', core: i === 0 })), { aria: '본능 점수' })}
     <div class="prose" style="margin-top:18px">
       <p><strong>${esc(INSTINCTS[dom].name)} 본능은 ${esc(eul(INSTINCTS[dom].focus))} 향해요.</strong> ${esc(INSTINCTS[dom].text)}</p>
       ${inst.tiedTop ? `<p>${esc(INSTINCTS[stack[0]].name)} 본능과 ${esc(INSTINCTS[stack[1]].name)} 본능이 비슷하게 앞서요. 두 본능이 함께 삶을 이끌고 있어요.</p>` : ''}
@@ -321,12 +321,12 @@ export function renderReport(el, rec, ctx = {}) {
     `${core}번이 속한 두 그룹이에요. 막대는 1부 점수로 본 지금의 경향이에요.`,
     `<div class="groups">
       <div class="group-card"><h3>원하는 것을 얻는 방식</h3><p class="gname">${esc(coreH.name)}</p><p>${esc(coreH.text)}</p>
-        ${barList(Object.keys(HORNEVIAN).map((k) => ({ label: HORNEVIAN[k].name, value: pick(gH, k), color: 'var(--night)', core: k === s.groups.coreHornevian })), { aria: '행동 방식 그룹 점수', stacked: true })}
+        ${barList(Object.keys(HORNEVIAN).map((k) => ({ label: HORNEVIAN[k].name, value: pick(gH, k), color: 'var(--brand)', core: k === s.groups.coreHornevian })), { aria: '행동 방식 그룹 점수', stacked: true })}
         <p><strong>성장 과제</strong> ${esc(coreH.task)}</p>
         ${hTop !== s.groups.coreHornevian ? `<p>요즘의 응답에서는 ‘${esc(HORNEVIAN[hTop].name)}’ 쪽 점수가 가장 높았어요. 핵심 동기와 별개로, 지금은 이 방식을 많이 쓰고 있을 수 있어요.</p>` : ''}
       </div>
       <div class="group-card"><h3>일이 뜻대로 안 될 때</h3><p class="gname">${esc(coreM.name)}</p><p>${esc(coreM.text)}</p>
-        ${barList(Object.keys(HARMONIC).map((k) => ({ label: HARMONIC[k].name, value: pick(gM, k), color: 'var(--night)', core: k === s.groups.coreHarmonic })), { aria: '반응 방식 그룹 점수', stacked: true })}
+        ${barList(Object.keys(HARMONIC).map((k) => ({ label: HARMONIC[k].name, value: pick(gM, k), color: 'var(--brand)', core: k === s.groups.coreHarmonic })), { aria: '반응 방식 그룹 점수', stacked: true })}
         ${mTop !== s.groups.coreHarmonic ? `<p>요즘의 응답에서는 ‘${esc(HARMONIC[mTop].name)}’ 쪽 점수가 가장 높았어요.</p>` : ''}
       </div>
     </div>`
@@ -364,7 +364,7 @@ export function renderReport(el, rec, ctx = {}) {
     '성장을 위한 제안',
     `${core}번이 ${eul(T.virtue.name)} 향해 가는 데 도움이 되는 작은 연습들이에요. 하나만 골라 일주일 동안 해 보세요.`,
     `<ol class="practice-list">${T.practices.map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ol>
-    <div class="night on-night closing">${starGlyph()}<p>${esc(T.message)}</p><small>${esc(name)} 님의 에니어그램 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(T.message)}</p><small>${esc(name)} 님의 한국형 성향검사 결과지</small></div>`
   );
 
   el.innerHTML = `${cover}${toc}<div class="report col">${summary}${scores}${motive}${compare}${coreSec}${wing}${arrows}${love}${work}${tritype}${centersSec}${instSec}${groups}${style}${growth}</div>`;

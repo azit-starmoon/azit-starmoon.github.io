@@ -60,7 +60,7 @@ function draw() {
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const recent = all.filter((r) => (r.createdAt || 0) >= weekAgo).length;
 
-  // 에니어그램: 한 사람당 가장 최근 결과의 핵심 유형 분포
+  // 한국형 성향검사: 한 사람당 가장 최근 결과의 핵심 유형 분포
   const latest = new Map();
   all.filter((r) => r.testId === 'enneagram' && r.scores).forEach((r) => {
     const prev = latest.get(r.uid);
@@ -78,7 +78,7 @@ function draw() {
       <div class="stat"><dt>최근 7일</dt><dd>${recent}건</dd></div>
     </dl>
     <section class="dist" aria-labelledby="dist-t">
-      <h2 id="dist-t">에니어그램 핵심 유형 분포 (한 사람당 최근 결과 기준)</h2>
+      <h2 id="dist-t">한국형 성향검사 핵심 유형 분포 (한 사람당 최근 결과 기준)</h2>
       <div class="dist-cols">${Object.keys(dist)
         .map((t) => `<div class="dist-col" title="${t}번 ${dist[t]}명"><span class="v">${dist[t]}</span><span class="b" style="height:${((dist[t] / maxD) * 80).toFixed(0)}px"></span><span class="t">${t}</span></div>`)
         .join('')}</div>
@@ -167,7 +167,8 @@ function csvCell(v) {
 function exportCsv() {
   const rows = filtered();
   const head = ['이름', '이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
-    '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
+    '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심',
+    '개방성', '성실성', '외향성', '친화성', '신경성', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
   const conf = { high: '뚜렷함', mid: '비교적 뚜렷함', low: '팽팽함' };
   const lines = [head.join(',')];
   rows.forEach((r) => {
@@ -180,6 +181,7 @@ function exportCsv() {
       isE && s.instinct ? s.instinct.stack.map((k) => k.toUpperCase()).join('/') : '', isE ? conf[s.confidence] || '' : '',
       ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => (isE ? ts[t] : '')),
       isE && s.centers ? s.centers.gut : '', isE && s.centers ? s.centers.heart : '', isE && s.centers ? s.centers.head : '',
+      ...['O', 'C', 'E', 'A', 'N'].map((d) => (r.testId === 'bigfive' && s.domains && s.domains[d] ? s.domains[d].score : '')),
       fmtDate(r.createdAt, true), r.durationSec ? Math.round(r.durationSec / 60) : '', resultCode(r.rid),
       r.shareToken ? shareUrl(r.shareToken) : '',
     ].map(csvCell).join(','));

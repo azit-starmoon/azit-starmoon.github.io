@@ -50,8 +50,8 @@ async function renderOwned(u) {
   const admin = await isAdmin();
   const mine = u.uid === uid;
   document.title = `${rec.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
-  box.innerHTML = `<div class="report-actions on-night no-print">
-      <button type="button" class="btn btn--star btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>
+  box.innerHTML = `<div class="report-actions no-print">
+      <button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>
       <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
       ${mine ? `<a class="btn btn--ghost btn--small" href="test.html?t=${esc(rec.testId)}">다시 검사하기</a>` : ''}
       ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">내 기록</a>`}

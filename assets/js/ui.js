@@ -12,7 +12,7 @@ export const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel
 let markSeq = 0;
 export function brandMark(cls = 'brand-mark') {
   const id = `bm${++markSeq}`;
-  return `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true"><defs><mask id="${id}"><rect width="32" height="32" fill="#fff"/><circle cx="19.5" cy="11.5" r="9.5" fill="#000"/></mask></defs><circle cx="14" cy="17" r="11" fill="currentColor" mask="url(#${id})"/><path d="M25 3.5l1.15 3.35 3.35 1.15-3.35 1.15L25 12.5l-1.15-3.35L20.5 8l3.35-1.15z" fill="#e2b653"/></svg>`;
+  return `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true"><defs><mask id="${id}"><rect width="32" height="32" fill="#fff"/><circle cx="19.5" cy="11.5" r="9.5" fill="#000"/></mask></defs><circle cx="14" cy="17" r="11" fill="currentColor" mask="url(#${id})"/><path d="M25 3.5l1.15 3.35 3.35 1.15-3.35 1.15L25 12.5l-1.15-3.35L20.5 8l3.35-1.15z" fill="#f2b544"/></svg>`;
 }
 
 export function brandHTML() {
@@ -164,7 +164,7 @@ export function googleButton(label = '구글로 로그인', cls = 'btn') {
 // ── 헤더 ─────────────────────────────────────────
 export function mountHeader(active = '') {
   const header = document.createElement('header');
-  header.className = 'site-header on-night';
+  header.className = 'site-header';
   header.innerHTML = `<div class="wrap header-inner">
     <a class="brand" href="index.html" aria-label="${esc(SITE.name)} 처음으로">${brandHTML()}</a>
     <nav class="site-nav" aria-label="주 메뉴">

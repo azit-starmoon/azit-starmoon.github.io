@@ -215,7 +215,7 @@ export async function runTest(def, mount) {
     const demo = {};
     for (let t = 1; t <= 9; t++) demo[t] = 40 + ((t * 37) % 50);
     stage.innerHTML = `<section class="working" aria-live="polite">
-      <div class="night" style="border-radius:22px;padding:24px;margin-bottom:22px">${constellation(demo, { size: 240, animate: true, labels: false })}</div>
+      <div class="working-figure sky">${constellation(demo, { size: 240, animate: true, labels: false })}</div>
       <p tabindex="-1" data-focus>${esc(msg)}</p>
     </section>`;
   }

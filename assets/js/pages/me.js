@@ -25,7 +25,7 @@ async function render(u) {
     return;
   }
   if (!list.length) {
-    box.innerHTML = `<div class="empty"><p>아직 한 검사가 없어요. 첫 검사로 에니어그램을 해 보세요.</p><a class="btn" href="test.html?t=enneagram">에니어그램 시작하기</a></div>`;
+    box.innerHTML = `<div class="empty"><p>아직 한 검사가 없어요. 첫 검사로 한국형 성향검사를 해 보세요.</p><a class="btn" href="test.html?t=enneagram">성향검사 시작하기</a></div>`;
     return;
   }
   const rows = await Promise.all(
