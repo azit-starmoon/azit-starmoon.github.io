@@ -58,6 +58,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; } /* display를 준 요소에도 hidden이 늘 이기게 */
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + 64px); }
 body {
   margin: 0;
