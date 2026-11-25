@@ -52,7 +52,16 @@ export const TESTS = [
     parts: 2,
     gets: ['민감성 점수', '네 갈래 프로필', '섬세함의 힘과 무게', '요즘 상태 지도', '맞는 환경', '상담 메모'],
   },
-  { id: 'strengths', status: 'soon', title: '성격 강점', desc: '내가 가진 강점 24가지의 순위를 매겨요.' },
+  {
+    id: 'strengths',
+    status: 'open',
+    title: '성격 강점 검사',
+    desc: '내가 이미 가진 좋은 힘 24가지의 순위를 세우고, 가장 나다운 대표 강점 다섯 가지와 쓰는 법을 찾아요.',
+    items: 96,
+    minutes: 13,
+    parts: 2,
+    gets: ['24강점 순위', '대표 강점 5개', '여섯 덕목 지도', '강점 쓰는 법', '균형 잡기', '상담 메모'],
+  },
   { id: 'values', status: 'soon', title: '가치관', desc: '삶에서 무엇을 먼저 두는지 열 가지 가치로 봐요.' },
   { id: 'career', status: 'soon', title: '진로 흥미', desc: '어떤 종류의 일에 마음이 끌리는지 여섯 갈래로 봐요.' },
 ];

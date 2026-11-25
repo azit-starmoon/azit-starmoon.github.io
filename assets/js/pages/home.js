@@ -7,6 +7,8 @@ import { requireUnlock } from '../lock.js';
 import { attachMap } from '../../../tests/attachment/chart.js';
 import { schemaRose } from '../../../tests/schema/chart.js';
 import { sensFlower } from '../../../tests/hsp/chart.js';
+import { strengthWheel } from '../../../tests/strengths/chart.js';
+import { STRENGTH_ORDER } from '../../../tests/strengths/items.js';
 
 const GLYPH = {
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),
@@ -14,6 +16,14 @@ const GLYPH = {
   schema: () => schemaRose(Object.fromEntries(['ab', 'mi', 'ed', 'de', 'si', 'di', 'vu', 'en', 'fa', 'et', 'sc', 'sb', 'ss', 'as', 'np', 'ei', 'us', 'pu']
     .map((k, i) => [k, { score: [40, 22, 58, 70, 30, 25, 35, 20, 45, 15, 28, 62, 80, 66, 38, 50, 88, 55][i], level: [0, 2, 6, 7, 11, 12, 13, 16].includes(i) ? 'active' : 'mild' }])), { size: 220, title: '18가지 규칙 지도' }),
   hsp: () => sensFlower({ d: { score: 72 }, o: { score: 58 }, e: { score: 84 }, s: { score: 66 } }, { size: 220, total: 70, labels: false, title: '네 갈래 민감성 꽃' }),
+  strengths: () => {
+    const sc = [62, 80, 55, 74, 58, 40, 66, 70, 52, 86, 78, 64, 60, 50, 38, 56, 48, 44, 36, 82, 76, 68, 54, 42];
+    const order = [...STRENGTH_ORDER].sort((a, b) => sc[STRENGTH_ORDER.indexOf(b)] - sc[STRENGTH_ORDER.indexOf(a)]);
+    return strengthWheel(Object.fromEntries(STRENGTH_ORDER.map((k, i) => {
+      const rank = order.indexOf(k) + 1;
+      return [k, { score: sc[i], rank, tier: rank <= 5 ? 'sig' : rank > 19 ? 'rest' : 'mid' }];
+    })), { size: 220, labels: false, title: '24강점 바퀴' });
+  },
   attachment: () => attachMap([{ x: 30, y: 34, main: true }, { x: 22, y: 70 }, { x: 68, y: 40 }, { x: 40, y: 22 }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '불안과 회피 두 축의 애착 지도' }),
 };
 
