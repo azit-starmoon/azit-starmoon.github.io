@@ -6,12 +6,17 @@ import { FIREBASE, FIREBASE_SDK } from './config.js';
 const DEMO_FLAG = 'azit:demo';
 const DEMO_DB = 'azit:demo:db';
 const DEMO_USER = 'azit:demo:user';
+const DEMO_ROLE = 'azit:demo:role'; // 체험 모드에서 'user'로 두면 승인 전 계정을 흉내 낸다
 
 (() => {
   try {
-    const p = new URLSearchParams(location.search).get('demo');
+    const q = new URLSearchParams(location.search);
+    const p = q.get('demo');
     if (p === '1') localStorage.setItem(DEMO_FLAG, '1');
     if (p === '0') localStorage.removeItem(DEMO_FLAG);
+    const r = q.get('demorole');
+    if (r === 'user') localStorage.setItem(DEMO_ROLE, 'user');
+    if (r === 'admin') localStorage.removeItem(DEMO_ROLE);
   } catch (e) { /* 저장소를 못 쓰는 환경 */ }
 })();
 
@@ -165,7 +170,9 @@ async function dbGet(path) {
 async function dbSet(path, value) {
   await ready();
   if (MODE === 'demo') return demoSet(path, value);
-  return fb.D.set(fb.D.ref(fb.db, path), value);
+  // Firebase는 undefined가 섞인 값을 통째로 거부하니, 저장 전에 한 번 걸러 낸다
+  const clean = value === null || typeof value !== 'object' ? value : JSON.parse(JSON.stringify(value));
+  return fb.D.set(fb.D.ref(fb.db, path), clean);
 }
 async function dbRemove(path) {
   await ready();
@@ -191,12 +198,14 @@ async function touchUser() {
 export async function isAdmin() {
   await ready();
   if (!user) return false;
-  if (MODE === 'demo') return true;
+  if (MODE === 'demo') {
+    try { return localStorage.getItem(DEMO_ROLE) !== 'user'; } catch (e) { return true; }
+  }
   try { return (await dbGet(`admins/${user.uid}`)) === true; } catch (e) { return false; }
 }
 
 export async function isUserAdmin(uid) {
-  if (MODE === 'demo') return uid === (user && user.uid);
+  if (MODE === 'demo') return uid === (user && user.uid) && (await isAdmin());
   try { return (await dbGet(`admins/${uid}`)) === true; } catch (e) { return false; }
 }
 
@@ -210,6 +219,63 @@ export async function claimAdmin() {
   const u = requireUser();
   await dbSet(`admins/${u.uid}`, true);
   return true;
+}
+
+// ── 승인된 상담사 ─────────────────────────────────
+async function safeGet(path) {
+  try { return await dbGet(path); } catch (e) { return null; }
+}
+
+// 지금 로그인한 계정이 사이트를 쓸 수 있는지
+export async function accessStatus() {
+  await ready();
+  if (!user) return { user: null, admin: false, member: null, request: null, approved: false };
+  const [admin, member, request] = await Promise.all([isAdmin(), safeGet(`members/${user.uid}`), safeGet(`requests/${user.uid}`)]);
+  return { user, admin, member, request, approved: !!(admin || member) };
+}
+
+export function greetingName(status) {
+  return (status && status.member && status.member.name) || (user && user.name) || '';
+}
+
+export async function sendRequest({ name, note }) {
+  const u = requireUser();
+  const data = { name: String(name || '').slice(0, 30), email: u.email || '', note: String(note || '').slice(0, 100), createdAt: Date.now() };
+  await dbSet(`requests/${u.uid}`, data);
+  return data;
+}
+
+export async function cancelRequest() {
+  const u = requireUser();
+  await dbRemove(`requests/${u.uid}`);
+}
+
+export async function listRequests() {
+  return (await dbGet('requests')) || {};
+}
+
+export async function listMembers() {
+  return (await dbGet('members')) || {};
+}
+
+export async function approveMember(uid, info = {}) {
+  const u = requireUser();
+  await dbSet(`members/${uid}`, {
+    name: String(info.name || '').slice(0, 30) || '상담사',
+    email: info.email || '',
+    note: String(info.note || '').slice(0, 100),
+    approvedAt: Date.now(),
+    approvedBy: u.uid,
+  });
+  await dbRemove(`requests/${uid}`);
+}
+
+export async function rejectRequest(uid) {
+  await dbRemove(`requests/${uid}`);
+}
+
+export async function revokeMember(uid) {
+  await dbRemove(`members/${uid}`);
 }
 
 // ── 결과 ──────────────────────────────────────────

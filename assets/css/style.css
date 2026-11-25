@@ -700,3 +700,64 @@ table.list .btn--small { min-height: 32px; padding: 0 12px; }
   .cover-hero--stack { grid-template-columns: 1fr; }
   .cover-hero--stack .cover-figure { max-width: 300px; margin: 4px auto 0; }
 }
+
+/* ── 로그인 ─────────────────────────────── */
+.login-body { min-height: 100vh; }
+.login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 18px; }
+.login-card { width: min(420px, 100%); background: rgba(255, 255, 255, .9); border: 1px solid var(--line-2); border-radius: 28px; padding: 30px 28px 28px; box-shadow: var(--shadow-m); text-align: center; backdrop-filter: blur(6px); }
+.login-figure { width: 128px; margin: -4px auto 4px; }
+.login-brand { font-family: var(--font-display); font-size: 2rem; font-weight: 700; letter-spacing: .03em; display: flex; justify-content: center; align-items: baseline; gap: 6px; }
+.login-brand .w { color: var(--brand-deep); }
+.login-brand .c { color: var(--star); font-weight: 400; }
+.login-brand .s { font-weight: 400; font-size: .72em; color: var(--ink-2); letter-spacing: 0; }
+.login-tag { color: var(--ink-3); font-size: var(--fs-s); margin: 6px 0 22px; }
+.login-state { text-align: left; }
+.login-note { color: var(--ink-2); font-size: var(--fs-s); text-align: center; margin-bottom: 18px; }
+.login-h { font-family: var(--font-display); font-size: var(--fs-l); text-align: center; margin: 4px 0 8px; }
+.login-who { font-size: var(--fs-xs); color: var(--ink-3); text-align: center; margin-bottom: 14px; }
+.login-who .btn--text { font-size: var(--fs-xs); min-height: auto; padding: 0 2px; }
+.login-req { background: var(--tint); border-radius: var(--r-m); padding: 12px 16px; margin: 0 0 16px; display: grid; gap: 6px; }
+.login-req div { display: flex; gap: 10px; font-size: var(--fs-s); }
+.login-req dt { color: var(--ink-3); min-width: 88px; }
+.login-req dd { margin: 0; font-weight: 600; }
+.login-state .btn + .btn { margin-top: 8px; }
+.login-contact { font-size: var(--fs-s); color: var(--ink-2); text-align: center; }
+.login-contact a { color: var(--brand-deep); font-weight: 600; }
+.field-opt { color: var(--ink-3); font-weight: 400; }
+.nav-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--star); color: #4a3300; font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.nav-badge[hidden] { display: none; }
+
+/* ── 상담사 첫 화면 ─────────────────────── */
+.greet { font-family: var(--font-display); font-weight: 600; font-size: clamp(2rem, 6vw, 3.1rem); line-height: 1.25; letter-spacing: -0.02em; }
+.greet-sub { color: var(--brand-deep); font-weight: 600; font-size: var(--fs-s); margin-bottom: 10px; }
+.recent { list-style: none; display: grid; gap: 8px; }
+.recent li a { display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 12px 16px; text-decoration: none; }
+.recent li a:hover { border-color: var(--brand-soft-2); box-shadow: var(--shadow-s); }
+.recent .g { width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-deep); display: grid; place-items: center; font-family: var(--font-display); font-size: var(--fs-l); }
+.recent strong { display: block; }
+.recent span { color: var(--ink-3); font-size: var(--fs-s); }
+.recent .d { color: var(--ink-3); font-size: var(--fs-xs); white-space: nowrap; }
+.section-head-row { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.section-head-row h2 { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; }
+
+/* ── 검사 완료 ─────────────────────────── */
+.done { text-align: center; padding: 28px 0 10px; }
+.done-mark { width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 20px; display: grid; place-items: center; background: var(--brand-soft); box-shadow: 0 0 0 10px rgba(75, 91, 219, .06); }
+.done-mark svg { width: 40px; height: 40px; }
+.done h1 { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 600; margin-bottom: 12px; }
+.done p { color: var(--ink-2); font-size: var(--fs-m); max-width: 26em; margin: 0 auto 28px; }
+.done-actions { display: grid; gap: 8px; max-width: 360px; margin: 0 auto; }
+
+/* ── 관리: 승인 ─────────────────────────── */
+.admin-block { margin-bottom: 34px; }
+.admin-block > h2 { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.admin-block > h2 .count { font-family: var(--font-sans); font-size: var(--fs-s); font-weight: 700; color: var(--brand-deep); background: var(--brand-soft); border-radius: 999px; padding: 1px 10px; }
+.req-list { list-style: none; display: grid; gap: 10px; }
+.req { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--brand-soft-2); border-radius: var(--r-l); padding: 16px 18px; box-shadow: var(--shadow-s); }
+.req strong { display: block; font-size: var(--fs-m); }
+.req span { color: var(--ink-3); font-size: var(--fs-s); }
+.req .note { color: var(--ink-2); font-size: var(--fs-s); margin-top: 2px; }
+.req .acts { display: flex; gap: 6px; }
+@media (max-width: 560px) { .req { grid-template-columns: 1fr; } }
+.muted-box { background: var(--card); border: 1px dashed var(--line); border-radius: var(--r-l); padding: 20px; color: var(--ink-3); text-align: center; font-size: var(--fs-s); }
+.req--member { border-color: var(--line); box-shadow: none; }

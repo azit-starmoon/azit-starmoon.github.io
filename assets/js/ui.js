@@ -1,6 +1,6 @@
 // AZIT : Star&Moon — 화면 공통 요소
 import { SITE } from './config.js';
-import { ready, onUser, signIn, signOut, isAdmin, isDemo, currentUser } from './backend.js';
+import { ready, onUser, signIn, signOut, isAdmin, isDemo, currentUser, listRequests } from './backend.js';
 import { isInAppBrowser, escapeInApp, isIOS } from './inapp.js';
 
 export const esc = (s) =>
@@ -162,15 +162,24 @@ export function googleButton(label = '구글로 로그인', cls = 'btn') {
 }
 
 // ── 헤더 ─────────────────────────────────────────
+// 관리 메뉴 옆 승인 요청 수. 관리 페이지에서 승인하거나 거절하면 바로 다시 맞춘다.
+export function setRequestBadge(n) {
+  const badge = document.querySelector('[data-req-badge]');
+  if (!badge) return;
+  badge.textContent = String(n);
+  badge.hidden = !n;
+  badge.setAttribute('aria-label', `승인 요청 ${n}건`);
+}
+
 export function mountHeader(active = '') {
   const header = document.createElement('header');
   header.className = 'site-header';
   header.innerHTML = `<div class="wrap header-inner">
     <a class="brand" href="index.html" aria-label="${esc(SITE.name)} 처음으로">${brandHTML()}</a>
     <nav class="site-nav" aria-label="주 메뉴">
-      <a href="index.html" ${active === 'home' ? 'aria-current="page"' : ''}>검사</a>
-      <a href="me.html" ${active === 'me' ? 'aria-current="page"' : ''}>내 기록</a>
-      <a href="admin.html" data-admin-link hidden ${active === 'admin' ? 'aria-current="page"' : ''}>관리</a>
+      <a href="index.html" data-member-link hidden ${active === 'home' ? 'aria-current="page"' : ''}>검사</a>
+      <a href="me.html" data-member-link hidden ${active === 'me' ? 'aria-current="page"' : ''}>검사 결과</a>
+      <a href="admin.html" data-admin-link hidden ${active === 'admin' ? 'aria-current="page"' : ''}>관리<span class="nav-badge" data-req-badge hidden></span></a>
     </nav>
     <div class="account" data-account></div>
   </div>`;
@@ -184,19 +193,22 @@ export function mountHeader(active = '') {
   const acc = header.querySelector('[data-account]');
   const adminLink = header.querySelector('[data-admin-link]');
 
+  const memberLinks = header.querySelectorAll('[data-member-link]');
   onUser(async (u) => {
     if (!u) {
-      acc.innerHTML = `<button type="button" class="btn btn--ghost" data-login>로그인</button>`;
+      acc.innerHTML = `<a class="btn btn--ghost" href="login.html">로그인</a>`;
       adminLink.hidden = true;
+      memberLinks.forEach((a) => (a.hidden = true));
       return;
     }
+    memberLinks.forEach((a) => (a.hidden = false));
     const initial = esc((u.name || '?').trim().charAt(0));
     acc.innerHTML = `<button type="button" class="avatar-btn" aria-haspopup="true" aria-expanded="false" aria-label="${esc(u.name)} 계정 메뉴">${
       u.photo ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : initial
     }</button>
     <div class="account-menu" data-open="false">
       <div class="who"><strong>${esc(u.name)}</strong><span>${esc(u.email)}</span></div>
-      <a href="me.html">내 기록</a>
+      <a href="me.html">검사 결과</a>
       <a href="admin.html" data-admin-item hidden>관리</a>
       <button type="button" data-logout>로그아웃</button>
     </div>`;
@@ -209,12 +221,15 @@ export function mountHeader(active = '') {
     });
     acc.querySelector('[data-logout]').addEventListener('click', async () => {
       await signOut();
-      toast('로그아웃했어요.');
+      location.href = 'login.html';
     });
     const admin = await isAdmin();
     adminLink.hidden = !admin;
     const item = acc.querySelector('[data-admin-item]');
     if (item) item.hidden = !admin;
+    if (admin) {
+      try { setRequestBadge(Object.keys(await listRequests()).length); } catch (e) { /* 요청 목록을 못 읽어도 헤더는 그대로 */ }
+    }
   });
 
   document.addEventListener('click', (e) => {

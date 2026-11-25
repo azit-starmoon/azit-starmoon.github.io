@@ -1,8 +1,8 @@
-import { mountHeader, mountFooter, esc, toast, modal, copyText, googleButton } from '../ui.js';
-import { ready, onUser, getResult, getShare, createShare, revokeShare, deleteResult, isAdmin, shareUrl } from '../backend.js';
+import { mountHeader, mountFooter, esc, toast, modal, copyText } from '../ui.js';
+import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl } from '../backend.js';
+import { requireApproved } from '../guard.js';
 import { loadTest } from '../registry.js';
 
-mountHeader('');
 const box = document.querySelector('[data-report]');
 const q = new URLSearchParams(location.search);
 const token = q.get('s');
@@ -14,6 +14,7 @@ function gate(title, text, extra = '') {
 }
 
 async function renderShared() {
+  mountHeader('');
   await ready();
   let share = null;
   try { share = await getShare(token); } catch (e) { share = null; }
@@ -25,39 +26,33 @@ async function renderShared() {
   const def = await loadTest(p.testId);
   if (!def) { gate('결과지를 열 수 없어요', '이 검사는 지금 열려 있지 않아요.'); return; }
   document.title = `${p.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
-  box.innerHTML = `<div class="shared-note">${esc(p.name || '')} 님이 공유한 결과지예요. <a href="test.html?t=${esc(p.testId)}">나도 검사해 보기</a></div><div data-body></div>`;
+  box.innerHTML = `<div class="shared-note">AZIT : Star&amp;Moon에서 공유한 ${esc(p.name || '')} 님의 결과지예요.</div><div data-body></div>`;
   def.render(box.querySelector('[data-body]'), { name: p.name, createdAt: p.createdAt, scores: p.scores }, { shared: true, rid: share.resultId });
   mountFooter();
 }
 
-let rendered = false;
-async function renderOwned(u) {
-  if (!u) {
-    rendered = false;
-    gate('로그인이 필요해요', '결과지는 본인과 관리자만 볼 수 있어요. 검사할 때 쓴 구글 계정으로 로그인해 주세요.', googleButton('구글로 로그인'));
-    return;
-  }
-  if (rendered) return;
+async function renderOwned() {
+  const st = await requireApproved();
+  if (!st) return;
+  mountHeader('me');
   let rec = null;
   try { rec = await getResult(uid, rid); } catch (e) { rec = null; }
   if (!rec) {
-    gate('결과지를 열 수 없어요', '결과가 지워졌거나, 이 계정으로는 볼 수 없는 결과예요.', '<a class="btn" href="me.html">내 기록으로</a>');
+    gate('결과지를 열 수 없어요', '결과가 지워졌거나, 이 계정으로는 볼 수 없는 결과예요.', '<a class="btn" href="me.html">검사 결과 목록으로</a>');
     return;
   }
   const def = await loadTest(rec.testId);
   if (!def) { gate('결과지를 열 수 없어요', '이 검사는 지금 열려 있지 않아요.'); return; }
-  rendered = true;
-  const admin = await isAdmin();
-  const mine = u.uid === uid;
+  const admin = st.admin;
+  const mine = st.user.uid === uid;
   document.title = `${rec.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
   box.innerHTML = `<div class="report-actions no-print">
       <button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>
       <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
-      ${mine ? `<a class="btn btn--ghost btn--small" href="test.html?t=${esc(rec.testId)}">다시 검사하기</a>` : ''}
-      ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">내 기록</a>`}
+      ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">검사 결과 목록</a>`}
       <button type="button" class="btn btn--ghost btn--small" data-act="delete">결과 지우기</button>
     </div>
-    ${admin && !mine ? `<div class="shared-note">${esc(rec.name || '')} 님(${esc(rec.email || '')})의 결과를 관리자 권한으로 보고 있어요.</div>` : ''}
+    ${admin && !mine ? `<div class="shared-note">${esc(rec.ownerName || rec.email || '')} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</div>` : ''}
     <div data-body></div>`;
   def.render(box.querySelector('[data-body]'), rec, { shared: false, rid });
   mountFooter();
@@ -130,6 +125,6 @@ async function openShare(tk, rec, def) {
 }
 
 if (token) renderShared();
-else if (uid && rid) onUser((u) => renderOwned(u));
-else gate('결과지를 찾을 수 없어요', '주소가 올바른지 확인해 주세요.', '<a class="btn" href="me.html">내 기록으로</a>');
+else if (uid && rid) renderOwned();
+else gate('결과지를 찾을 수 없어요', '주소가 올바른지 확인해 주세요.', '<a class="btn" href="me.html">검사 결과 목록으로</a>');
 

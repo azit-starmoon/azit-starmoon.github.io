@@ -28,7 +28,7 @@ export function renderReport(el, rec, ctx = {}) {
   const s = rec.scores;
   const D = s.domains;
   const F = s.facets;
-  const name = rec.name || '응시자';
+  const name = rec.name || '검사자';
   const headline = headlineOf(s);
   const [d1, d2] = s.distinct;
   const scores = Object.fromEntries(DOMAIN_ORDER.map((d) => [d, D[d].score]));

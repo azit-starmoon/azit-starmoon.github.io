@@ -10,6 +10,29 @@
       }
     },
 
+    "members": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".validate": "!newData.exists() || newData.hasChildren(['name', 'approvedAt'])"
+      }
+    },
+
+    "requests": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+        ".validate": "newData.hasChildren(['name', 'email', 'createdAt'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30" },
+        "email": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "note": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "users": {
       ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
       "$uid": {
@@ -22,12 +45,12 @@
     "results": {
       ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && auth.uid === $uid && root.child('members').child(auth.uid).exists()",
         "$rid": {
-          ".write": "auth != null && ((auth.uid === $uid && (!data.exists() || !newData.exists())) || root.child('admins').child(auth.uid).exists())",
+          ".write": "auth != null && ((auth.uid === $uid && root.child('members').child(auth.uid).exists() && (!data.exists() || !newData.exists())) || root.child('admins').child(auth.uid).exists())",
           ".validate": "!newData.exists() || newData.hasChildren(['testId', 'createdAt', 'scores'])",
           "shareToken": {
-            ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())"
+            ".write": "auth != null && ((auth.uid === $uid && root.child('members').child(auth.uid).exists()) || root.child('admins').child(auth.uid).exists())"
           }
         }
       }
@@ -36,7 +59,7 @@
     "shares": {
       "$token": {
         ".read": true,
-        ".write": "auth != null && ((!data.exists() && newData.child('createdBy').val() === auth.uid && (newData.child('ownerUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())) || (data.exists() && !newData.exists() && (data.child('ownerUid').val() === auth.uid || data.child('createdBy').val() === auth.uid || root.child('admins').child(auth.uid).exists())))",
+        ".write": "auth != null && ((!data.exists() && newData.child('createdBy').val() === auth.uid && ((newData.child('ownerUid').val() === auth.uid && root.child('members').child(auth.uid).exists()) || root.child('admins').child(auth.uid).exists())) || (data.exists() && !newData.exists() && (data.child('ownerUid').val() === auth.uid || data.child('createdBy').val() === auth.uid || root.child('admins').child(auth.uid).exists())))",
         ".validate": "!newData.exists() || ($token.length >= 20 && newData.hasChildren(['ownerUid', 'resultId', 'createdBy', 'createdAt', 'payload']))"
       }
     }

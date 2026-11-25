@@ -1,13 +1,13 @@
 // AZIT : Star&Moon — 검사 진행 엔진
 // 검사 정의(def)만 바꾸면 어떤 검사든 같은 흐름으로 진행된다.
-// 흐름: 소개 → (로그인) → 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → 결과지
-import { ready, onUser, currentUser, saveResult, resultUrl } from './backend.js';
+// 흐름: 소개 → 검사자 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → '검사 결과가 전송되었습니다'
+import { ready, onUser, currentUser, saveResult } from './backend.js';
 import { esc, toast, googleButton, brandHTML, login } from './ui.js';
-import { constellation } from './charts.js';
+import { constellation, starGlyph } from './charts.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function runTest(def, mount) {
+export async function runTest(def, mount, opts = {}) {
   const S = {
     step: 'intro',
     pi: 0,
@@ -27,7 +27,7 @@ export async function runTest(def, mount) {
     <div class="runner-top"><div class="wrap runner-top-inner">
       <a class="brand" href="index.html" aria-label="처음으로">${brandHTML()}</a>
       <span class="runner-title">${esc(def.title)}</span>
-      <a class="btn btn--text runner-exit" href="index.html" data-exit>나가기</a>
+      <a class="btn btn--text runner-exit" href="index.html" data-exit>처음으로</a>
     </div><div class="progress" aria-hidden="true"><i data-progress></i></div></div>
     <main class="runner-main" id="main"><div class="stage" data-stage></div></main>
   </div>`;
@@ -70,7 +70,7 @@ export async function runTest(def, mount) {
     return before + (S.step === 'item' ? S.ii : 0);
   };
   const setBar = () => {
-    const pct = S.step === 'intro' || S.step === 'profile' ? 0 : S.step === 'working' ? 100 : (position() / totalCount) * 100;
+    const pct = S.step === 'intro' || S.step === 'profile' ? 0 : S.step === 'working' || S.step === 'done' ? 100 : (position() / totalCount) * 100;
     bar.style.width = `${pct.toFixed(1)}%`;
   };
   const focusStage = () => {
@@ -87,11 +87,11 @@ export async function runTest(def, mount) {
     const intro = def.intro;
     let actions;
     if (!u) {
-      actions = `${googleButton('구글로 로그인하고 시작하기', 'btn btn--block')}
-        <p class="resume-note">결과를 보관하고 다시 볼 수 있도록 로그인이 필요해요.</p>`;
+      actions = `<a class="btn btn--block" href="login.html">로그인하러 가기</a>`;
     } else if (prog && done > 0) {
-      actions = `<button type="button" class="btn btn--block" data-act="resume">이어서 하기 (${done}/${totalCount})</button>
-        <button type="button" class="btn btn--ghost btn--block" data-act="restart">처음부터 다시 하기</button>`;
+      actions = `<button type="button" class="btn btn--block" data-act="resume">${esc(prog.name || '이전 검사자')} 님 검사 이어서 하기 (${done}/${totalCount})</button>
+        <button type="button" class="btn btn--ghost btn--block" data-act="restart">새 검사자로 시작하기</button>
+        <p class="resume-note">이어서 하지 않고 새로 시작하면 진행 중이던 응답은 지워져요.</p>`;
     } else {
       actions = `<button type="button" class="btn btn--block" data-act="start">검사 시작하기</button>`;
     }
@@ -107,20 +107,19 @@ export async function runTest(def, mount) {
   }
 
   function renderProfile() {
-    const u = currentUser();
-    const name = S.name || (u && u.name) || '';
+    const name = S.name || '';
     stage.innerHTML = `<section class="intro-card" aria-labelledby="pf-title">
-      <p class="intro-kicker">시작하기 전에</p>
-      <h1 class="intro-title" id="pf-title" tabindex="-1" data-focus>결과지에 쓸 이름을 확인해 주세요</h1>
-      <p class="intro-lead">결과지 맨 앞에 이 이름이 들어가요.</p>
+      <p class="intro-kicker">${esc(def.title)}</p>
+      <h1 class="intro-title" id="pf-title" tabindex="-1" data-focus>검사자 이름을 적어 주세요</h1>
+      <p class="intro-lead">결과지 맨 앞에 이 이름이 들어가요. 한 계정으로 여러 분을 검사할 수 있도록, 검사할 때마다 이름을 새로 적어요.</p>
       <div class="field">
-        <label for="pf-name">이름</label>
-        <input class="input" id="pf-name" maxlength="20" autocomplete="name" value="${esc(name)}" required>
+        <label for="pf-name">검사자 이름</label>
+        <input class="input" id="pf-name" maxlength="20" autocomplete="off" value="${esc(name)}" placeholder="예: 홍길동" required>
       </div>
       <label class="consent">
         <input type="checkbox" id="pf-consent" ${S.consent ? 'checked' : ''}>
-        <div><strong>결과 보관에 동의해요</strong>
-        <span>응답과 결과는 내 계정에 저장되고, 나와 AZIT 관리자가 다시 볼 수 있어요. 결과는 언제든 '내 기록'에서 지울 수 있어요.</span></div>
+        <div><strong>결과 전송에 동의해요</strong>
+        <span>응답과 결과는 검사를 진행하는 상담사${opts.ownerName ? `(${esc(opts.ownerName)})` : ''}에게 전송되고, AZIT 관리자도 볼 수 있어요. 결과는 상담사를 통해 안내받아요.</span></div>
       </label>
       <div class="intro-actions">
         <button type="button" class="btn btn--block" data-act="begin" ${S.consent && name ? '' : 'disabled'}>시작하기</button>
@@ -220,6 +219,18 @@ export async function runTest(def, mount) {
     </section>`;
   }
 
+  function renderDone() {
+    stage.innerHTML = `<section class="done" aria-live="polite">
+      <div class="done-mark" aria-hidden="true">${starGlyph('#4b5bdb')}</div>
+      <h1 tabindex="-1" data-focus>검사 결과가 전송되었습니다</h1>
+      <p>${esc(S.doneName || '')} 님, 끝까지 답해 주셔서 고마워요. 결과는 상담사님을 통해 안내받을 수 있어요.</p>
+      <div class="done-actions">
+        <button type="button" class="btn btn--block" data-act="again">다음 검사 시작하기</button>
+        <a class="btn btn--ghost btn--block" href="index.html">처음으로</a>
+      </div>
+    </section>`;
+  }
+
   function renderSaveError() {
     stage.innerHTML = `<section class="gate" style="margin-top:0">
       <h2 tabindex="-1" data-focus>결과를 저장하지 못했어요</h2>
@@ -235,6 +246,7 @@ export async function runTest(def, mount) {
     else if (S.step === 'part') renderPartIntro();
     else if (S.step === 'item') renderItem();
     else if (S.step === 'working') renderWorking();
+    else if (S.step === 'done') renderDone();
     else if (S.step === 'error') renderSaveError();
     focusStage();
   }
@@ -314,16 +326,26 @@ export async function runTest(def, mount) {
     const record = {
       testId: def.id,
       version: def.version,
-      name: S.name || (currentUser() && currentUser().name) || '',
+      name: S.name || '이름 없음',
+      ownerName: opts.ownerName || (currentUser() && currentUser().name) || '',
       answers: used,
       scores,
       summary: def.summary(scores),
       durationSec,
     };
     try {
-      const [{ uid, rid }] = await Promise.all([saveResult(record), delay(1500)]);
+      await Promise.all([saveResult(record), delay(1500)]);
       clearProgress();
-      location.href = resultUrl(uid, rid);
+      S.doneName = record.name;
+      S.answers = {};
+      S.name = '';
+      S.consent = false;
+      S.startedAt = 0;
+      S.pi = 0;
+      S.ii = 0;
+      S.items = [];
+      S.step = 'done';
+      render();
     } catch (e) {
       console.error(e);
       S.step = 'error';
@@ -347,6 +369,8 @@ export async function runTest(def, mount) {
     } else {
       if (fresh) clearProgress();
       S.answers = {};
+      S.name = '';
+      S.consent = false;
       S.startedAt = 0;
       S.pi = 0;
       S.ii = 0;
@@ -381,6 +405,7 @@ export async function runTest(def, mount) {
     } else if (act === 'enter') enterPart(S.pi);
     else if (act === 'back') back();
     else if (act === 'retry') { S.step = 'working'; render(); save(); }
+    else if (act === 'again') { S.step = 'intro'; render(); }
     else if (t.dataset.likert) {
       const it = S.items[S.ii];
       stage.querySelectorAll('[data-likert]').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
@@ -441,7 +466,7 @@ export async function runTest(def, mount) {
   });
 
   mount.querySelector('[data-exit]').addEventListener('click', () => {
-    if (S.step === 'item' || S.step === 'part') toast('진행 상황은 이 기기에 저장돼요.');
+    if (S.step === 'item' || S.step === 'part') toast('진행 상황은 이 기기에 저장돼요. 검사 화면에서 이어서 할 수 있어요.');
   });
 
   await ready();
