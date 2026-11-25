@@ -37,7 +37,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const tag = flat
     ? '여섯 갈래가 고르게 비슷해요'
-    : `가장 든든한 갈래는 <strong>${esc(SKILLS[top].name)}</strong>, 키워 갈 갈래는 <strong>${esc(jo(SKILLS[grow].name, '이에요', '예요'))}</strong>`;
+    : `${isHigh(K[top].level) ? '가장 든든한 갈래는' : '상대적으로 앞선 갈래는'} <strong>${esc(SKILLS[top].name)}</strong>, 키워 갈 갈래는 <strong>${esc(jo(SKILLS[grow].name, '이에요', '예요'))}</strong>`;
   const cover = `<header class="sky cover">
     <div class="col">
       <div class="cover-top"><span class="doc">감정 조절 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
@@ -52,7 +52,7 @@ export function renderReport(el, rec, ctx = {}) {
       </div>
       <dl class="cover-facts">
         <div><dt>다루는 힘</dt><dd>${s.total}<small>${LEVEL_LABEL[s.level]}</small></dd></div>
-        <div><dt>든든한 갈래</dt><dd>${esc(SKILLS[top].short)}<small>${K[top].score}점</small></dd></div>
+        <div><dt>${isHigh(K[top].level) ? '든든한 갈래' : '앞선 갈래'}</dt><dd>${esc(SKILLS[top].short)}<small>${K[top].score}점</small></dd></div>
         <div><dt>키워 갈 갈래</dt><dd>${esc(SKILLS[grow].short)}<small>${K[grow].score}점</small></dd></div>
         <div><dt>응답</dt><dd>${careful ? '확인 필요' : '일관됨'}<small>응답 점검 참고</small></dd></div>
       </dl>
@@ -74,9 +74,13 @@ export function renderReport(el, rec, ctx = {}) {
   const topStrat = s.stratOrder[0];
   const paras = [`${esc(name)} 님은 <strong>${esc(jo(O.title, '이에요', '예요'))}</strong>. ${esc(O.summary)}`];
   if (flat) {
-    paras.push(`여섯 갈래의 점수가 고르게 비슷해요(가장 높은 갈래와 낮은 갈래가 ${s.range}점 차이). 어느 한 곳에 치우치지 않고 비슷한 힘으로 감정을 다루고 있어요.`);
+    const even = s.range <= 2 ? '여섯 갈래의 점수가 거의 같아요' : `여섯 갈래의 점수가 고르게 비슷해요(가장 높은 갈래와 낮은 갈래가 ${s.range}점 차이)`;
+    const tail = isHigh(s.level) ? '어느 한 곳에 치우치지 않고 고르게 든든한 힘으로 감정을 다루고 있어요.'
+      : s.level === 'low' ? '여섯 갈래 모두 아직 연습이 필요한 단계예요. 한 갈래만 자라도 다른 갈래가 함께 움직이니, 가장 쉬운 연습 하나부터 시작해 보세요.'
+        : '어느 한 곳에 치우치지 않고 비슷한 힘으로 감정을 다루고 있어요.';
+    paras.push(`${even}. ${tail}`);
   } else {
-    paras.push(`여섯 갈래 가운데 <strong>${esc(SKILLS[top].name)}</strong>(${K[top].score}점)${hasBatchim(SKILLS[top].name) ? '이' : '가'} 가장 든든하고, <strong>${esc(SKILLS[grow].name)}</strong>(${K[grow].score}점)${hasBatchim(SKILLS[grow].name) ? '은' : '는'} 앞으로 키워 갈 갈래예요.`);
+    paras.push(`여섯 갈래 가운데 <strong>${esc(SKILLS[top].name)}</strong>(${K[top].score}점)${hasBatchim(SKILLS[top].name) ? '이' : '가'} ${isHigh(K[top].level) ? '가장 든든하고' : '상대적으로 가장 앞서 있고'}, <strong>${esc(SKILLS[grow].name)}</strong>(${K[grow].score}점)${hasBatchim(SKILLS[grow].name) ? '은' : '는'} 앞으로 키워 갈 갈래예요.`);
   }
   paras.push(`힘들 때 가장 자주 쓰는 전략은 '${esc(STRATEGIES[topStrat].name)}'예요. ${esc(BALANCE_TEXT[balanceKey])}`);
   const summary = section('summary', '요약', '', `<div class="summary-box prose">${paras.map((p) => `<p>${p}</p>`).join('')}</div>`);
@@ -102,7 +106,8 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 강점과 키울 점 ────────────────────────────
   const ordered = s.order;
   const strong = ordered.filter((k) => isHigh(K[k].level)).slice(0, 2);
-  const strongList = strong.length ? strong : ordered.slice(0, 1);
+  const strongList = strong.length ? strong : K[ordered[0]].level === 'mid' ? ordered.slice(0, 1) : [];
+  const strongLabel = strong.length ? '잘 쓰고 있는 힘' : '상대적으로 잘 쓰는 힘';
   const growList = flat ? [] : ordered.slice(-2).reverse().filter((k) => !isHigh(K[k].level) || K[k].score < 70);
   const growBody = growList.length
     ? growList.map((k) => `<article class="emo-grow">
@@ -110,12 +115,14 @@ export function renderReport(el, rec, ctx = {}) {
         <p>${esc(levelText(k, K[k].level))}</p>
         <p class="emo-practice"><strong>작은 연습</strong> ${esc(SKILL_TEXT[k].practice)}</p>
       </article>`).join('')
-    : `<p class="emo-note">여섯 갈래가 고르게 든든해서 따로 키울 갈래를 꼽기 어려워요. 지금 잘 쓰고 있는 방법을 힘든 시기에도 꾸준히 이어 가는 것이 가장 좋은 연습이에요.</p>`;
+    : isHigh(s.level)
+      ? `<p class="emo-note">여섯 갈래가 고르게 든든해서 따로 키울 갈래를 꼽기 어려워요. 지금 잘 쓰고 있는 방법을 힘든 시기에도 꾸준히 이어 가는 것이 가장 좋은 연습이에요.</p>`
+      : `<p class="emo-note">여섯 갈래가 고르게 비슷해서 한 갈래만 꼽기 어려워요. 아래 '감정이 몰려올 때'의 여섯 단계를 차례로 연습하면 여섯 갈래가 함께 자라요.</p>`;
   const growSec = section(
     'grow',
     '강점과 키울 점',
     '이미 잘 쓰고 있는 힘은 발판이 되고, 약한 힘은 연습으로 자라요. 한 번에 하나씩, 가장 작은 연습부터 시작해 보세요.',
-    `<div class="emo-strong">${strongList.map((k) => `<div><span class="emo-strong-k">잘 쓰고 있는 힘</span><h3>${esc(SKILLS[k].name)} <span>${K[k].score}</span></h3><p>${esc(SKILL_TEXT[k].what)}</p></div>`).join('')}</div>
+    `${strongList.length ? `<div class="emo-strong">${strongList.map((k) => `<div><span class="emo-strong-k">${strongLabel}</span><h3>${esc(SKILLS[k].name)} <span>${K[k].score}</span></h3><p>${esc(SKILL_TEXT[k].what)}</p></div>`).join('')}</div>` : '<p class="emo-note">아직 든든하게 쓰는 갈래는 없지만, 감정을 다루는 힘은 연습할수록 하나씩 자라요. 가장 작은 연습 하나부터 시작해 보세요.</p>'}
     <h3 class="rsub">키워 갈 힘</h3>${growBody}`
   );
 
