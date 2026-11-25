@@ -1,0 +1,44 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && ((!root.child('admins').exists() && auth.uid === $uid && newData.val() === true) || root.child('admins').child(auth.uid).exists())"
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['name', 'updatedAt'])"
+      }
+    },
+
+    "results": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$rid": {
+          ".write": "auth != null && ((auth.uid === $uid && (!data.exists() || !newData.exists())) || root.child('admins').child(auth.uid).exists())",
+          ".validate": "!newData.exists() || newData.hasChildren(['testId', 'createdAt', 'scores'])",
+          "shareToken": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())"
+          }
+        }
+      }
+    },
+
+    "shares": {
+      "$token": {
+        ".read": true,
+        ".write": "auth != null && ((!data.exists() && newData.child('createdBy').val() === auth.uid && (newData.child('ownerUid').val() === auth.uid || root.child('admins').child(auth.uid).exists())) || (data.exists() && !newData.exists() && (data.child('ownerUid').val() === auth.uid || data.child('createdBy').val() === auth.uid || root.child('admins').child(auth.uid).exists())))",
+        ".validate": "!newData.exists() || ($token.length >= 20 && newData.hasChildren(['ownerUid', 'resultId', 'createdBy', 'createdAt', 'payload']))"
+      }
+    }
+  }
+}
