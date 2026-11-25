@@ -1,6 +1,7 @@
 import { mountHeader, mountFooter, esc, toast, modal, copyText } from '../ui.js';
 import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl } from '../backend.js';
 import { requireApproved } from '../guard.js';
+import { requireUnlock, watchLock } from '../lock.js';
 import { loadTest } from '../registry.js';
 
 const box = document.querySelector('[data-report]');
@@ -34,6 +35,8 @@ async function renderShared() {
 async function renderOwned() {
   const st = await requireApproved();
   if (!st) return;
+  await requireUnlock('result');
+  watchLock('result');
   mountHeader('me');
   let rec = null;
   try { rec = await getResult(uid, rid); } catch (e) { rec = null; }

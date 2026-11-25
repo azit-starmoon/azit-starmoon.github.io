@@ -2,6 +2,7 @@ import { mountHeader, mountFooter, esc, toast, modal, fmtDate, copyText } from '
 import { listMyResults, deleteResult, createShare, revokeShare, resultUrl, shareUrl } from '../backend.js';
 import { TESTS } from '../registry.js';
 import { requireApproved } from '../guard.js';
+import { requireUnlock, watchLock } from '../lock.js';
 
 const box = document.querySelector('[data-list]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
@@ -12,6 +13,8 @@ let list = [];
 (async () => {
   const st = await requireApproved();
   if (!st) return;
+  await requireUnlock('result');
+  watchLock('result');
   mountHeader('me');
   mountFooter();
   await load();

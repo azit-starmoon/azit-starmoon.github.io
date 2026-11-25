@@ -730,15 +730,6 @@ table.list .btn--small { min-height: 32px; padding: 0 12px; }
 /* ── 상담사 첫 화면 ─────────────────────── */
 .greet { font-family: var(--font-display); font-weight: 600; font-size: clamp(2rem, 6vw, 3.1rem); line-height: 1.25; letter-spacing: -0.02em; }
 .greet-sub { color: var(--brand-deep); font-weight: 600; font-size: var(--fs-s); margin-bottom: 10px; }
-.recent { list-style: none; display: grid; gap: 8px; }
-.recent li a { display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 12px 16px; text-decoration: none; }
-.recent li a:hover { border-color: var(--brand-soft-2); box-shadow: var(--shadow-s); }
-.recent .g { width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand-deep); display: grid; place-items: center; font-family: var(--font-display); font-size: var(--fs-l); }
-.recent strong { display: block; }
-.recent span { color: var(--ink-3); font-size: var(--fs-s); }
-.recent .d { color: var(--ink-3); font-size: var(--fs-xs); white-space: nowrap; }
-.section-head-row { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.section-head-row h2 { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; }
 
 /* ── 검사 완료 ─────────────────────────── */
 .done { text-align: center; padding: 28px 0 10px; }
@@ -761,3 +752,55 @@ table.list .btn--small { min-height: 32px; padding: 0 12px; }
 @media (max-width: 560px) { .req { grid-template-columns: 1fr; } }
 .muted-box { background: var(--card); border: 1px dashed var(--line); border-radius: var(--r-l); padding: 20px; color: var(--ink-3); text-align: center; font-size: var(--fs-s); }
 .req--member { border-color: var(--line); box-shadow: none; }
+
+/* ── 화면 잠금 (검사 코드, 결과 잠금 번호) ───────────── */
+.booting body > *:not(.lock):not(.demo-bar),
+.lock-veil body > *:not(.lock):not(.demo-bar) { visibility: hidden; }
+.is-locked { overflow: hidden; }
+.lock.sky { position: fixed; inset: 0; z-index: 300; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 28px 16px calc(28px + env(safe-area-inset-bottom)); }
+.lock-card { width: min(360px, 100%); background: rgba(255, 255, 255, .94); border: 1px solid var(--line-2); border-radius: 28px; padding: 30px 24px 20px; box-shadow: var(--shadow-m); text-align: center; backdrop-filter: blur(6px); }
+.lock-mark { width: 62px; height: 62px; margin: 0 auto 18px; border-radius: 20px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); box-shadow: 0 0 0 8px rgba(75, 91, 219, .06); }
+.lock-mark svg { width: 32px; height: 32px; overflow: visible; }
+.lock-shackle { transition: transform .32s cubic-bezier(.3, 1.4, .5, 1); transform-origin: 21.5px 14.5px; }
+.lock.is-ok .lock-shackle { transform: translateY(-2.6px) rotate(22deg); }
+.lock.is-ok .lock-mark { color: var(--ok); background: #e7f5ee; }
+.lock-title { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; line-height: 1.32; letter-spacing: -0.015em; margin-bottom: 8px; outline: none; word-break: keep-all; }
+.lock-sub { color: var(--ink-2); font-size: var(--fs-s); line-height: 1.65; max-width: 21em; margin: 0 auto; word-break: keep-all; }
+.lock-dots { display: flex; justify-content: center; gap: 18px; margin: 26px 0 8px; }
+.lock-dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #c9cff0; transition: background-color .12s, border-color .12s, transform .12s; }
+.lock-dots i.on { background: var(--brand); border-color: var(--brand); transform: scale(1.08); }
+.lock-dots.is-error i.on { background: var(--danger); border-color: var(--danger); }
+.lock-dots.is-ok i { background: var(--ok); border-color: var(--ok); }
+.lock-msg { min-height: 2.9em; display: grid; place-items: center; font-size: var(--fs-s); line-height: 1.45; color: var(--danger); margin: 0 auto 6px; max-width: 22em; word-break: keep-all; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 276px; margin: 0 auto; }
+.keypad button { height: 58px; border: 0; border-radius: 18px; background: var(--tint); color: var(--ink); font: 600 1.42rem/1 var(--font-sans); font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color .12s, transform .08s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.keypad button:hover { background: var(--brand-soft); }
+.keypad button:active { background: var(--brand-soft-2); transform: scale(.96); }
+.keypad button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.keypad button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.keypad .keypad-del { background: transparent; color: var(--ink-2); display: grid; place-items: center; }
+.keypad .keypad-del:hover { background: var(--tint); }
+.lock-links { display: flex; justify-content: center; gap: 22px; margin-top: 18px; }
+.lock-links a, .lock-links button { font: inherit; font-size: var(--fs-s); color: var(--ink-3); background: none; border: 0; padding: 6px 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+.lock-links a:hover, .lock-links button:hover { color: var(--brand-deep); text-decoration-color: currentColor; }
+.lock-foot { font-family: var(--font-display); font-size: var(--fs-s); color: var(--ink-3); letter-spacing: .02em; }
+@media (prefers-reduced-motion: no-preference) {
+  .lock { animation: lock-in .18s ease-out; }
+  .lock.is-leaving { opacity: 0; transition: opacity .2s ease-in; }
+  .lock-dots.is-error { animation: lock-shake .4s; }
+}
+@keyframes lock-in { from { opacity: 0; } }
+@keyframes lock-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+@media (max-height: 640px) {
+  .lock-card { padding-top: 22px; }
+  .lock-mark { width: 52px; height: 52px; margin-bottom: 12px; }
+  .lock-dots { margin-top: 18px; }
+  .keypad button { height: 50px; }
+}
+@media print { .lock { display: none; } }
+
+/* ── 검사 완료: 전송 확인 ─────────────────── */
+.done-receipt { display: grid; gap: 8px; max-width: 360px; margin: -6px auto 26px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-m); text-align: left; }
+.done-receipt div { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-s); }
+.done-receipt dt { color: var(--ink-3); }
+.done-receipt dd { margin: 0; font-weight: 600; color: var(--ink); text-align: right; }

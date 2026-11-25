@@ -2,7 +2,7 @@
 // 검사 정의(def)만 바꾸면 어떤 검사든 같은 흐름으로 진행된다.
 // 흐름: 소개 → 검사자 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → '검사 결과가 전송되었습니다'
 import { ready, onUser, currentUser, saveResult } from './backend.js';
-import { esc, toast, googleButton, brandHTML, login } from './ui.js';
+import { esc, toast, googleButton, brandHTML, login, fmtDate } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -224,6 +224,11 @@ export async function runTest(def, mount, opts = {}) {
       <div class="done-mark" aria-hidden="true">${starGlyph('#4b5bdb')}</div>
       <h1 tabindex="-1" data-focus>검사 결과가 전송되었습니다</h1>
       <p>${esc(S.doneName || '')} 님, 끝까지 답해 주셔서 고마워요. 결과는 상담사님을 통해 안내받을 수 있어요.</p>
+      <dl class="done-receipt">
+        <div><dt>검사</dt><dd>${esc(def.title)}</dd></div>
+        ${opts.ownerName ? `<div><dt>받는 상담사</dt><dd>${esc(opts.ownerName)}</dd></div>` : ''}
+        <div><dt>전송 시각</dt><dd>${esc(fmtDate(S.doneAt || Date.now(), true))}</dd></div>
+      </dl>
       <div class="done-actions">
         <button type="button" class="btn btn--block" data-act="again">다음 검사 시작하기</button>
         <a class="btn btn--ghost btn--block" href="index.html">처음으로</a>
@@ -337,6 +342,7 @@ export async function runTest(def, mount, opts = {}) {
       await Promise.all([saveResult(record), delay(1500)]);
       clearProgress();
       S.doneName = record.name;
+      S.doneAt = Date.now();
       S.answers = {};
       S.name = '';
       S.consent = false;

@@ -1,6 +1,7 @@
 import { esc, toast, login, googleButton, fmtDate } from '../ui.js';
 import { ready, onUser, accessStatus, sendRequest, cancelRequest, signOut, isDemo, currentUser } from '../backend.js';
 import { constellation } from '../charts.js';
+import { relockAll } from '../lock.js';
 
 const box = document.querySelector('[data-state]');
 document.querySelector('[data-figure]').innerHTML = constellation(
@@ -88,6 +89,7 @@ box.addEventListener('click', async (e) => {
   }
   const act = b.dataset.act;
   if (act === 'switch') {
+    relockAll();
     await signOut();
     renderLoggedOut();
   } else if (act === 'request') {

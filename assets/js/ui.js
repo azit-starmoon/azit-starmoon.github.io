@@ -1,6 +1,7 @@
 // AZIT : Star&Moon — 화면 공통 요소
 import { SITE } from './config.js';
 import { ready, onUser, signIn, signOut, isAdmin, isDemo, currentUser, listRequests } from './backend.js';
+import { relockAll } from './lock.js';
 import { isInAppBrowser, escapeInApp, isIOS } from './inapp.js';
 
 export const esc = (s) =>
@@ -220,6 +221,7 @@ export function mountHeader(active = '') {
       btn.setAttribute('aria-expanded', String(open));
     });
     acc.querySelector('[data-logout]').addEventListener('click', async () => {
+      relockAll();
       await signOut();
       location.href = 'login.html';
     });

@@ -5,6 +5,7 @@ import {
 } from '../backend.js';
 import { TESTS } from '../registry.js';
 import { requireLogin } from '../guard.js';
+import { requireUnlock, watchLock } from '../lock.js';
 
 const box = document.querySelector('[data-admin]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
@@ -18,6 +19,10 @@ const view = { q: '', test: '' };
 (async () => {
   const st = await requireLogin();
   if (!st) return;
+  if (st.admin) {
+    await requireUnlock('result');
+    watchLock('result');
+  }
   mountHeader('admin');
   mountFooter();
   if (!st.admin) {
