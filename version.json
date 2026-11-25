@@ -1,5 +1,5 @@
 {
- "v": "20261125-181628",
+ "v": "20261125-191417",
  "files": [
   "./",
   "admin.html",
@@ -37,6 +37,12 @@
   "tests/bigfive/items.js",
   "tests/bigfive/report.js",
   "tests/bigfive/scoring.js",
+  "tests/career/chart.js",
+  "tests/career/content.js",
+  "tests/career/index.js",
+  "tests/career/items.js",
+  "tests/career/report.js",
+  "tests/career/scoring.js",
   "tests/enneagram/content-extra.js",
   "tests/enneagram/content-types.js",
   "tests/enneagram/index.js",

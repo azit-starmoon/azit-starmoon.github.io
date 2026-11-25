@@ -237,7 +237,7 @@ function exportCsv() {
   const rows = filtered();
   const head = ['검사자', '상담사', '상담사 이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
     '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심',
-    '개방성', '성실성', '외향성', '친화성', '신경성', '애착 유형', '애착 불안', '애착 회피', '작동하는 도식', '주된 대처', '도식 점수(18)', '민감성', '민감성 수준', '깊이 생각하기', '쉽게 벅참', '감정의 울림', '미세한 감지', '요즘 부담', '요즘 회복', '요즘 상태', '대표 강점', '중심 덕목', '강점 순위(24)', '핵심 가치', '앞선 방향', '변화-보존 축', '초월-향상 축', '가치 순위(10)', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
+    '개방성', '성실성', '외향성', '친화성', '신경성', '애착 유형', '애착 불안', '애착 회피', '작동하는 도식', '주된 대처', '도식 점수(18)', '민감성', '민감성 수준', '깊이 생각하기', '쉽게 벅참', '감정의 울림', '미세한 감지', '요즘 부담', '요즘 회복', '요즘 상태', '대표 강점', '중심 덕목', '강점 순위(24)', '핵심 가치', '앞선 방향', '변화-보존 축', '초월-향상 축', '가치 순위(10)', '흥미 코드', '일관도', '변별도', '흥미 수준', '흥미 점수(6)', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
   const COPE = { surrender: '굴복', avoid: '회피', over: '과잉보상' };
   const HSP_LV = { low: '낮음', mid: '보통', high: '높음', vhigh: '매우 높음' };
   const HSP_ST = { overload: '과부하', holding: '버티는 중', bloom: '잘 피어나는 중', dry: '채움이 필요함' };
@@ -246,6 +246,8 @@ function exportCsv() {
   const SGV = { wis: '지혜', cou: '용기', hum: '인간애', jus: '정의', tem: '절제', tra: '초월' };
   const VL = { sd: '자율', st: '새로움', he: '즐거움', ac: '성취', po: '영향력', se: '안전', co: '규범', tr: '전통', be: '배려', un: '공존' };
   const VLG = { trans: '자기 초월', cons: '보존', enh: '자기 향상', open: '변화' };
+  const CR = { r: '현장형', i: '탐구형', a: '예술형', s: '사회형', e: '진취형', c: '관습형' };
+  const CR_LV = { high: '높음', mid: '보통', low: '낮음' };
   const conf = { high: '뚜렷함', mid: '비교적 뚜렷함', low: '팽팽함' };
   const lines = [head.join(',')];
   rows.forEach((r) => {
@@ -270,6 +272,9 @@ function exportCsv() {
         : ['', '', '']),
       ...(r.testId === 'values' && s.values
         ? [(s.core || []).map((k) => VL[k]).join(', '), VLG[s.topGroup] || '', s.axisChange, s.axisCare, (s.order || []).map((k) => `${VL[k]} ${s.values[k] ? s.values[k].c : ''}`).join('; ')]
+        : ['', '', '', '', '']),
+      ...(r.testId === 'career' && s.types
+        ? [s.codeText || '', CR_LV[s.consistency] || '', s.diff, s.elevation, (s.order || []).map((k) => `${CR[k]} ${s.types[k] ? s.types[k].score : ''}`).join('; ')]
         : ['', '', '', '', '']),
       fmtDate(r.createdAt, true), r.durationSec ? Math.round(r.durationSec / 60) : '', resultCode(r.rid),
       r.shareToken ? shareUrl(r.shareToken) : '',
