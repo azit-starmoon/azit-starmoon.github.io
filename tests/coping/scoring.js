@@ -49,18 +49,18 @@ export function score(answers, meta = {}) {
   const approach = Math.round((groups.problem + groups.heart) / 2);
   const order = [...STRATEGY_ORDER].sort((a, b) => strategies[b].score - strategies[a].score || STRATEGY_ORDER.indexOf(a) - STRATEGY_ORDER.indexOf(b));
 
-  // 2부: 상황 맞춤. 바꿀 수 있는 일에서는 '움직이기', 바꿀 수 없는 일에서는 '마음 다독이기'가 앞설수록 잘 맞춘 것
-  const pts = { act: { c: 0, u: 0 }, heart: { c: 0, u: 0 }, away: { c: 0, u: 0 } };
+  // 2부: 상황 맞춤. 바꿀 수 있는 일에서는 '움직이기', 바꿀 수 없는 일에서는 '마음 다독이기'를 먼저 고를수록 잘 맞춘 것.
+  // 늘 같은 반응을 먼저 고르면 절반은 저절로 맞으므로, 상황에 따라 첫 반응을 바꿨는지(same)도 함께 본다.
   const firsts = {};
   SITUATIONS.forEach((sit) => {
     const ans = Array.isArray(answers[sit.id]) ? answers[sit.id] : [];
-    ans.forEach((key, i) => { if (pts[key]) pts[key][sit.control ? 'c' : 'u'] += 2 - i; });
     firsts[sit.id] = ans[0] || '';
   });
-  const fitPts = pts.act.c + pts.heart.u; // 0~12
-  const fit = Math.round((fitPts / 12) * 100);
   const fitFirst = SITUATIONS.filter((sit) => firsts[sit.id] === (sit.control ? 'act' : 'heart')).length;
   const awayFirst = SITUATIONS.filter((sit) => firsts[sit.id] === 'away').length;
+  const same = new Set(SITUATIONS.map((sit) => firsts[sit.id])).size === 1;
+  const fit = Math.round((fitFirst / SITUATIONS.length) * 100);
+  const fitLevel = fitFirst >= 5 ? 'high' : same || fitFirst <= 2 ? 'low' : 'mid';
 
   const rawAll = COPE_ITEMS.map(raw);
   const n = COPE_ITEMS.length + SITUATIONS.length;
@@ -74,8 +74,10 @@ export function score(answers, meta = {}) {
     balance: approach - groups.away,
     style: styleOf(groups.problem, groups.heart, groups.away),
     fit,
+    fitLevel,
     fitFirst,
     awayFirst,
+    same,
     firsts,
     check: {
       rawMean: r2(mean(rawAll)),

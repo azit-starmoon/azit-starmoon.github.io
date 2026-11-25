@@ -11,7 +11,6 @@ const hasBatchim = (w) => { const c = String(w).trim().slice(-1).charCodeAt(0); 
 const jo = (w, withB, without) => `${w}${hasBatchim(w) ? withB : without}`;
 const pill = (lv) => `<span class="cp-pill cp-pill--${lv}">${LEVEL_LABEL[lv]}</span>`;
 const sw = (g) => `<i style="background:${GROUP_COLOR[g]}"></i>`;
-const fitKey = (fit) => (fit >= 67 ? 'high' : fit >= 34 ? 'mid' : 'low');
 
 function section(id, title, lead, body, cls = '') {
   return `<section class="rsec ${cls}" id="r-${id}" aria-labelledby="r-${id}-t">
@@ -29,7 +28,7 @@ export function renderReport(el, rec, ctx = {}) {
   const G = s.groups;
   const style = STYLES[s.style];
   const top = s.order[0];
-  const fk = fitKey(s.fit);
+  const fk = s.fitLevel;
   const C = s.check;
   const careful = C.spread >= SPREAD_LIMIT || Math.abs(C.acq) >= ACQ_LIMIT || C.sd < 0.5;
   // 키울 무리: 물러서기가 잦으면 물러서기부터, 아니면 덜 쓰는 다가가기 쪽
