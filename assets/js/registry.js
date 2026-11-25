@@ -82,6 +82,10 @@ export const TESTS = [
     parts: 2,
     gets: ['흥미 코드 3글자', '흥미 육각형', '일관도와 변별도', '직업 예시', '탐색 실천', '상담 메모'],
   },
+  { id: 'emotion', status: 'soon', title: '감정 조절 검사', desc: '감정을 알아차리고, 이해하고, 받아들이고, 다스리는 힘을 여섯 갈래로 살펴요.' },
+  { id: 'coping', status: 'soon', title: '스트레스 대처 검사', desc: '힘들 때 주로 쓰는 대처 방식과 그 균형을 살펴요.' },
+  { id: 'resilience', status: 'soon', title: '회복탄력성 검사', desc: '어려움에서 다시 일어나는 힘을 자기 조절, 관계, 긍정성으로 살펴요.' },
+  { id: 'esteem', status: 'soon', title: '자존감 검사', desc: '나를 얼마나 가치 있게 여기는지, 힘들 때 나를 어떻게 대하는지 살펴요.' },
 ];
 
 export function getTestMeta(id) {
