@@ -1,7 +1,7 @@
 // AZIT : Star&Moon — 검사 진행 엔진
 // 검사 정의(def)만 바꾸면 어떤 검사든 같은 흐름으로 진행된다.
 // 흐름: 소개 → 검사자 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → '검사 결과가 전송되었습니다'
-import { ready, onUser, currentUser, saveResult } from './backend.js';
+import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDraft } from './backend.js';
 import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
 
@@ -26,16 +26,21 @@ export async function runTest(def, mount, opts = {}) {
 
   mount.innerHTML = `<div class="runner-page">
     <div class="runner-top"><div class="wrap runner-top-inner">
-      <a class="brand" href="index.html" aria-label="처음으로">${brandHTML()}</a>
+      <a class="brand" href="index.html" aria-label="처음으로" data-leave>${brandHTML()}</a>
       <span class="runner-title">${esc(def.title)}</span>
-      <a class="btn btn--text runner-exit" href="index.html" data-exit>처음으로</a>
+      <a class="btn btn--text runner-exit" href="index.html" data-leave data-exit>처음으로</a>
     </div><div class="progress" aria-hidden="true"><i data-progress></i></div></div>
     <main class="runner-main" id="main"><div class="stage" data-stage></div></main>
   </div>`;
   const stage = mount.querySelector('[data-stage]');
   const bar = mount.querySelector('[data-progress]');
+  const exitEl = mount.querySelector('[data-exit]');
 
-  // 진행 저장: 검사자마다 따로 (azit:progress:<검사>:<버전>:<계정>:<세션>). 예전 한 칸짜리 저장도 그대로 읽는다.
+  // ── 진행 저장 ─────────────────────────────────
+  // 답할 때마다 두 곳에 저장한다.
+  //  1) 이 기기: azit:progress:<검사>:<버전>:<계정>:<세션>  (예전 한 칸짜리 저장도 읽는다)
+  //  2) 상담사 계정: drafts/<계정>/<검사>-<버전>-<세션>  → 다른 기기에서도 이어 할 수 있다.
+  //     데이터베이스 규칙에 drafts가 아직 없으면 조용히 1)만 쓴다.
   const KEEP_DAYS = 30;
   const base = () => {
     const u = currentUser();
@@ -43,7 +48,22 @@ export async function runTest(def, mount, opts = {}) {
   };
   const keyFor = (sid) => { const b = base(); return b ? (sid ? `${b}:${sid}` : b) : null; };
   const newSid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  const listSessions = () => {
+  const draftId = (sid) => `${def.id}-${def.version}-${sid}`;
+  const alive = (v) => !!(v && v.answers) && Date.now() - (v.savedAt || 0) <= KEEP_DAYS * 864e5;
+  const readLocal = (sid) => { const k = keyFor(sid); if (!k) return null; try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const writeLocal = (sid, v) => { const k = keyFor(sid); if (!k) return false; try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+  const dropLocal = (sid) => { const k = keyFor(sid); if (!k) return; try { localStorage.removeItem(k); } catch (e) { /* 저장소를 못 쓰는 환경 */ } };
+  const doneCount = (v) => Object.keys((v && v.answers) || {}).length;
+  const two = (n) => String(n).padStart(2, '0');
+  const hhmm = (ts) => { const d = new Date(ts || Date.now()); return `${two(d.getHours())}:${two(d.getMinutes())}`; };
+  const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${hhmm(ts)}`; };
+  const sameName = (a, b2) => String(a || '').replace(/\s+/g, '').toLowerCase() === String(b2 || '').replace(/\s+/g, '').toLowerCase();
+
+  const remote = new Map(); // sid → 계정에 저장된 진행
+  let cloud = 'checking';   // 'checking' | 'on' | 'off'
+  const gone = new Set();   // 지운 세션: 늦게 끝난 저장이 되살리지 않게
+
+  const localSessions = () => {
     const b = base();
     if (!b) return [];
     const out = [];
@@ -53,30 +73,106 @@ export async function runTest(def, mount, opts = {}) {
         if (k !== b && !k.startsWith(`${b}:`)) continue;
         const v = JSON.parse(localStorage.getItem(k) || 'null');
         if (!v || !v.answers) continue;
-        if (Date.now() - (v.savedAt || 0) > KEEP_DAYS * 864e5) { localStorage.removeItem(k); continue; }
+        if (!alive(v)) { localStorage.removeItem(k); i--; continue; }
         out.push({ ...v, sid: k === b ? '' : k.slice(b.length + 1) });
       }
     } catch (e) { /* 저장소를 못 읽는 환경 */ }
-    return out.sort((a, b2) => (b2.savedAt || 0) - (a.savedAt || 0));
+    return out;
+  };
+  const listSessions = () => {
+    const m = new Map(localSessions().map((v) => [v.sid, v]));
+    remote.forEach((v, sid) => { const cur = m.get(sid); if (!cur || (v.savedAt || 0) > (cur.savedAt || 0)) m.set(sid, v); });
+    return [...m.values()].filter((v) => alive(v) && !gone.has(v.sid)).sort((a, b2) => (b2.savedAt || 0) - (a.savedAt || 0));
   };
   const loadSession = (sid) => {
-    const k = keyFor(sid);
-    if (!k) return null;
-    try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+    if (gone.has(sid)) return null;
+    const l = readLocal(sid);
+    const r = remote.get(sid);
+    return r && (!l || (r.savedAt || 0) > (l.savedAt || 0)) ? r : l;
   };
-  const persist = () => {
-    const k = keyFor(S.sid);
-    if (!k) return;
+
+  // 계정에 저장된 진행을 읽어 온다. 다른 기기에서 끝냈거나 지운 검사는 이 기기에서도 정리한다.
+  async function syncRemote() {
     try {
-      localStorage.setItem(k, JSON.stringify({
-        testId: def.id, version: def.version, title: def.title, total: totalCount,
-        answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, startedAt: S.startedAt, savedAt: Date.now(),
-      }));
-    } catch (e) { /* 저장 공간 부족 */ }
+      const all = await Promise.race([listDrafts(), delay(6000).then(() => { throw new Error('timeout'); })]);
+      remote.clear();
+      all.forEach((d) => {
+        if (d.testId !== def.id || d.version !== def.version || !d.sid) return;
+        if (!alive(d)) { deleteDraft(draftId(d.sid)).catch(() => {}); return; }
+        remote.set(d.sid, d);
+      });
+      localSessions().forEach((v) => { if (v.sid && v.syncedAt && !remote.has(v.sid) && v.sid !== S.sid) dropLocal(v.sid); });
+      cloud = 'on';
+    } catch (e) {
+      cloud = 'off';
+    }
+  }
+  let syncing = Promise.resolve();
+
+  let pushTimer = 0;
+  const snapshot = () => ({
+    sid: S.sid, testId: def.id, version: def.version, title: def.title, total: totalCount,
+    answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, startedAt: S.startedAt, savedAt: Date.now(),
+  });
+  // 답하지 않은 세션(이름만 넣은 상태)은 저장하지 않는다
+  const persist = () => {
+    if (!S.sid || !doneCount(S)) return;
+    const prev = readLocal(S.sid);
+    const v = snapshot();
+    if (prev && prev.syncedAt) v.syncedAt = prev.syncedAt;
+    S.localOK = writeLocal(S.sid, v);
+    S.savedAt = v.savedAt;
+    updateChip();
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushRemote, 1200);
   };
-  const clearProgress = (sid = S.sid) => { const k = keyFor(sid); if (k) localStorage.removeItem(k); };
-  const doneCount = (v) => Object.keys(v.answers || {}).length;
-  const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  async function pushRemote() {
+    clearTimeout(pushTimer);
+    pushTimer = 0;
+    const sid = S.sid;
+    if (!sid || gone.has(sid) || !doneCount(S)) return;
+    const v = snapshot();
+    try {
+      await saveDraft(draftId(sid), v);
+      if (gone.has(sid)) return;
+      remote.set(sid, v);
+      cloud = 'on';
+      const l = readLocal(sid);
+      if (l && (l.savedAt || 0) <= v.savedAt) writeLocal(sid, { ...l, syncedAt: Date.now() });
+    } catch (e) {
+      cloud = 'off';
+    }
+    updateChip();
+  }
+  const flush = () => (pushTimer ? pushRemote() : Promise.resolve());
+  const clearProgress = (sid = S.sid) => {
+    gone.add(sid);
+    if (sid === S.sid) { clearTimeout(pushTimer); pushTimer = 0; }
+    dropLocal(sid);
+    remote.delete(sid);
+    if (sid) deleteDraft(draftId(sid)).catch(() => {});
+  };
+
+  // 검사 중 화면의 '저장됨' 표시
+  const CHECK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function chipInner() {
+    if (!doneCount(S) || !S.savedAt) return '<span class="dot" aria-hidden="true"></span><span>자동 저장</span>';
+    if (S.localOK === false && cloud !== 'on') return '<span>저장 안 됨</span>';
+    return `${CHECK}<span>저장됨</span><span class="t">${hhmm(S.savedAt)}</span>`;
+  }
+  const chipState = () => (!doneCount(S) || !S.savedAt ? 'idle' : S.localOK === false && cloud !== 'on' ? 'fail' : 'saved');
+  const chipHTML = () => `<button type="button" class="save-chip" data-act="save-info" data-save-chip data-state="${chipState()}">${chipInner()}</button>`;
+  function updateChip() {
+    const el = stage.querySelector('[data-save-chip]');
+    if (!el) return;
+    el.dataset.state = chipState();
+    el.innerHTML = chipInner();
+  }
+  function saveInfo() {
+    if (chipState() === 'fail') return toast('이 브라우저에서는 저장이 막혀 있어요. 이번 검사는 끝까지 마쳐 주세요.', 5200);
+    const where = cloud === 'on' ? '상담사님 계정에 저장돼요. 다른 기기에서도' : '이 기기에 저장돼요. 나갔다 와도';
+    toast(`답할 때마다 ${where} 첫 화면 '이어서 할 검사'에서 이 자리부터 이어져요.`, 5200);
+  }
 
   const itemsFor = (pi) => {
     const p = def.parts[pi];
@@ -106,27 +202,41 @@ export async function runTest(def, mount, opts = {}) {
   };
 
   // ── 화면들 ───────────────────────────────────
+  function resumeBox(sessions) {
+    const note = cloud === 'on'
+      ? '답할 때마다 상담사님 계정에 저장돼서, 다른 기기에서도 멈춘 곳부터 이어져요.'
+      : cloud === 'off' ? '답할 때마다 이 기기에 저장돼요.' : '답할 때마다 자동으로 저장돼요.';
+    return `<div class="resume-box" role="region" aria-labelledby="resume-h">
+      <div class="resume-head"><h2 id="resume-h">이어서 할 검사</h2><span class="resume-count">${sessions.length}명</span></div>
+      <ul class="resume-rows">${sessions.slice(0, 8).map((v) => {
+        const n = doneCount(v);
+        const total = v.total || totalCount;
+        const pct = Math.min(100, Math.round((n / total) * 100));
+        const who = esc(v.name || '이름 없음');
+        return `<li>
+          <button type="button" class="resume-row" data-act="resume" data-sid="${esc(v.sid)}" aria-label="${who} 님, ${total}문항 중 ${n}문항까지 답함. 이어서 하기">
+            <span class="who"><strong>${who} 님</strong><span class="when">${esc(when(v.savedAt))}에 멈춤</span></span>
+            <span class="go">이어서 하기</span>
+            <span class="bar"><span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="cnt">${n}/${total}</span></span>
+          </button>
+          <button type="button" class="resume-drop" data-act="drop" data-sid="${esc(v.sid)}" aria-label="${who} 님 진행 기록 지우기">지우기</button>
+        </li>`;
+      }).join('')}</ul>
+      <p class="resume-note">${note} ${KEEP_DAYS}일 동안 보관해요.</p>
+    </div>`;
+  }
+
   function renderIntro() {
     const u = currentUser();
     const sessions = u ? listSessions().filter((v) => doneCount(v) > 0) : [];
     const intro = def.intro;
-    let actions;
-    if (!u) {
-      actions = `<a class="btn btn--block" href="login.html">로그인하러 가기</a>`;
-    } else if (sessions.length) {
-      actions = `<div class="resume-box"><p class="resume-h">이어서 할 수 있는 검사</p>
-        <ul class="resume-rows">${sessions.slice(0, 6).map((v) => `<li>
-          <button type="button" class="resume-row" data-act="resume" data-sid="${esc(v.sid)}" aria-label="${esc(v.name || '이름 없음')} 님 검사 이어서 하기"><strong>${esc(v.name || '이름 없음')} 님</strong><span class="cnt">${doneCount(v)}/${totalCount}</span><span class="when">${esc(when(v.savedAt))}에 멈춤</span></button>
-          <button type="button" class="btn btn--text btn--small" data-act="drop" data-sid="${esc(v.sid)}" aria-label="${esc(v.name || '')} 님 진행 기록 지우기">지우기</button>
-        </li>`).join('')}</ul></div>
-        <button type="button" class="btn btn--ghost btn--block" data-act="start">새 검사자로 시작하기</button>
-        <p class="resume-note">끝내지 못한 검사는 검사자마다 이 기기에 따로 저장되고, ${KEEP_DAYS}일이 지나면 지워져요.</p>`;
-    } else {
-      actions = `<button type="button" class="btn btn--block" data-act="start">검사 시작하기</button>`;
-    }
+    const actions = !u
+      ? `<a class="btn btn--block" href="login.html">로그인하러 가기</a>`
+      : `<button type="button" class="btn btn--block" data-act="start">${sessions.length ? '새 검사자로 시작하기' : '검사 시작하기'}</button>`;
     stage.innerHTML = `<section class="intro-card" aria-labelledby="intro-title">
       <p class="intro-kicker">${esc(intro.kicker)}</p>
       <h1 class="intro-title" id="intro-title" tabindex="-1" data-focus>${esc(def.title)}</h1>
+      ${sessions.length ? resumeBox(sessions) : ''}
       <p class="intro-lead">${esc(intro.lead)}</p>
       <dl class="intro-facts">${intro.facts.map((f) => `<div><dt>${esc(f.dt)}</dt><dd>${esc(f.dd)}</dd></div>`).join('')}</dl>
       <ol class="parts-list">${(intro.overview || def.parts).map((p) => `<li><div><strong>${esc(p.title)} <span class="tag">${p.count}문항</span></strong><span>${esc(p.summary)}</span></div></li>`).join('')}</ol>
@@ -172,7 +282,7 @@ export async function runTest(def, mount, opts = {}) {
   function renderPartIntro() {
     const p = def.parts[S.pi];
     stage.innerHTML = `<section class="part-intro" aria-labelledby="pi-title">
-      <div class="part-meta"><button type="button" class="back-btn" data-act="back" ${S.pi === 0 ? 'hidden' : ''}>← 이전</button><span></span></div>
+      <div class="part-meta"><button type="button" class="back-btn" data-act="back" ${S.pi === 0 ? 'hidden' : ''}>← 이전</button><span class="meta-right">${doneCount(S) ? chipHTML() : ''}</span></div>
       <span class="part-no">${esc(p.label || `${S.pi + 1}부 / ${def.parts.length}부`)}</span>
       <h1 id="pi-title" tabindex="-1" data-focus>${esc(p.title)}</h1>
       <p>${esc(p.desc)}</p>
@@ -202,7 +312,7 @@ export async function runTest(def, mount, opts = {}) {
   function metaRow() {
     const p = def.parts[S.pi];
     return `<div class="part-meta"><button type="button" class="back-btn" data-act="back">← 이전</button>
-      <span>${esc(p.short)} <span class="count">${S.ii + 1}/${S.items.length}</span></span></div>`;
+      <span class="meta-right">${chipHTML()}<span class="where">${esc(p.short)} <span class="count">${S.ii + 1}/${S.items.length}</span></span></span></div>`;
   }
 
   function renderLikert(it, p) {
@@ -298,7 +408,19 @@ export async function runTest(def, mount, opts = {}) {
     </section>`;
   }
 
+  // 검사 중에는 주소에 resume=<세션>을 달아 둔다: 새로고침해도 그 자리에서 이어진다
+  const inSession = () => (S.step === 'item' || S.step === 'part') && !!S.sid && doneCount(S) > 0;
+  function syncUrl() {
+    try {
+      const u = new URL(location.href);
+      if (inSession()) u.searchParams.set('resume', S.sid);
+      else u.searchParams.delete('resume');
+      if (u.href !== location.href) history.replaceState(history.state, '', u.href);
+    } catch (e) { /* 주소를 못 바꾸는 환경 */ }
+  }
   function render() {
+    exitEl.textContent = S.step === 'item' || S.step === 'part' ? '저장하고 나가기' : '처음으로';
+    syncUrl();
     setBar();
     if (S.step === 'intro') renderIntro();
     else if (S.step === 'profile') renderProfile();
@@ -391,11 +513,14 @@ export async function runTest(def, mount, opts = {}) {
       answers: used,
       scores,
       summary: def.summary(scores),
+      glyph: def.glyph ? String(def.glyph(scores) || '').slice(0, 2) : '',
       durationSec,
     };
     try {
       await Promise.all([saveResult(record), delay(1500)]);
       clearProgress();
+      S.sid = '';
+      S.savedAt = 0;
       S.doneName = record.name;
       S.doneAt = Date.now();
       S.answers = {};
@@ -414,19 +539,24 @@ export async function runTest(def, mount, opts = {}) {
     }
   }
 
-  function begin(fresh, sid = '') {
+  async function begin(fresh, sid = '') {
+    await flush(); // 앞 검사자의 마지막 답을 먼저 올려 둔다
+    if (!fresh) await syncing; // 다른 기기에서 더 진행했으면 그 기록으로 이어 간다
     const prog = fresh ? null : loadSession(sid);
     if (prog) {
-      S.sid = sid;
+      S.sid = sid || newSid(); // 예전 한 칸짜리 저장은 새 칸으로 옮긴다
       S.answers = prog.answers || {};
       S.name = prog.name || S.name;
       S.startedAt = prog.startedAt || Date.now();
+      S.savedAt = prog.savedAt || Date.now();
+      S.localOK = true;
       S.pi = Math.min(prog.pi || 0, def.parts.length - 1);
       S.items = itemsFor(S.pi);
       S.ii = Math.min(prog.ii || 0, S.items.length - 1);
       const firstMissing = S.items.findIndex((it) => S.answers[it.id] === undefined);
       if (firstMissing >= 0 && firstMissing < S.ii) S.ii = firstMissing;
       S.step = 'item';
+      if (!sid) { dropLocal(''); persist(); }
       render();
     } else {
       S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
@@ -434,6 +564,7 @@ export async function runTest(def, mount, opts = {}) {
       S.name = '';
       S.consent = false;
       S.startedAt = 0;
+      S.savedAt = 0;
       S.pi = 0;
       S.ii = 0;
       S.step = 'profile';
@@ -455,7 +586,14 @@ export async function runTest(def, mount, opts = {}) {
     }
     const act = t.dataset.act;
     if (act === 'start' || act === 'restart') begin(true);
-    else if (act === 'resume') begin(false, t.dataset.sid || '');
+    else if (act === 'resume') {
+      const sid = t.dataset.sid || '';
+      t.disabled = true;
+      await syncing;
+      if (!loadSession(sid)) { toast('이 검사는 이미 끝났거나 지워졌어요.'); render(); return; }
+      await begin(false, sid);
+    }
+    else if (act === 'save-info') saveInfo();
     else if (act === 'drop') {
       const ok = await modal({
         title: '진행 기록을 지울까요?',
@@ -466,6 +604,18 @@ export async function runTest(def, mount, opts = {}) {
     }
     else if (act === 'to-intro') { S.step = 'intro'; render(); }
     else if (act === 'begin') {
+      // 같은 이름으로 하다 멈춘 검사가 있으면 먼저 물어본다 (같은 사람 기록이 여러 개 쌓이지 않게)
+      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && sameName(v.name, S.name));
+      if (same) {
+        const pick = await modal({
+          title: `${S.name} 님이 하다 멈춘 검사가 있어요`,
+          body: `<p>${esc(when(same.savedAt))}에 ${same.total || totalCount}문항 중 ${doneCount(same)}문항까지 답했어요. 이어서 하면 그 자리부터 시작해요.</p><p class="modal-sub">처음부터 하면 멈춘 기록은 지워져요.</p>`,
+          actions: [{ label: '처음부터 새로', value: 'new' }, { label: '이어서 하기', value: 'resume', primary: true }],
+        });
+        if (pick === 'resume') { await begin(false, same.sid); return; }
+        if (pick !== 'new') return;
+        clearProgress(same.sid);
+      }
       if (!S.startedAt) S.startedAt = Date.now();
       S.pi = 0;
       S.step = 'part';
@@ -539,14 +689,35 @@ export async function runTest(def, mount, opts = {}) {
     }
   });
 
-  mount.querySelector('[data-exit]').addEventListener('click', () => {
-    if (S.step === 'item' || S.step === 'part') toast('진행 상황은 이 기기에 저장돼요. 검사 화면에서 이어서 할 수 있어요.');
-  });
+  // 나갈 때: 마지막 답까지 계정에 올리고, 첫 화면에 '여기까지 저장했어요'를 남긴다
+  const leaveNote = () => {
+    if (!inSession()) return;
+    try { sessionStorage.setItem('azit:saved-note', JSON.stringify({ testId: def.id, sid: S.sid, name: S.name, n: doneCount(S), total: totalCount, at: Date.now() })); } catch (e) { /* */ }
+  };
+  mount.querySelectorAll('[data-leave]').forEach((a) => a.addEventListener('click', async (e) => {
+    if (!inSession()) return;
+    e.preventDefault();
+    exitEl.textContent = '저장하는 중';
+    persist();
+    await Promise.race([flush(), delay(1500)]);
+    leaveNote();
+    location.href = a.href;
+  }));
+  const flushNow = () => { if (inSession()) { leaveNote(); flush(); } };
+  window.addEventListener('pagehide', flushNow);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  window.addEventListener('azit:before-update', () => { if (inSession()) persist(); flush(); });
 
+  try { sessionStorage.removeItem('azit:saved-note'); } catch (e) { /* */ }
   await ready();
+  syncing = syncRemote().then(() => { if (S.step === 'intro') render(); });
   render();
-  // 첫 화면의 '이어서 할 검사'에서 들어오면 그 검사자의 자리로 바로 이어 간다
-  if (typeof opts.resume === 'string' && loadSession(opts.resume)) begin(false, opts.resume);
+  // 첫 화면의 '이어서 할 검사'(또는 새로고침)로 들어오면 그 검사자의 자리로 바로 이어 간다
+  if (typeof opts.resume === 'string' && opts.resume) {
+    await syncing;
+    if (loadSession(opts.resume)) await begin(false, opts.resume);
+    else render();
+  }
   onUser((u) => {
     if (!u) {
       if (S.step !== 'intro') { S.step = 'intro'; }
@@ -555,8 +726,11 @@ export async function runTest(def, mount, opts = {}) {
     }
     if (S.wantStart) {
       S.wantStart = false;
-      if (listSessions().some((v) => doneCount(v) > 0)) { S.step = 'intro'; render(); }
-      else begin(true);
+      syncing = syncRemote();
+      syncing.then(() => {
+        if (listSessions().some((v) => doneCount(v) > 0)) { S.step = 'intro'; render(); }
+        else begin(true);
+      });
       return;
     }
     if (S.step === 'intro') render();

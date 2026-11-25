@@ -28,24 +28,22 @@
 <body>
 <a class="sr-only" href="#main">본문으로 건너뛰기</a>
 <main id="main">
-  <section class="sky hero" aria-labelledby="hero-title">
+  <section class="sky hero" aria-labelledby="hero-title" data-hero>
     <div class="wrap hero-grid">
-      <div>
+      <div class="hero-text">
         <h1 class="greet" id="hero-title" data-greet>반갑습니다!</h1>
+        <section class="resume-panel" id="resume" aria-labelledby="resume-title" data-resume-wrap hidden>
+          <div class="resume-head"><h2 id="resume-title">이어서 할 검사</h2><span class="resume-count" data-resume-count></span></div>
+          <ul class="resume-list" data-resume></ul>
+          <p class="resume-note" data-resume-note></p>
+        </section>
         <p class="hero-lead">검사할 분의 이름을 넣고 시작하면, 결과는 상담사님 계정으로 전송돼요. 결과는 '검사 결과'에서 잠금 번호를 넣고 볼 수 있어요.</p>
         <div class="hero-actions">
           <a class="btn" href="#tests">검사 시작하기</a>
-          <a class="btn btn--ghost" href="#resume" data-resume-jump hidden>이어서 하기</a>
           <a class="btn btn--ghost" href="me.html">검사 결과 조회</a>
         </div>
       </div>
       <div class="hero-figure" data-hero-figure></div>
-    </div>
-  </section>
-  <section class="section resume-sec" id="resume" aria-labelledby="resume-title" data-resume-wrap hidden>
-    <div class="wrap">
-      <div class="section-head"><h2 id="resume-title">이어서 할 검사</h2><p>끝내지 못한 검사는 검사자마다 이 기기에 저장돼 있어요. 누르면 멈춘 곳부터 바로 이어져요.</p></div>
-      <ul class="resume-list" data-resume></ul>
     </div>
   </section>
   <section class="section" id="tests" aria-labelledby="open-title">

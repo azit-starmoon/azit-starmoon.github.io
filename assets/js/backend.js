@@ -279,6 +279,30 @@ export async function revokeMember(uid) {
 }
 
 // ── 결과 ──────────────────────────────────────────
+// ── 진행 중인 검사 (상담사 계정에 임시 저장) ─────────
+// 건너뛴 문항(null)은 Firebase가 지워 버리므로 0으로 바꿔 저장하고, 읽을 때 되돌린다. (실제 응답에는 0이 없다)
+const draftKey = (id) => String(id).replace(/[.#$[\]/]/g, '-');
+const encodeAnswers = (a) => Object.fromEntries(Object.entries(a || {}).map(([k, v]) => [k, v === null ? 0 : v]));
+const decodeAnswers = (a) => Object.fromEntries(Object.entries(a || {}).map(([k, v]) => [k, v === 0 ? null : v]));
+
+export async function saveDraft(id, data) {
+  const u = requireUser();
+  await dbSet(`drafts/${u.uid}/${draftKey(id)}`, { ...data, answers: encodeAnswers(data.answers) });
+}
+
+export async function listDrafts() {
+  await ready();
+  if (!user) return [];
+  const v = (await dbGet(`drafts/${user.uid}`)) || {};
+  return Object.values(v).filter((d) => d && d.answers).map((d) => ({ ...d, answers: decodeAnswers(d.answers) }));
+}
+
+export async function deleteDraft(id) {
+  await ready();
+  if (!user) return;
+  await dbRemove(`drafts/${user.uid}/${draftKey(id)}`);
+}
+
 export async function saveResult(record) {
   const u = requireUser();
   await ready();

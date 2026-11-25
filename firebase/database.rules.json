@@ -56,6 +56,16 @@
       }
     },
 
+    "drafts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && (root.child('members').child($uid).exists() || root.child('admins').child($uid).exists())",
+        ".write": "auth != null && auth.uid === $uid && (root.child('members').child($uid).exists() || root.child('admins').child($uid).exists())",
+        "$draft": {
+          ".validate": "newData.hasChildren(['testId', 'version', 'sid', 'answers', 'savedAt']) && newData.child('savedAt').isNumber()"
+        }
+      }
+    },
+
     "shares": {
       "$token": {
         ".read": true,

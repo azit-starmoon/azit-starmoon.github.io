@@ -1,5 +1,6 @@
 // AZIT : Star&Moon — 한국형 성향검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
+import { wireToc } from '../../assets/js/toc.js';
 import { constellation, barList, legend, starGlyph, arrowGlyph, centerColor } from '../../assets/js/charts.js';
 import { TYPES } from './content-types.js';
 import { WINGS, TRI_ROLES, CENTERS, INSTINCTS, SUBTYPES, HORNEVIAN, HARMONIC } from './content-extra.js';
@@ -371,23 +372,3 @@ export function renderReport(el, rec, ctx = {}) {
   wireToc(el);
 }
 
-function wireToc(el) {
-  const links = Array.from(el.querySelectorAll('.toc a'));
-  const map = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
-  if (!('IntersectionObserver' in window)) return;
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((en) => {
-        if (!en.isIntersecting) return;
-        links.forEach((a) => a.removeAttribute('aria-current'));
-        const a = map.get(en.target.id);
-        if (a) {
-          a.setAttribute('aria-current', 'true');
-          a.scrollIntoView({ block: 'nearest', inline: 'center' });
-        }
-      });
-    },
-    { rootMargin: '-30% 0px -60% 0px' }
-  );
-  el.querySelectorAll('.rsec').forEach((sec) => io.observe(sec));
-}

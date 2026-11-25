@@ -13,7 +13,7 @@ const glyph = (r) => {
   if (r.testId === 'bigfive') return '★';
   if (r.testId === 'attachment') return ATT[s.style] || '·';
   if (r.testId === 'schema') return s.active && s.active.length ? (s.topNames && s.topNames[0] ? s.topNames[0].slice(0, 1) : '·') : '·';
-  return '·';
+  return r.glyph || '·'; // 새 검사는 검사 정의의 glyph(scores)가 결과와 함께 저장된다
 };
 const view = { q: '', test: '' };
 let list = [];

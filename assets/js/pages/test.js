@@ -22,7 +22,6 @@ const resume = params.get('resume');
     return;
   }
   document.title = `${def.title} | AZIT : Star&Moon`;
-  if (resume !== null) history.replaceState(null, '', `test.html?t=${encodeURIComponent(id)}`);
   await runTest(def, app, { ownerName: greetingName(st), resume: resume === null ? undefined : resume });
   if (isDemo) {
     const bar = document.createElement('div');

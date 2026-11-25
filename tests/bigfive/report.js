@@ -1,5 +1,6 @@
 // AZIT : Star&Moon — 빅파이브 성격검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
+import { wireToc } from '../../assets/js/toc.js';
 import { b5Star, quadrant, starGlyph } from '../../assets/js/charts.js';
 import { DOMAINS, FACET_TEXT, STYLES, LEVEL_LABEL } from './content.js';
 import { FACETS, DOMAIN_ORDER } from './items.js';
@@ -170,17 +171,3 @@ export function renderReport(el, rec, ctx = {}) {
   wireToc(el);
 }
 
-function wireToc(el) {
-  const links = Array.from(el.querySelectorAll('.toc a'));
-  const map = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
-  if (!('IntersectionObserver' in window)) return;
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      if (!en.isIntersecting) return;
-      links.forEach((a) => a.removeAttribute('aria-current'));
-      const a = map.get(en.target.id);
-      if (a) { a.setAttribute('aria-current', 'true'); a.scrollIntoView({ block: 'nearest', inline: 'center' }); }
-    });
-  }, { rootMargin: '-30% 0px -60% 0px' });
-  el.querySelectorAll('.rsec').forEach((sec) => io.observe(sec));
-}

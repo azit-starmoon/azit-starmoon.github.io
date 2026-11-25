@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+"""AZIT : Star&Moon 점검 스크립트 (체험 모드로 사이트 전체를 한 바퀴 돌린다)
+
+    python3 tools/smoke.py            # 결과를 출력하고, 문제가 있으면 종료 코드 1
+    python3 tools/smoke.py --only schema,attachment
+    python3 tools/smoke.py --shots /tmp/azit-shots   # 화면 캡처도 남긴다
+
+하는 일
+ 1. 모든 .js 파일 문법 검사 (node --check)
+ 2. 이 폴더를 로컬 서버로 띄우고, 체험 모드 관리자 계정으로 로그인
+    (잠금 화면은 코드를 쓰지 않고 '열린 상태'를 저장소에 직접 적어서 넘긴다. 코드는 저장소에 두지 않는다)
+ 3. 열린 검사를 하나씩 끝까지 무작위로 답해서 '검사 결과가 전송되었습니다'까지 확인
+    - 첫 검사는 중간에 '저장하고 나가기' → 첫 화면 '이어서 할 검사' → 이어서 하기까지 확인
+ 4. 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
+ 5. 관리 화면이 오류 없이 열리는지
+ 6. 모든 화면의 자바스크립트 오류 수집
+
+필요한 것: python3, playwright (pip install playwright --break-system-packages; python3 -m playwright install chromium)
+"""
+import argparse
+import asyncio
+import contextlib
+import json
+import os
+import pathlib
+import random
+import socket
+import subprocess
+import sys
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def free_port():
+    with contextlib.closing(socket.socket()) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+
+def syntax_check():
+    bad = []
+    for p in sorted(ROOT.rglob('*.js')):
+        if {'.git', 'node_modules'} & set(p.relative_to(ROOT).parts):
+            continue
+        r = subprocess.run(['node', '--check', str(p)], capture_output=True, text=True)
+        if r.returncode:
+            bad.append(f'{p.relative_to(ROOT)}: {r.stderr.strip().splitlines()[-1] if r.stderr.strip() else "error"}')
+    return bad
+
+
+async def run(args):
+    from playwright.async_api import async_playwright
+
+    port = free_port()
+    srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(port), '--bind', '127.0.0.1'], cwd=ROOT,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    base = f'http://127.0.0.1:{port}/'
+    for _ in range(50):
+        with contextlib.suppress(OSError):
+            socket.create_connection(('127.0.0.1', port), timeout=0.2).close()
+            break
+        time.sleep(0.1)
+
+    report = {'checks': [], 'errors': [], 'failed': []}
+    shots = pathlib.Path(args.shots) if args.shots else None
+    if shots:
+        shots.mkdir(parents=True, exist_ok=True)
+
+    def ok(name, cond, detail=''):
+        report['checks'].append({'name': name, 'ok': bool(cond), 'detail': detail})
+        if not cond:
+            report['failed'].append(f'{name} {detail}'.strip())
+        return cond
+
+    rnd = random.Random(args.seed)
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            ctx = await browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=1)
+            pg = await ctx.new_page()
+            pg.on('pageerror', lambda e: report['errors'].append(f'pageerror {pg.url.split("/")[-1]}: {e}'))
+            pg.on('console', lambda m: report['errors'].append(f'console {pg.url.split("/")[-1]}: {m.text}')
+                  if m.type == 'error' and 'Failed to load resource' not in m.text else None)
+
+            async def unlock(kind):
+                store = 'sessionStorage' if kind == 'test' else 'localStorage'
+                await pg.evaluate(f"(() => {{ const n = Date.now(); {store}.setItem('azit:lock:{kind}', JSON.stringify({{at: n, seen: n}})); }})()")
+
+            async def shot(name):
+                if shots:
+                    await pg.screenshot(path=str(shots / f'{name}.png'))
+
+            # 로그인 (체험 모드 관리자)
+            await pg.goto(base + 'login.html?demo=1&demorole=admin')
+            await pg.wait_for_selector('[data-login]', timeout=8000)
+            await pg.click('[data-login]')
+            await pg.wait_for_timeout(1200)
+            await unlock('test')
+            await pg.goto(base + 'index.html')
+            await pg.wait_for_timeout(1200)
+            ok('첫 화면 인사', 'greet' in (await pg.get_attribute('[data-greet]', 'class') or ''), await pg.inner_text('[data-greet]'))
+            await shot('home')
+
+            tests = await pg.evaluate("import('./assets/js/registry.js').then(m => m.TESTS.filter(t => t.status === 'open').map(t => ({id: t.id, title: t.title, items: t.items})))")
+            if args.only:
+                want = set(args.only.split(','))
+                tests = [t for t in tests if t['id'] in want]
+            ok('열린 검사 목록', len(tests) > 0, ', '.join(t['id'] for t in tests))
+
+            async def answer_until_done(limit, stop_after=None):
+                answered = 0
+                for _ in range(limit):
+                    if await pg.locator('.done').count():
+                        return True, answered
+                    if await pg.locator('[data-act="retry"]').count():
+                        return False, answered
+                    if stop_after is not None and answered >= stop_after and await pg.locator('.part-meta .where').count():
+                        return None, answered
+                    if await pg.locator('[data-act="enter"]').count():
+                        await pg.click('[data-act="enter"]')
+                        await pg.wait_for_timeout(220)
+                        continue
+                    n_likert = await pg.locator('[data-likert]').count()
+                    if n_likert:
+                        await pg.keyboard.press(str(rnd.randint(1, n_likert)))
+                        answered += 1
+                        await pg.wait_for_timeout(240)
+                        continue
+                    if await pg.locator('.pair-opt').count():
+                        await pg.keyboard.press(str(rnd.randint(1, 4)))
+                        answered += 1
+                        await pg.wait_for_timeout(240)
+                        continue
+                    if await pg.locator('[data-rank-key]').count():
+                        await pg.keyboard.press('1')
+                        await pg.wait_for_timeout(120)
+                        await pg.keyboard.press('2')
+                        answered += 1
+                        await pg.wait_for_timeout(650)
+                        continue
+                    await pg.wait_for_timeout(300)
+                return False, answered
+
+            # 검사마다 끝까지
+            for i, t in enumerate(tests):
+                await unlock('test')
+                await pg.goto(base + f'test.html?t={t["id"]}')
+                await pg.wait_for_selector('[data-act="start"]', timeout=10000)
+                await pg.click('[data-act="start"]')
+                await pg.fill('#pf-name', f'점검{i + 1}')
+                await pg.check('#pf-consent')
+                await pg.click('[data-act="begin"]')
+                await pg.wait_for_timeout(250)
+                if i == 0:
+                    # 중간 저장 → 첫 화면 → 이어서 하기
+                    _, n = await answer_until_done(40, stop_after=3)
+                    chip = await pg.get_attribute('[data-save-chip]', 'data-state')
+                    ok(f'{t["id"]}: 저장됨 표시', chip == 'saved', f'state={chip}')
+                    await pg.click('[data-exit]')
+                    await pg.wait_for_url('**/index.html', timeout=8000)
+                    await pg.wait_for_timeout(1500)
+                    names = await pg.eval_on_selector_all('.resume-card strong', 'els => els.map(e => e.textContent)')
+                    ok(f'{t["id"]}: 첫 화면 이어서 할 검사', any('점검1' in x for x in names), str(names))
+                    await shot('home-resume')
+                    await pg.click('.resume-card')
+                    await pg.wait_for_selector('.part-meta .where', timeout=10000)
+                    where = await pg.inner_text('.part-meta .where')
+                    at = int(where.split('/')[0].split()[-1])
+                    ok(f'{t["id"]}: 멈춘 자리에서 이어짐', at == n + 1, f'{where} (답한 문항 {n}개)')
+                done, n = await answer_until_done(t['items'] * 4 + 40)
+                await pg.wait_for_timeout(300)
+                if not done:
+                    await pg.wait_for_selector('.done', timeout=12000)
+                    done = await pg.locator('.done').count() > 0
+                ok(f'{t["id"]}: 끝까지 진행', done, f'{n}문항 응답')
+                if done:
+                    h1 = await pg.inner_text('.done h1')
+                    ok(f'{t["id"]}: 전송 화면', '전송' in h1, h1)
+                    await shot(f'done-{t["id"]}')
+
+            # 검사 결과 목록과 결과지
+            await unlock('result')
+            await pg.goto(base + 'me.html')
+            await pg.wait_for_timeout(1500)
+            links = await pg.eval_on_selector_all('a[href*="result.html"]', 'els => [...new Set(els.map(e => e.getAttribute("href")))]')
+            ok('검사 결과 목록', len(links) >= len(tests), f'{len(links)}개')
+            await shot('me')
+            for href in links[: len(tests)]:
+                await unlock('result')
+                await pg.goto(base + href)
+                try:
+                    await pg.wait_for_selector('.report', timeout=10000)
+                except Exception:
+                    ok(f'결과지 {href}', False, '결과지가 열리지 않음')
+                    continue
+                await pg.wait_for_timeout(600)
+                title = (await pg.title()).split('|')[0].strip()
+                toc = await pg.locator('.toc a').count()
+                ok(f'결과지 목차 ({title})', toc >= 3, f'{toc}개')
+                await pg.evaluate('window.scrollTo(0, 0)')
+                await pg.wait_for_timeout(200)
+                ys, actives = [], set()
+                for _ in range(120):
+                    await pg.mouse.wheel(0, 160)
+                    await pg.wait_for_timeout(70)
+                    y = await pg.evaluate('Math.round(scrollY)')
+                    ys.append(y)
+                    cur = await pg.evaluate("(document.querySelector('.toc a[aria-current=\"true\"]') || {}).textContent || ''")
+                    if cur:
+                        actives.add(cur)
+                    if await pg.evaluate('innerHeight + scrollY >= document.documentElement.scrollHeight - 2'):
+                        break
+                steps = list(zip(ys, ys[1:]))
+                stuck = [(a, b) for a, b in steps[:-1] if b - a < 120]
+                ok(f'결과지 스크롤 ({title})', not stuck, f'막힌 곳 {stuck[:3]}' if stuck else f'{len(ys)}번 내려 바닥까지')
+                ok(f'결과지 목차 표시 ({title})', len(actives) >= min(3, toc), f'{len(actives)}개 항목이 차례로 표시됨')
+                await shot(f'result-{title}')
+
+            # 관리 화면
+            await unlock('result')
+            await pg.goto(base + 'admin.html')
+            await pg.wait_for_timeout(1500)
+            ok('관리 화면', await pg.locator('main').count() > 0)
+            await shot('admin')
+            await browser.close()
+    finally:
+        srv.terminate()
+
+    report['errors'] = sorted(set(report['errors']))
+    if report['errors']:
+        report['failed'].append(f'자바스크립트 오류 {len(report["errors"])}건')
+    return report
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--only', help='쉼표로 구분한 검사 id만')
+    ap.add_argument('--shots', help='화면 캡처를 남길 폴더')
+    ap.add_argument('--seed', type=int, default=7)
+    args = ap.parse_args()
+
+    bad = syntax_check()
+    report = asyncio.run(run(args))
+    if bad:
+        report['failed'] = [f'문법 오류: {b}' for b in bad] + report['failed']
+    for c in report['checks']:
+        print(('✓ ' if c['ok'] else '✗ ') + c['name'] + (f' — {c["detail"]}' if c['detail'] else ''))
+    for e in report['errors']:
+        print('! ' + e)
+    print(json.dumps({'ok': not report['failed'], 'failed': report['failed']}, ensure_ascii=False))
+    sys.exit(0 if not report['failed'] else 1)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,7 +1,7 @@
-import { mountHeader, mountFooter, esc } from '../ui.js';
+import { mountHeader, mountFooter, esc, toast } from '../ui.js';
 import { constellation, b5Star } from '../charts.js';
 import { TESTS } from '../registry.js';
-import { greetingName, currentUser } from '../backend.js';
+import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
 import { attachMap } from '../../../tests/attachment/chart.js';
@@ -35,7 +35,7 @@ const GLYPH = {
       <div>
         <h3 id="ft-${t.id}">${esc(t.title)}</h3>
         <p class="feature-desc">${esc(t.desc)}</p>
-        <div class="feature-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span>${t.parts}부 구성</span></div>
+        <div class="feature-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span>${t.parts}부 구성</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>
         <ul class="feature-gets" aria-label="결과지에 담기는 것">${t.gets.map((g) => `<li class="tag">${esc(g)}</li>`).join('')}</ul>
         <div class="feature-actions"><a class="btn" href="test.html?t=${t.id}">검사 시작하기</a></div>
       </div>
@@ -51,15 +51,17 @@ const GLYPH = {
   mountFooter();
 })();
 
-const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const two = (n) => String(n).padStart(2, '0');
+const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${two(d.getHours())}:${two(d.getMinutes())}`; };
+const KEEP = 30 * 864e5;
 
-// 끝내지 못한 검사: 이 기기에 저장된 진행 기록 (검사자마다 하나씩)
-function drawResume() {
+// 끝내지 못한 검사: 이 기기에 저장된 진행 + 상담사 계정에 저장된 진행 (검사자마다 하나씩)
+async function drawResume() {
   const u = currentUser();
   const wrap = document.querySelector('[data-resume-wrap]');
   if (!u || !wrap) return;
   const open = new Map(TESTS.filter((t) => t.status === 'open').map((t) => [t.id, t]));
-  const rows = [];
+  const rows = new Map(); // 검사:버전:세션 → 진행
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -67,23 +69,76 @@ function drawResume() {
       const [, , testId, version, uid, sid = ''] = k.split(':');
       if (uid !== u.uid || !open.has(testId)) continue;
       const v = JSON.parse(localStorage.getItem(k) || 'null');
-      const n = v && v.answers ? Object.keys(v.answers).length : 0;
-      if (!n || Date.now() - (v.savedAt || 0) > 30 * 864e5) continue;
-      rows.push({ testId, version, sid, name: v.name || '이름 없음', n, total: v.total || open.get(testId).items, savedAt: v.savedAt || 0 });
+      if (!v || !v.answers || Date.now() - (v.savedAt || 0) > KEEP) continue;
+      rows.set(`${testId}:${version}:${sid}`, { ...v, testId, version, sid, localKey: k });
     }
-  } catch (e) { return; }
-  if (!rows.length) return;
-  rows.sort((a, b) => b.savedAt - a.savedAt);
-  const jump = document.querySelector('[data-resume-jump]');
-  if (jump) { jump.textContent = `이어서 하기 (${rows.length})`; jump.hidden = false; }
+  } catch (e) { /* 저장소를 못 읽는 환경 */ }
+  paint(rows, open, 'checking');
+
+  let cloud = 'off';
+  try {
+    const drafts = await Promise.race([listDrafts(), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 6000))]);
+    const there = new Set();
+    drafts.forEach((d) => {
+      if (!open.has(d.testId) || !d.sid) return;
+      const key = `${d.testId}:${d.version}:${d.sid}`;
+      if (Date.now() - (d.savedAt || 0) > KEEP) { deleteDraft(`${d.testId}-${d.version}-${d.sid}`).catch(() => {}); return; }
+      there.add(key);
+      const cur = rows.get(key);
+      if (!cur || (d.savedAt || 0) > (cur.savedAt || 0)) rows.set(key, { ...d, localKey: cur && cur.localKey });
+    });
+    // 한 번 계정에 올라갔는데 지금은 없는 것 = 다른 기기에서 끝냈거나 지운 검사
+    rows.forEach((r, key) => {
+      if (r.localKey && r.syncedAt && r.sid && !there.has(key)) {
+        try { localStorage.removeItem(r.localKey); } catch (e) { /* */ }
+        rows.delete(key);
+      }
+    });
+    cloud = 'on';
+  } catch (e) { /* 규칙이 아직 없거나 오프라인: 이 기기 기록만 보여 준다 */ }
+  paint(rows, open, cloud);
+}
+
+function paint(rowsMap, open, cloud) {
+  const wrap = document.querySelector('[data-resume-wrap]');
+  const hero = document.querySelector('[data-hero]');
+  const rows = [...rowsMap.values()].map((r) => ({ ...r, n: Object.keys(r.answers || {}).length })).filter((r) => r.n > 0)
+    .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  const counts = {};
+  rows.forEach((r) => { counts[r.testId] = (counts[r.testId] || 0) + 1; });
+  document.querySelectorAll('[data-live]').forEach((el) => {
+    const n = counts[el.dataset.live] || 0;
+    el.hidden = !n;
+    el.textContent = n ? `진행 중 ${n}명` : '';
+  });
+  if (!rows.length) { wrap.hidden = true; if (hero) hero.classList.remove('has-resume'); return; }
+
+  let note = null;
+  try { note = JSON.parse(sessionStorage.getItem('azit:saved-note') || 'null'); } catch (e) { /* */ }
+  const fresh = note && Date.now() - (note.at || 0) < 120000 ? `${note.testId}:${note.sid}` : '';
+
+  document.querySelector('[data-resume-count]').textContent = `${rows.length}명`;
   document.querySelector('[data-resume]').innerHTML = rows.slice(0, 8).map((r) => {
-    const pct = Math.min(100, Math.round((r.n / r.total) * 100));
-    return `<li><a class="resume-card" href="test.html?t=${encodeURIComponent(r.testId)}&resume=${encodeURIComponent(r.sid)}">
-      <span class="who"><strong>${esc(r.name)}</strong><span>${esc(open.get(r.testId).title)}</span></span>
-      <span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span>
-      <span class="meta">${r.n}/${r.total}문항, ${esc(when(r.savedAt))}</span>
+    const total = r.total || open.get(r.testId).items;
+    const pct = Math.min(100, Math.round((r.n / total) * 100));
+    const isFresh = fresh && fresh === `${r.testId}:${r.sid}`;
+    return `<li><a class="resume-card${isFresh ? ' is-fresh' : ''}" href="test.html?t=${encodeURIComponent(r.testId)}&resume=${encodeURIComponent(r.sid)}">
+      <span class="who"><strong>${esc(r.name || '이름 없음')} 님</strong><span>${esc(open.get(r.testId).title)}</span></span>
       <span class="go">이어서 하기</span>
+      <span class="bar"><span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="cnt">${r.n}/${total}</span></span>
+      <span class="when">${isFresh ? '방금 저장했어요' : `${esc(when(r.savedAt))}에 멈춤`}</span>
     </a></li>`;
   }).join('');
+  document.querySelector('[data-resume-note]').textContent = cloud === 'on'
+    ? '답할 때마다 상담사님 계정에 저장돼서, 다른 기기에서도 멈춘 곳부터 이어져요. 30일 동안 보관해요.'
+    : cloud === 'off' ? '답할 때마다 이 기기에 저장돼요. 30일 동안 보관해요.' : '답할 때마다 자동으로 저장돼요. 30일 동안 보관해요.';
   wrap.hidden = false;
+  if (hero) hero.classList.add('has-resume');
+
+  if (note && cloud !== 'checking') {
+    try { sessionStorage.removeItem('azit:saved-note'); } catch (e) { /* */ }
+    if (fresh && rows.some((r) => `${r.testId}:${r.sid}` === fresh)) {
+      toast(`${note.name || '검사자'} 님 검사를 ${note.n}/${note.total}문항까지 저장했어요.`, 4200);
+    }
+  }
 }

@@ -3,6 +3,9 @@ import { SITE } from './config.js';
 import { ready, onUser, signIn, signOut, isAdmin, isDemo, currentUser, listRequests } from './backend.js';
 import { relockAll } from './lock.js';
 import { isInAppBrowser, escapeInApp, isIOS } from './inapp.js';
+import { watchForUpdate } from './update.js';
+
+if (typeof window !== 'undefined') watchForUpdate();
 
 export const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -43,7 +46,7 @@ export function resultCode(rid) {
 // ── 토스트 ───────────────────────────────────────
 let toastEl;
 let toastTimer;
-export function toast(msg) {
+export function toast(msg, ms = 2600) {
   if (!toastEl) {
     toastEl = document.createElement('div');
     toastEl.className = 'toast';
@@ -54,7 +57,7 @@ export function toast(msg) {
   toastEl.textContent = msg;
   toastEl.dataset.show = 'true';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (toastEl.dataset.show = 'false'), 2600);
+  toastTimer = setTimeout(() => (toastEl.dataset.show = 'false'), ms);
 }
 
 // ── 모달 ─────────────────────────────────────────

@@ -37,7 +37,7 @@
 1. **로그인** (`login.html`): 구글로 로그인해요. 승인되지 않은 계정은 이름과 소속(선택)을 적어 **요청 보내기**를 눌러요.
 2. **승인**: 관리자가 관리 페이지의 **승인 요청**에서 승인하거나 거절해요. 승인된 계정은 **승인된 상담사** 목록에 올라가고, 언제든 승인을 취소할 수 있어요.
 3. **첫 화면**: "반갑습니다 ○○○ 상담사님!" 인사와 함께 **검사 코드**를 넣으면 검사 목록이 열려요. 이름은 승인 요청에 적은 이름을 써요.
-4. **검사**: 시작할 때마다 **검사자 이름**을 새로 적어요. 한 계정으로 여러 사람을 검사할 수 있어요. 중간에 멈추면 그 기기에서 "○○ 님 검사 이어서 하기"로 이어 갈 수 있어요.
+4. **검사**: 시작할 때마다 **검사자 이름**을 새로 적어요. 한 계정으로 여러 사람을 검사할 수 있어요. 답할 때마다 자동으로 저장되고(문항 위 '✓ 저장됨'), 멈춘 검사는 첫 화면 인사 바로 아래 **이어서 할 검사**에서 이어 가요.
 5. **끝**: 결과 대신 "검사 결과가 전송되었습니다"가 떠요. **다음 검사 시작하기**나 **처음으로**만 있고, 결과로 가는 길은 없어요.
 6. **검사 결과** (`me.html`): **결과 잠금 번호**를 넣으면 열려요. 검사자 이름으로 찾아 결과지를 열고, 공유 링크를 만들거나 지워요.
 
@@ -54,9 +54,22 @@
 
 ## 진행 저장과 이어하기
 
-- 답할 때마다 진행 상황이 그 기기에 저장돼요. 검사자마다 따로 저장되어서, 다른 검사자로 새로 시작해도 앞사람 기록이 지워지지 않아요.
-- 첫 화면의 '이어서 할 검사'나 검사 소개 화면에서 누르면 멈춘 문항부터 바로 이어져요. 필요 없는 기록은 소개 화면에서 지울 수 있어요.
-- 끝내지 않은 기록은 30일이 지나면 지워져요. 다른 기기나 브라우저, 다른 주소로는 이어지지 않아요.
+- 답할 때마다 진행 상황이 **그 기기**와 **상담사 계정**(`drafts`) 두 곳에 저장돼요. 검사 중에는 문항 위에 '✓ 저장됨'이 보이고, 누르면 어디에 저장되는지 알려 줘요.
+- 검사자마다 따로 저장되어서, 다른 검사자로 새로 시작해도 앞사람 기록이 지워지지 않아요. 같은 이름으로 다시 시작하면 '하다 멈춘 검사가 있어요'라고 먼저 물어봐요.
+- 멈춘 검사는 첫 화면 인사 바로 아래 **이어서 할 검사**와 각 검사 소개 화면 맨 위에 보여요. 누르면 멈춘 문항부터 바로 이어져요. 검사 중 새로고침해도 그 자리로 돌아와요.
+- 상단의 **저장하고 나가기**를 누르면 마지막 답까지 저장한 뒤 첫 화면으로 가요.
+- 계정에 저장된 기록 덕분에 휴대폰에서 하다가 PC에서 이어 갈 수 있어요. 데이터베이스 규칙에 `drafts`가 없으면 그 기기 안에서만 이어져요.
+- 끝내지 않은 기록은 30일이 지나면 지워지고, 검사를 끝내면 바로 지워져요.
+
+## 새 버전 알림
+
+- 사이트를 고쳐 올릴 때마다 `python3 tools/stamp-version.py`로 `version.json`을 바꿔요.
+- 사용하던 화면이 예전 파일로 그려졌으면 아래에 **새 버전이 올라왔어요 [새로고침]**이 떠요. 검사 중이면 저장한 뒤 같은 문항으로 다시 열려요.
+
+## 점검
+
+- `python3 tools/smoke.py`: 체험 모드로 모든 검사를 끝까지 진행하고, 저장·이어하기, 결과지 목차와 스크롤, 관리 화면까지 한 바퀴 확인해요. 문제가 있으면 종료 코드 1.
+- 새 검사를 만드는 방법과 자동 작업 규칙은 `docs/NEW_TEST.md`에 있어요.
 
 ## 화면 잠금
 
@@ -91,7 +104,9 @@ assets/
   js/backend.js          로그인, 승인 요청·승인, 결과 저장·조회, 공유 링크, 관리자
   js/guard.js            승인된 계정만 들어오게 하는 문지기 (아니면 login.html로)
   js/lock.js             화면 잠금 (검사 코드, 결과 잠금 번호, 다시 잠그기)
-  js/runner.js           검사 진행 엔진 (소개 → 검사자 이름·동의 → 부별 문항 → 전송 완료)
+  js/runner.js           검사 진행 엔진 (소개 → 검사자 이름·동의 → 부별 문항 → 전송 완료), 진행 저장·이어하기
+  js/toc.js              결과지 목차 표시 (지금 읽는 부분 따라가기)
+  js/update.js           새 버전 알림과 캐시 갱신
   js/charts.js           별자리 도형, 막대 그래프
   js/registry.js         검사 목록 (준비 중인 검사 포함)
   js/ui.js               헤더, 모달, 토스트, 카카오톡 인앱 브라우저 처리
@@ -125,6 +140,10 @@ tests/
     report.js            결과지
     index.js             검사 정의
 firebase/database.rules.json
+docs/NEW_TEST.md         새 검사 만들기 안내와 자동 작업 규칙
+tools/smoke.py           전체 점검 (체험 모드)
+tools/stamp-version.py   배포 전 version.json 갱신
+version.json             지금 버전과 사이트 파일 목록
 ```
 
 ## 새 검사를 추가할 때
@@ -136,7 +155,7 @@ firebase/database.rules.json
    - `score(answers, meta)`, `summary(scores)`, `glyph(scores)`, `render(element, record, ctx)`
 2. `assets/js/registry.js`에서 그 검사의 `status`를 `'open'`으로 바꿔요.
 
-진행 화면, 로그인과 승인, 저장, 결과 공유, 관리자 화면은 공통이라 따로 만들 필요가 없어요.
+자세한 순서와 품질 기준은 `docs/NEW_TEST.md`를 따라요. 진행 화면, 로그인과 승인, 저장, 결과 공유, 관리자 화면은 공통이라 따로 만들 필요가 없어요.
 
 ## 데이터 구조 (Realtime Database)
 
@@ -145,6 +164,7 @@ admins/{uid}: true
 members/{uid}: { name, email, note, approvedAt, approvedBy }        승인된 상담사
 requests/{uid}: { name, email, note, createdAt }                    승인 요청
 users/{uid}: { name, email, photo, updatedAt }                      한 번이라도 로그인한 계정
-results/{uid}/{resultId}: { testId, version, name(검사자), ownerName(상담사), email, uid, answers, scores, summary, durationSec, createdAt, shareToken? }
+results/{uid}/{resultId}: { testId, version, name(검사자), ownerName(상담사), email, uid, answers, scores, summary, glyph, durationSec, createdAt, shareToken? }
+drafts/{uid}/{검사-버전-세션}: { sid, testId, version, title, total, answers, pi, ii, name, startedAt, savedAt }   끝내지 않은 검사 (건너뛴 문항은 0으로 저장)
 shares/{token}: { ownerUid, resultId, createdBy, createdAt, payload: { testId, version, name, createdAt, scores } }
 ```
