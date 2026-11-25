@@ -1,6 +1,6 @@
 // AZIT : Star&Moon — 성격 강점 그림
 // 강점 바퀴: 24강점을 덕목별로 묶어 둥글게 두른 꽃잎 그림. 꽃잎 길이는 점수의 제곱근에 비례(넓이가 점수에 비례).
-// 대표 강점 5개는 진하게 칠하고 끝에 순위 번호를 단다. 나머지는 옅게. 바깥 호와 글자로 덕목을 표시해 색만으로 구분하지 않는다.
+// 대표 강점 5개는 진하게 칠하고 꽃잎 끝 안쪽에 순위 번호를 단다(바깥에 달면 덕목 호, 이름과 겹친다). 나머지는 옅게. 바깥 호와 글자로 덕목을 표시해 색만으로 구분하지 않는다.
 // 정확한 값은 결과지의 순위 목록이 맡고, 이 그림은 어느 덕목에 힘이 모였는지를 한눈에 보여 준다.
 import { esc } from '../../assets/js/ui.js';
 import { STRENGTHS, STRENGTH_ORDER, VIRTUES, VIRTUE_ORDER } from './items.js';
@@ -44,8 +44,8 @@ export function strengthWheel(strengths, { size = 300, labels = true, title = ''
     const a0 = start + i * step + gap;
     const a1 = start + (i + 1) * step - gap;
     const r1 = Math.max(r0 + 2, rad(v.score));
-    if (v.tier === 'sig' && labels !== 'none') {
-      const [x, y] = pt(c, c, r1 + size * 0.04, (a0 + a1) / 2);
+    if (v.tier === 'sig') {
+      const [x, y] = pt(c, c, Math.max(r0 + size * 0.04, r1 - size * 0.045), (a0 + a1) / 2);
       marks.push(`<g class="sw-rank"><circle cx="${f(x)}" cy="${f(y)}" r="${f(size * 0.032)}"/><text x="${f(x)}" y="${f(y + size * 0.012)}" text-anchor="middle">${v.rank}</text></g>`);
     }
     return `<path class="sw-petal" d="${wedge(c, c, r0, r1, a0, a1)}" fill="${VIRTUE_COLOR[STRENGTHS[s].virtue]}" fill-opacity="${OPACITY[v.tier] || 0.5}"><title>${esc(STRENGTHS[s].name)} ${Number(v.score) || 0}점${v.rank ? `, ${v.rank}위` : ''}</title></path>`;

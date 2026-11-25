@@ -152,7 +152,7 @@ export function renderReport(el, rec, ctx = {}) {
     <ol class="practice-list">${plan}</ol>
     <h3 class="rsub">균형 잡기</h3>
     <div class="two-lists">
-      <div><h4>${esc(jo(N(top), '이', '가'))} 지나칠 때</h4><ul class="check-list check-list--soft"><li>${esc(STRENGTH_TEXT[top].over)}</li><li>${esc(STRENGTH_TEXT[sig[1]].over)}</li></ul></div>
+      <div><h4>대표 강점이 지나칠 때</h4><ul class="check-list check-list--soft">${sig.slice(0, 2).map((k) => `<li><strong>${esc(N(k))}</strong> ${esc(STRENGTH_TEXT[k].over)}</li>`).join('')}</ul></div>
       <div><h4>덜 쓰는 강점 빌려 쓰기</h4><ul class="check-list">${restTwo.map((k) => `<li><strong>${esc(N(k))}</strong> ${esc(STRENGTH_TEXT[k].borrow)}</li>`).join('')}</ul></div>
     </div>`
   );

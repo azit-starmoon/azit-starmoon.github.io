@@ -1166,13 +1166,13 @@ body.has-update .toast { bottom: 84px; }
 .sw-petal { stroke: #fff; stroke-width: 1; }
 .sw-band { fill: none; stroke-width: 4; stroke-linecap: round; }
 .sw-core { fill: #fff; }
-.sw-rank circle { fill: var(--ink); stroke: #fff; stroke-width: 2; }
+.sw-rank circle { fill: var(--ink); stroke: #fff; stroke-width: 1.5; }
 .sw-rank text { font-size: 11px; font-weight: 800; fill: #fff; font-variant-numeric: tabular-nums; }
 .sw-vname { font-size: 13px; font-weight: 700; fill: var(--ink-2); }
 
 .sg-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; background: var(--tint); font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); white-space: nowrap; }
 .sg-cards { display: grid; gap: 12px; }
-.sg-card { background: var(--card); border: 1px solid var(--line-2); border-left: 4px solid var(--vc); border-radius: var(--r-l); padding: 18px 20px; }
+.sg-card { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 18px 20px; }
 .sg-card .hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .sg-rank { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: var(--fs-xs); font-weight: 800; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .sg-card h3 { font-size: var(--fs-l); font-weight: 700; }
@@ -1203,7 +1203,8 @@ body.has-update .toast { bottom: 84px; }
 .sg-vbars .nm { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-s); font-weight: 700; color: var(--ink); }
 .sg-vsig { font-size: var(--fs-xs); color: var(--ink-3); font-weight: 600; white-space: nowrap; }
 .sg-vcards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sg-vcard { background: var(--card); border: 1px solid var(--line-2); border-top: 4px solid var(--vc); border-radius: var(--r-l); padding: 16px 18px; }
+.sg-vcard { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 16px 18px; }
+.sg-vcard::before { content: ''; display: block; width: 28px; height: 4px; border-radius: 2px; background: var(--vc); margin-bottom: 10px; }
 .sg-vcard h3 { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; margin: 4px 0 8px; }
 .sg-vcard h3 small { display: block; font-family: var(--font-sans); font-size: var(--fs-xs); font-weight: 600; color: var(--ink-3); margin-top: 2px; }
 .sg-vcard p { line-height: 1.7; }
