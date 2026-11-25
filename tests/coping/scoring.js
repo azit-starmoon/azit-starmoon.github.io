@@ -20,7 +20,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 // 대처 스타일: 문제 다루기와 마음 다루기(다가가기)와 물러서기의 균형으로 고른다
 export function styleOf(problem, heart, away) {
   const approach = (problem + heart) / 2;
-  if (away >= 50 && away >= approach) return 'retreat';
+  if (away >= 50 && away - approach >= 5) return 'retreat';
   if (problem >= 55 && heart >= 55 && Math.abs(problem - heart) < 10) return 'balanced';
   if (problem - heart >= 10) return 'solver';
   if (heart - problem >= 10) return 'carer';
