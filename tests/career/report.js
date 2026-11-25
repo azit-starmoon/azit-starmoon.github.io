@@ -76,9 +76,10 @@ export function renderReport(el, rec, ctx = {}) {
   const codeNames = code.map(nm);
   const paras = [
     `${esc(name)} 님의 흥미 코드는 <strong>${esc(s.codeText)}</strong>(${esc(listJoin(codeNames))})예요. ${esc(TYPE_TEXT[top].high)}`,
-    `${esc(jo(nm(code[0]), '과', '와'))} ${esc(jo(nm(code[1]), '이', '가'))} 함께 높아요. ${esc(pair.text)}`,
+    `${esc(jo(nm(code[0]), '과', '와'))} ${esc(jo(nm(code[1]), '이', '가'))} 함께 앞서 있어요. ${esc(pair.text)}`,
     `상대적으로 마음이 덜 가는 쪽은 ${esc(jo(nm(lowT), '이에요', '예요'))}. ${esc(TYPE_TEXT[lowT].low)}`,
   ];
+  if (T[code[0]].score - T[code[1]].score < 5) paras.push(`첫째와 둘째 흥미의 점수가 거의 같아서, ${esc(jo(nm(code[1]), '을', '를'))} 첫째로 보아도 크게 다르지 않아요. 두 흥미를 함께 첫째 자리에 두고 읽어 주세요.`);
   if (s.diffLevel === 'low') paras.push('여섯 흥미의 점수가 서로 비슷해서, 코드는 가볍게 참고하고 직접 겪어 보며 흥미를 또렷하게 만들어 가면 좋아요.');
   if (s.elevLevel !== 'mid') paras.push(esc(ELEV_TEXT[s.elevLevel]));
   const summary = section('summary', '요약', '', `<div class="summary-box prose">${paras.map((p) => `<p>${p}</p>`).join('')}</div>`);
@@ -100,9 +101,8 @@ export function renderReport(el, rec, ctx = {}) {
   const scores = section(
     'scores',
     '여섯 흥미 점수',
-    `점수(0~100)는 각 흥미에 해당하는 활동과 일터에 마음이 얼마나 끌리는지의 세기예요. 50 근처는 '보통', 위로 갈수록 더 끌린다는 뜻이에요. 육각형에서 이웃한 흥미는 비슷하고, 맞은편 흥미는 성격이 서로 달라요.`,
-    `<div class="cr-hexwrap">${interestHex(T, { size: 280, title: `여섯 흥미 육각형: ${order.map((t) => `${nm(t)} ${T[t].score}점`).join(', ')}` })}</div>
-    <ol class="cr-rows">${rows}</ol>${alts}`
+    `점수(0~100)는 각 흥미에 해당하는 활동과 일터에 마음이 얼마나 끌리는지의 세기예요. 50 근처는 '보통', 위로 갈수록 더 끌린다는 뜻이에요. 표지의 육각형에서 이웃한 흥미는 비슷하고, 맞은편 흥미는 성격이 서로 달라요.`,
+    `<ol class="cr-rows">${rows}</ol>${alts}`
   );
 
   // ── 흥미 코드 ────────────────────────────────

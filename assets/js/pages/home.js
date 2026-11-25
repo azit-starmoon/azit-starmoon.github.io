@@ -64,9 +64,14 @@ const GLYPH = {
 
   drawResume();
 
-  document.querySelector('[data-soon]').innerHTML = TESTS.filter((t) => t.status !== 'open')
+  const soon = TESTS.filter((t) => t.status !== 'open');
+  const soonEl = document.querySelector('[data-soon]');
+  soonEl.innerHTML = soon
     .map((t) => `<li><div><strong>${esc(t.title)}</strong><span>${esc(t.desc)}</span></div><span class="tag">준비 중</span></li>`)
     .join('');
+  // 준비 중인 검사가 없으면 '곧 열릴 검사' 칸을 통째로 숨긴다
+  const soonSec = soonEl.closest('section');
+  if (soonSec) soonSec.hidden = soon.length === 0;
 
   mountFooter();
 })();
