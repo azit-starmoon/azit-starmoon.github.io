@@ -50,8 +50,9 @@ export function score(answers, meta = {}) {
     const sc = to100(mean(BASE_ITEMS.filter((it) => it.base === k).map(raw)));
     bases[k] = { score: sc, level: levelOf(sc) };
   });
-  const lean = Math.round(mean(BASE_ORDER.map((k) => bases[k].score)));
   const baseOrder = [...BASE_ORDER].sort((a, b) => bases[b].score - bases[a].score || BASE_ORDER.indexOf(a) - BASE_ORDER.indexOf(b));
+  // 조건에 기대는 정도: 가장 많이 기대는 두 곳의 평균 (한두 곳에 크게 기대는 것도 흔들림이 되므로 전체 평균보다 위쪽 둘을 본다)
+  const lean = Math.round((bases[baseOrder[0]].score + bases[baseOrder[1]].score) / 2);
 
   const checked = [...WORTH_ITEMS, ...SELF_ITEMS];
   const rawAll = checked.map(raw);
