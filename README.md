@@ -4,7 +4,7 @@
 승인된 상담사가 구글 계정으로 로그인해 검사자에게 검사를 진행하고, 결과는 상담사 계정으로 전송돼요.
 검사자는 결과를 바로 보지 않고, 상담사가 '검사 결과'에서 따로 열어 봐요.
 
-- 사이트: https://petter350329-creator.github.io/azit-starmoon/
+- 사이트: https://azit-starmoon.github.io/
 - 호스팅: GitHub Pages (이 저장소의 `main` 브랜치 루트)
 - 로그인과 저장: Firebase Authentication(구글) + Realtime Database (`azit-starmoon` 프로젝트)
 
@@ -25,7 +25,7 @@
 ## 처음 설정 (한 번만)
 
 1. Firebase 콘솔 → Authentication → 로그인 방법 → **Google 사용**
-2. Authentication → 설정 → 승인된 도메인 → `petter350329-creator.github.io` 추가
+2. Authentication → 설정 → 승인된 도메인 → `azit-starmoon.github.io` 추가
 3. Realtime Database → 규칙 → [`firebase/database.rules.json`](firebase/database.rules.json) 내용을 붙여넣고 **게시**
 4. 사이트에 구글로 로그인 → 주소창에 `admin.html`을 열고 → **이 계정을 첫 관리자로 등록하기**
    - 관리자가 한 명도 없을 때만 등록돼요. 그래서 사이트를 연 사람이 가장 먼저 해야 해요.
