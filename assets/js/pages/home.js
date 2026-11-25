@@ -6,12 +6,14 @@ import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
 import { attachMap } from '../../../tests/attachment/chart.js';
 import { schemaRose } from '../../../tests/schema/chart.js';
+import { sensFlower } from '../../../tests/hsp/chart.js';
 
 const GLYPH = {
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),
   bigfive: () => b5Star({ O: 78, C: 56, E: 64, A: 70, N: 40 }, { size: 220, showValues: false, title: '다섯 영역 별 모양' }),
   schema: () => schemaRose(Object.fromEntries(['ab', 'mi', 'ed', 'de', 'si', 'di', 'vu', 'en', 'fa', 'et', 'sc', 'sb', 'ss', 'as', 'np', 'ei', 'us', 'pu']
     .map((k, i) => [k, { score: [40, 22, 58, 70, 30, 25, 35, 20, 45, 15, 28, 62, 80, 66, 38, 50, 88, 55][i], level: [0, 2, 6, 7, 11, 12, 13, 16].includes(i) ? 'active' : 'mild' }])), { size: 220, title: '18가지 규칙 지도' }),
+  hsp: () => sensFlower({ d: { score: 72 }, o: { score: 58 }, e: { score: 84 }, s: { score: 66 } }, { size: 220, total: 70, labels: false, title: '네 갈래 민감성 꽃' }),
   attachment: () => attachMap([{ x: 30, y: 34, main: true }, { x: 22, y: 70 }, { x: 68, y: 40 }, { x: 40, y: 22 }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '불안과 회피 두 축의 애착 지도' }),
 };
 
