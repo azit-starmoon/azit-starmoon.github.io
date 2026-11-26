@@ -1,5 +1,5 @@
 {
- "v": "20261126-024859",
+ "v": "20261126-030301",
  "files": [
   "./",
   "admin.html",
@@ -73,6 +73,11 @@
   "tests/esteem/items.js",
   "tests/esteem/report.js",
   "tests/esteem/scoring.js",
+  "tests/godattach/content.js",
+  "tests/godattach/index.js",
+  "tests/godattach/items.js",
+  "tests/godattach/report.js",
+  "tests/godattach/scoring.js",
   "tests/hsp/chart.js",
   "tests/hsp/content.js",
   "tests/hsp/index.js",

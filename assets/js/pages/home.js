@@ -20,6 +20,7 @@ import { storyShelf } from '../../../tests/lifestory/chart.js';
 import { selfCircles } from '../../../tests/differentiation/chart.js';
 
 const GLYPH = {
+  godattach: () => attachMap([{ x: 26, y: 30, main: true }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '하나님 애착 지도' }),
   differentiation: () => selfCircles({ ip: { score: 72 }, er: { score: 52 }, ec: { score: 34 }, fo: { score: 44 } }, { size: 220, labels: false, title: '나와 가까운 사람의 두 원' }),
   lifestory: () => storyShelf({ ag: { score: 72 }, cm: { score: 84 }, rd: { score: 64 }, mk: { score: 56 } }, { size: 220, labels: false, title: '이야기 책장' }),
   temperament: () => tcRose({ ns: { score: 70 }, ha: { score: 42 }, rd: { score: 78 }, ps: { score: 60 }, sd: { score: 66 }, co: { score: 74 }, st: { score: 58 } }, { size: 220, labels: false, title: '기질과 성품 꽃잎' }),

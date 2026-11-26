@@ -14,7 +14,7 @@ export function selfCircles(f, { size = 300, labels = true, title = '' } = {}) {
   const fo = clamp(f.fo && f.fo.score);
   const W = size;
   const H = Math.round(size * 0.64);
-  const r = size * 0.19;
+  const r = size * (labels ? 0.19 : 0.22);
   const cy = H / 2;
   // 거리: 융합이 크면 가까이 겹치고, 단절이 크면 멀어진다. 둘 다 50 이상이면(오가는 쪽) 가까운 원과 먼 원을 함께 그린다
   const swing = fo >= 50 && ec >= 50;

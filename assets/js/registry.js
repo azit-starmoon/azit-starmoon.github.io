@@ -152,6 +152,16 @@ export const TESTS = [
     parts: 1,
     gets: ['분화 지수', '네 지표', '관계 방식', '가족 장면', '나로 서는 연습', '상담 메모'],
   },
+  {
+    id: 'godattach',
+    status: 'open',
+    title: '하나님 애착 검사',
+    desc: '하나님과의 관계를 애착의 두 축(불안, 회피)으로 보고, 지금 하나님과 어떤 거리에서 지내는지 살펴요.',
+    items: 24,
+    minutes: 5,
+    parts: 1,
+    gets: ['애착 유형', '불안과 회피', '여덟 갈래', '사람과의 애착과 함께 보기', '믿음의 연습', '상담 메모'],
+  },
 ];
 
 // 첫 화면과 결과 목록에서 검사를 묶어 보여 주는 분류. 새 검사는 알맞은 묶음의 tests에 id를 넣는다.
@@ -159,7 +169,7 @@ export const TESTS = [
 export const GROUPS = [
   { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'temperament', 'hsp'] },
   { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['esteem', 'emotion', 'coping', 'resilience'] },
-  { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가까운 관계에서의 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'differentiation', 'schema'] },
+  { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가족과 가까운 사람, 하나님과의 관계에서의 내 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'godattach', 'differentiation', 'schema'] },
   { id: 'growth', name: '강점과 진로', question: '무엇을 향해 나아갈까', desc: '내가 가진 힘과 중요하게 여기는 것, 마음이 끌리는 일, 그리고 내 삶의 이야기를 살펴요.', tests: ['strengths', 'values', 'career', 'lifestory'] },
 ];
 const OTHER = { id: 'other', name: '그 밖의 검사', question: '', desc: '', tests: [] };
