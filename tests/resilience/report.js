@@ -45,7 +45,7 @@ export function renderReport(el, rec, ctx = {}) {
         <div>
           <p class="cp-kicker">회복탄력성 ${s.total}점 · ${esc(LEVEL_LABEL[s.level])}</p>
           <h1 class="cover-headline">${esc(overall.title)}</h1>
-          <p class="cp-tag">가장 든든한 힘은 <strong>${esc(jo(FACTORS[top3[0]].name, '이에요', '예요'))}</strong></p>
+          <p class="cp-tag">${F[top3[0]].score >= 62 ? '가장 든든한 힘은' : '지금 가장 많이 기대는 힘은'} <strong>${esc(jo(FACTORS[top3[0]].name, '이에요', '예요'))}</strong></p>
         </div>
         <div class="cover-figure cp-cover-fig">${resilRose(F, { size: 240, center: s.total, title: `아홉 요인: ${FACTOR_ORDER.map((k) => `${FACTORS[k].name} ${F[k].score}`).join(', ')}` })}</div>
       </div>
@@ -71,7 +71,7 @@ export function renderReport(el, rec, ctx = {}) {
   const paras = [`${esc(name)} 님의 회복탄력성은 <strong>${s.total}점</strong>이에요. ${esc(overall.text)}`];
   const lastTop = FACTORS[top3[2]].name;
   if (s.anchor === 'even') paras.push(`세 영역의 점수가 비슷해서, 한쪽에 치우치지 않고 여러 힘을 함께 쓰고 있어요. 그중 ${esc(DOMAINS[growD].name)}(${D[growD]}점)${hasBatchim(DOMAINS[growD].name) ? '은' : '는'} 조금 더 키워 갈 여지가 있는 곳이에요.`);
-  else paras.push(`세 영역 가운데 <strong>${esc(DOMAINS[topD].name)}</strong>(${D[topD]}점)${hasBatchim(DOMAINS[topD].name) ? '이' : '가'} 가장 든든하고, ${esc(DOMAINS[growD].name)}(${D[growD]}점)${hasBatchim(DOMAINS[growD].name) ? '은' : '는'} 앞으로 키워 갈 여지가 가장 큰 곳이에요.`);
+  else paras.push(`세 영역 가운데 <strong>${esc(DOMAINS[topD].name)}</strong>(${D[topD]}점)${hasBatchim(DOMAINS[topD].name) ? '이' : '가'} ${D[topD] >= 62 ? '가장 든든하고' : '지금 가장 많이 쓰는 힘이고'}, ${esc(DOMAINS[growD].name)}(${D[growD]}점)${hasBatchim(DOMAINS[growD].name) ? '은' : '는'} 앞으로 키워 갈 여지가 가장 큰 곳이에요.`);
   paras.push(`아홉 요인 가운데 지금 가장 많이 기대고 있는 힘은 ${top3.slice(0, 2).map((k) => `'${esc(FACTORS[k].name)}'`).join(', ')}, '${esc(lastTop)}'${hasBatchim(lastTop) ? '이에요' : '예요'}.`);
   const summary = section('summary', '요약', '', `<div class="summary-box prose">${paras.map((p) => `<p>${p}</p>`).join('')}</div>`);
 
@@ -105,7 +105,7 @@ export function renderReport(el, rec, ctx = {}) {
     'factors',
     '아홉 요인 지도',
     '세 영역을 이루는 아홉 가지 힘이에요. 표지의 꽃잎 지도와 같은 점수를 영역별로 나눠 놓았어요.',
-    `${groupsHtml}<h3 class="rsub">지금 가장 든든한 힘</h3><div class="cp-cards">${strongCards}</div>`
+    `${groupsHtml}<h3 class="rsub">${F[top3[0]].score >= 62 ? '지금 가장 든든한 힘' : '지금 가장 많이 기대는 힘'}</h3><div class="cp-cards">${strongCards}</div>`
   );
 
   // ── 기대는 곳 ────────────────────────────────

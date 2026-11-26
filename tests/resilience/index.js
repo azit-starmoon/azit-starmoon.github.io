@@ -33,7 +33,7 @@ export default {
     },
   ],
   score: (answers, meta) => scoreAll(answers, meta),
-  summary: (s) => `${OVERALL[s.level].title} (회복탄력성 ${s.total}, 가장 든든한 힘: ${FACTORS[s.order[0]].name})`,
+  summary: (s) => `${OVERALL[s.level].title} (회복탄력성 ${s.total}, 가장 높은 요인: ${FACTORS[s.order[0]].name})`,
   glyph: (s) => String(Math.min(99, s.total)),
   render: renderReport,
 };
