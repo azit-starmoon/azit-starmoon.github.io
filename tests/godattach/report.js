@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 하나님 애착 검사 결과지
+// AZIT : Star&Moon — 신앙 애착 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -42,15 +42,15 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">하나님 애착 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">신앙 애착 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
-          <p class="cp-kicker">하나님 애착 ${esc(St.name)}</p>
+          <p class="cp-kicker">신앙 애착 ${esc(St.name)}</p>
           <h1 class="cover-headline">${esc(St.title)}</h1>
           <p class="cp-tag">불안 ${s.an}점, 회피 ${s.av}점으로 하나님과의 관계를 읽었어요</p>
         </div>
-        <div class="cover-figure att-cover-map">${attachMap([{ x: s.av, y: s.an, main: true }], { size: 300, labels: false, title: `하나님 애착 지도: 불안 ${s.an}, 회피 ${s.av}, ${St.name}` })}</div>
+        <div class="cover-figure att-cover-map">${attachMap([{ x: s.av, y: s.an, main: true }], { size: 300, labels: false, title: `신앙 애착 지도: 불안 ${s.an}, 회피 ${s.av}, ${St.name}` })}</div>
       </div>
       <dl class="cover-facts">
         <div><dt>불안</dt><dd>${s.an}<small>${LEVEL_LABEL[s.anLevel]}</small></dd></div>
@@ -136,7 +136,7 @@ export function renderReport(el, rec, ctx = {}) {
     '믿음의 연습',
     '관계는 생각보다 작은 습관으로 자라요. 하나를 골라 일주일만 해 보세요.',
     `<ol class="practice-list">${practices.map((x) => `<li><span><strong>${esc(x.t)}</strong> ${esc(x.d)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 하나님 애착 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 신앙 애착 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

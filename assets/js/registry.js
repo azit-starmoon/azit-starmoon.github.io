@@ -170,7 +170,7 @@ export const TESTS = [
   {
     id: 'godattach',
     status: 'open',
-    title: '하나님 애착 검사',
+    title: '신앙 애착 검사',
     code: 'AZ-GA',
     desc: '하나님과의 관계를 애착의 두 축(불안, 회피)으로 보고, 지금 하나님과 어떤 거리에서 지내는지 살펴요.',
     items: 24,

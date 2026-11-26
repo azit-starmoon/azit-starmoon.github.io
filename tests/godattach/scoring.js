@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 하나님 애착 검사 채점
+// AZIT : Star&Moon — 신앙 애착 검사 채점
 import { ITEMS, FACETS, FACET_ORDER } from './items.js';
 
 // 점수는 0~100(문항 평균을 옮긴 값). 집단 규준이 아니라 응답 척도에 묶은 기준점이다.

@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 하나님 애착 검사 정의
+// AZIT : Star&Moon — 신앙 애착 검사 정의
 import { ITEMS, LIKERT_SCALE } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { STYLES } from './content.js';
@@ -7,7 +7,7 @@ import { renderReport } from './report.js';
 export default {
   id: 'godattach',
   version: '1.0',
-  title: '하나님 애착 검사',
+  title: '신앙 애착 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '하나님과의 관계를 애착의 눈으로 살펴보는 검사예요. 사람 사이에서처럼 하나님과의 관계에서도 버림받을까 걱정하는 마음(불안)과 가까워지기 어려운 마음(회피)이 있을 수 있어요. 두 마음의 정도로 지금 하나님과 어떤 거리에서 지내는지 보고, 더 편안히 머무는 길을 함께 찾아봐요. 하나님을 믿는 분을 위한 검사예요.',

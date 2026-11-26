@@ -35,7 +35,7 @@ export const PAIRS = [
   {
     a: 'attachment',
     b: 'godattach',
-    title: '사람과의 애착, 하나님과의 애착',
+    title: '성인 애착과 신앙 애착',
     why: '사람과의 관계와 하나님과의 관계를 같은 지도에서 비교할 수 있어요',
     render: (A, G) => {
       const insecure = (s) => s && s !== 'secure';
@@ -59,9 +59,9 @@ export const PAIRS = [
       }
       return `<div class="pp-pair-grid">
         <figure class="pp-map">${attachMap([{ x: A.avo, y: A.anx, main: true, label: '사람' }, { x: G.av, y: G.an, label: '하나님' }], { size: 300, title: `애착 지도: 사람과의 관계 불안 ${A.anx}, 회피 ${A.avo}; 하나님과의 관계 불안 ${G.an}, 회피 ${G.av}` })}
-          <figcaption>별은 사람과의 관계(성인 애착 유형 검사), 동그라미는 하나님과의 관계(하나님 애착 검사)예요.</figcaption></figure>
+          <figcaption>별은 사람과의 관계(성인 애착 유형 검사), 동그라미는 하나님과의 관계(신앙 애착 검사)예요.</figcaption></figure>
         <div class="pp-read"><p class="pp-head-t">${esc(head)}</p><p>${esc(text)}</p>
-          ${legend('성인 애착 유형 검사', '하나님 애착 검사')}
+          ${legend('성인 애착 유형 검사', '신앙 애착 검사')}
           ${rows([['사람과의 불안', A.anx, '하나님과의 불안', G.an, agree(A.anx, G.an)], ['사람과의 회피', A.avo, '하나님과의 회피', G.av, agree(A.avo, G.av)]])}</div>
       </div>`;
     },
