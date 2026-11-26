@@ -122,12 +122,22 @@ export const TESTS = [
     parts: 3,
     gets: ['자기 가치감', '자존감 지도', '나를 대하는 방식', '자존감이 기대는 곳', '돌보는 연습', '상담 메모'],
   },
+  {
+    id: 'temperament',
+    status: 'open',
+    title: '기질과 성품 검사',
+    desc: '타고난 기질 네 가지와 경험으로 자라 온 성품 세 가지를 나눠 보고, 둘이 만나 지금 어떤 모습으로 드러나는지 살펴요.',
+    items: 56,
+    minutes: 9,
+    parts: 2,
+    gets: ['기질 유형', '기질 네 가지', '성품 모양', '성품 세 가지', '기질과 성품의 만남', '연습', '상담 메모'],
+  },
 ];
 
 // 첫 화면과 결과 목록에서 검사를 묶어 보여 주는 분류. 새 검사는 알맞은 묶음의 tests에 id를 넣는다.
 // 어느 묶음에도 없는 열린 검사는 '그 밖의 검사'로 따로 보인다.
 export const GROUPS = [
-  { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'hsp'] },
+  { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'temperament', 'hsp'] },
   { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['esteem', 'emotion', 'coping', 'resilience'] },
   { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가까운 관계에서의 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'schema'] },
   { id: 'growth', name: '강점과 진로', question: '무엇을 향해 나아갈까', desc: '내가 가진 힘과 중요하게 여기는 것, 마음이 끌리는 일을 살펴요.', tests: ['strengths', 'values', 'career'] },
