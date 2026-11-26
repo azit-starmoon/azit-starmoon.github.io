@@ -4,9 +4,21 @@
 import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDraft } from './backend.js';
 import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
-import { codeOf } from './registry.js';
+import { codeOf, bundleOf, getTestMeta } from './registry.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 고민별 묶음의 진행: 이 탭 안(sessionStorage)에만 두고, 12시간이 지나면 잊는다. 주소에는 이름을 넣지 않는다
+const BUNDLE_KEY = 'azit:bundle';
+const readBundle = () => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(BUNDLE_KEY) || 'null');
+    return v && Date.now() - (v.at || 0) < 12 * 3600e3 ? v : null;
+  } catch (e) { return null; }
+};
+const writeBundle = (v) => { try { sessionStorage.setItem(BUNDLE_KEY, JSON.stringify(v)); } catch (e) { /* 저장소를 못 쓰면 이름만 다시 적으면 된다 */ } };
+const clearBundle = () => { try { sessionStorage.removeItem(BUNDLE_KEY); } catch (e) { /* 저장소를 못 쓰는 환경 */ } };
+const testTitle = (id) => (getTestMeta(id) || { title: id }).title;
 
 export async function runTest(def, mount, opts = {}) {
   const S = {
@@ -59,6 +71,9 @@ export async function runTest(def, mount, opts = {}) {
   const hhmm = (ts) => { const d = new Date(ts || Date.now()); return `${two(d.getHours())}:${two(d.getMinutes())}`; };
   const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${hhmm(ts)}`; };
   const sameName = (a, b2) => String(a || '').replace(/\s+/g, '').toLowerCase() === String(b2 || '').replace(/\s+/g, '').toLowerCase();
+  // 고민별 묶음으로 왔으면(b=<묶음>) 끝 화면에서 묶음의 다음 검사로 잇는다
+  const bundle = (() => { const b = bundleOf(opts.bundle); return b && b.tests.includes(def.id) ? b : null; })();
+  const bundleState = () => { const v = bundle && readBundle(); return v && v.b === bundle.id ? v : null; };
 
   const remote = new Map(); // sid → 계정에 저장된 진행
   let cloud = 'checking';   // 'checking' | 'on' | 'off'
@@ -227,6 +242,19 @@ export async function runTest(def, mount, opts = {}) {
     </div>`;
   }
 
+  function bundleStrip() {
+    if (!bundle) return '';
+    const done = (bundleState() || {}).done || [];
+    return `<div class="bd-strip">
+      <p class="bd-strip-k">${esc(bundle.name)} 묶음</p>
+      <ol>${bundle.tests.map((id, i) => {
+        const now = id === def.id;
+        const ok = !now && done.includes(id);
+        return `<li class="${now ? 'is-now' : ok ? 'is-done' : ''}"${now ? ' aria-current="step"' : ''}><span class="n" aria-hidden="true">${ok ? '✓' : i + 1}</span>${esc(testTitle(id).replace(/ 검사$/, ''))}${ok ? '<span class="sr-only"> (마침)</span>' : ''}</li>`;
+      }).join('')}</ol>
+    </div>`;
+  }
+
   function renderIntro() {
     const u = currentUser();
     const sessions = u ? listSessions().filter((v) => doneCount(v) > 0) : [];
@@ -237,6 +265,7 @@ export async function runTest(def, mount, opts = {}) {
     stage.innerHTML = `<section class="intro-card" aria-labelledby="intro-title">
       <p class="intro-kicker">${codeOf(def.id) ? `<span class="intro-code">${esc(codeOf(def.id))}</span>` : ''}${esc(intro.kicker)}</p>
       <h1 class="intro-title" id="intro-title" tabindex="-1" data-focus>${esc(def.title)}</h1>
+      ${bundleStrip()}
       ${sessions.length ? resumeBox(sessions) : ''}
       <p class="intro-lead">${esc(intro.lead)}</p>
       <dl class="intro-facts">${intro.facts.map((f) => `<div><dt>${esc(f.dt)}</dt><dd>${esc(f.dd)}</dd></div>`).join('')}</dl>
@@ -255,6 +284,7 @@ export async function runTest(def, mount, opts = {}) {
       <div class="field">
         <label for="pf-name">검사자 이름</label>
         <input class="input" id="pf-name" maxlength="20" autocomplete="off" value="${esc(name)}" placeholder="예: 홍길동" required>
+        ${S.carried && sameName(name, S.carried) ? '<p class="field-hint" data-carried>묶음의 앞 검사에서 적은 이름이에요. 다른 분이면 고쳐 주세요.</p>' : ''}
       </div>
       <label class="consent">
         <input type="checkbox" id="pf-consent" ${S.consent ? 'checked' : ''}>
@@ -269,10 +299,12 @@ export async function runTest(def, mount, opts = {}) {
     const nameEl = stage.querySelector('#pf-name');
     const consentEl = stage.querySelector('#pf-consent');
     const beginEl = stage.querySelector('[data-act="begin"]');
+    const hint = stage.querySelector('[data-carried]');
     const sync = () => {
       S.name = nameEl.value.trim();
       S.consent = consentEl.checked;
       beginEl.disabled = !(S.name && S.consent);
+      if (hint) hint.hidden = !sameName(S.name, S.carried);
     };
     nameEl.addEventListener('input', sync);
     consentEl.addEventListener('change', sync);
@@ -411,6 +443,13 @@ export async function runTest(def, mount, opts = {}) {
   }
 
   function renderDone() {
+    // 묶음으로 왔으면: 마친 검사 수와 다음 검사(지금 검사 뒤에 남은 것부터, 없으면 앞에 남은 것)
+    const bd = bundle && S.bundleDone ? (() => {
+      const done = S.bundleDone;
+      const left = bundle.tests.filter((id) => !done.includes(id));
+      const at = bundle.tests.indexOf(def.id);
+      return { done, next: left.find((id) => bundle.tests.indexOf(id) > at) || left[0] || '' };
+    })() : null;
     stage.innerHTML = `<section class="done" aria-live="polite">
       <div class="done-mark" aria-hidden="true">${starGlyph('#4b5bdb')}</div>
       <h1 tabindex="-1" data-focus>검사 결과가 전송되었습니다</h1>
@@ -420,8 +459,14 @@ export async function runTest(def, mount, opts = {}) {
         ${opts.ownerName ? `<div><dt>받는 상담사</dt><dd>${esc(opts.ownerName)}</dd></div>` : ''}
         <div><dt>전송 시각</dt><dd>${esc(fmtDate(S.doneAt || Date.now(), true))}</dd></div>
       </dl>
+      ${bd ? `<div class="bd-done">
+        <p class="bd-done-k">${esc(bundle.name)} 묶음 <span>${bd.done.length}/${bundle.tests.length}</span></p>
+        <p>${bd.next ? `다음은 <strong>${esc(testTitle(bd.next))}</strong>예요. 이어서 하면 검사자 이름이 미리 채워져 있어요.` : '묶음의 검사를 모두 마쳤어요. 고마워요.'}</p>
+      </div>` : ''}
       <div class="done-actions">
-        <button type="button" class="btn btn--block" data-act="again">다음 검사 시작하기</button>
+        ${bd && bd.next
+          ? `<a class="btn btn--block" href="test.html?t=${esc(bd.next)}&amp;b=${esc(bundle.id)}">이어서 ${esc(testTitle(bd.next))} 하기</a>`
+          : '<button type="button" class="btn btn--block" data-act="again">다음 검사 시작하기</button>'}
         <a class="btn btn--ghost btn--block" href="index.html">처음으로</a>
       </div>
     </section>`;
@@ -545,6 +590,13 @@ export async function runTest(def, mount, opts = {}) {
     };
     try {
       await Promise.all([saveResult(record), delay(1500)]);
+      if (bundle) {
+        const prev = bundleState();
+        const done = [...new Set([...(prev && sameName(prev.name, record.name) ? prev.done || [] : []), def.id])];
+        S.bundleDone = done;
+        if (bundle.tests.every((id) => done.includes(id))) clearBundle();
+        else writeBundle({ b: bundle.id, name: record.name, at: Date.now(), done });
+      }
       clearProgress();
       S.sid = '';
       S.savedAt = 0;
@@ -588,7 +640,8 @@ export async function runTest(def, mount, opts = {}) {
     } else {
       S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
       S.answers = {};
-      S.name = '';
+      S.carried = (bundleState() || {}).name || '';
+      S.name = S.carried;
       S.consent = false;
       S.startedAt = 0;
       S.savedAt = 0;

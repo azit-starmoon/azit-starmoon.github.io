@@ -122,6 +122,9 @@ async def run(args):
             await pg.wait_for_timeout(1200)
             ok('첫 화면 인사', 'greet' in (await pg.get_attribute('[data-greet]', 'class') or ''), await pg.inner_text('[data-greet]'))
             await shot('home')
+            tabs = await pg.locator('#bundles [role="tab"]').count()
+            steps = await pg.eval_on_selector_all('#bundles .bd-step', 'els => els.map(e => e.getAttribute("href"))')
+            ok('고민별 추천 묶음', tabs >= 1 and steps and all('&b=' in h for h in steps), f'묶음 {tabs}개, 첫 묶음 검사 {len(steps)}개')
 
             tests = await pg.evaluate("import('./assets/js/registry.js').then(m => m.TESTS.filter(t => t.status === 'open').map(t => ({id: t.id, title: t.title, items: t.items})))")
             if args.only:

@@ -1,6 +1,6 @@
 import { mountHeader, mountFooter, esc, toast } from '../ui.js';
 import { constellation, b5Star } from '../charts.js';
-import { TESTS, groupIds } from '../registry.js';
+import { TESTS, groupIds, BUNDLES } from '../registry.js';
 import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
@@ -93,6 +93,7 @@ const GLYPH = {
     </section>`)
     .join('');
 
+  drawBundles(meta);
   drawResume();
 
   const soon = TESTS.filter((t) => t.status !== 'open');
@@ -106,6 +107,49 @@ const GLYPH = {
 
   mountFooter();
 })();
+
+// 고민별 추천 묶음: 묶음 이름을 탭으로 늘어놓고, 고른 묶음의 검사 순서와 시간을 보여 준다
+function drawBundles(meta) {
+  const box = document.querySelector('[data-bundles]');
+  if (!box) return;
+  const list = BUNDLES.filter((b) => b.tests.every((id) => meta.has(id)));
+  if (!list.length) return;
+  box.closest('section').hidden = false;
+  const panel = (b) => {
+    const total = b.tests.reduce((n, id) => n + (meta.get(id).minutes || 0), 0);
+    const steps = b.tests.map((id, i) => {
+      const t = meta.get(id);
+      return `<li><a class="bd-step" href="test.html?t=${esc(id)}&amp;b=${esc(b.id)}" aria-label="${i + 1}번째, ${esc(t.title)} 시작하기">
+        <span class="bd-no" aria-hidden="true">${i + 1}</span>
+        <span class="bd-t"><strong>${esc(t.title)}</strong>${t.code ? `<span class="tcard-code">${esc(t.code)}</span>` : ''}</span>
+        <span class="bd-m">${t.items}문항, 약 ${t.minutes}분</span>
+      </a></li>`;
+    }).join('');
+    return `<p class="bd-desc">${esc(b.desc)}</p>
+      <ol class="bd-steps">${steps}</ol>
+      <div class="bd-foot"><span class="bd-total">검사 ${b.tests.length}개, 모두 약 ${total}분</span><a class="btn" href="test.html?t=${esc(b.tests[0])}&amp;b=${esc(b.id)}">묶음으로 시작하기</a></div>`;
+  };
+  box.innerHTML = `<div class="bd-tabs" role="tablist" aria-label="고민별 추천 묶음">${list.map((b, i) => `<button type="button" role="tab" id="bd-tab-${b.id}" aria-controls="bd-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-bundle="${b.id}">${esc(b.name)}</button>`).join('')}</div>
+    <div class="bd-panel" id="bd-panel" role="tabpanel" aria-labelledby="bd-tab-${list[0].id}" tabindex="0">${panel(list[0])}</div>`;
+  const tabs = [...box.querySelectorAll('[role="tab"]')];
+  const pick = (btn, focus = false) => {
+    tabs.forEach((x) => { const on = x === btn; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; });
+    const b = list.find((x) => x.id === btn.dataset.bundle);
+    const pn = box.querySelector('[role="tabpanel"]');
+    pn.setAttribute('aria-labelledby', btn.id);
+    pn.innerHTML = panel(b);
+    if (focus) btn.focus();
+  };
+  box.querySelector('[role="tablist"]').addEventListener('click', (e) => { const btn = e.target.closest('[role="tab"]'); if (btn) pick(btn); });
+  box.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    pick(tabs[(to + tabs.length) % tabs.length], true);
+  });
+}
 
 const two = (n) => String(n).padStart(2, '0');
 const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${two(d.getHours())}:${two(d.getMinutes())}`; };

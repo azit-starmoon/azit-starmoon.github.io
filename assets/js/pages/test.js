@@ -22,7 +22,7 @@ const resume = params.get('resume');
     return;
   }
   document.title = `${def.title} | AZIT : Star&Moon`;
-  await runTest(def, app, { ownerName: greetingName(st), resume: resume === null ? undefined : resume });
+  await runTest(def, app, { ownerName: greetingName(st), resume: resume === null ? undefined : resume, bundle: params.get('b') || '' });
   if (isDemo) {
     const bar = document.createElement('div');
     bar.className = 'demo-bar';
