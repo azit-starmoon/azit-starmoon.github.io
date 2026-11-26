@@ -17,8 +17,10 @@ import { esteemMap } from '../../../tests/esteem/chart.js';
 import { resilRose } from '../../../tests/resilience/chart.js';
 import { tcRose } from '../../../tests/temperament/chart.js';
 import { storyShelf } from '../../../tests/lifestory/chart.js';
+import { selfCircles } from '../../../tests/differentiation/chart.js';
 
 const GLYPH = {
+  differentiation: () => selfCircles({ ip: { score: 72 }, er: { score: 52 }, ec: { score: 34 }, fo: { score: 44 } }, { size: 220, labels: false, title: '나와 가까운 사람의 두 원' }),
   lifestory: () => storyShelf({ ag: { score: 72 }, cm: { score: 84 }, rd: { score: 64 }, mk: { score: 56 } }, { size: 220, labels: false, title: '이야기 책장' }),
   temperament: () => tcRose({ ns: { score: 70 }, ha: { score: 42 }, rd: { score: 78 }, ps: { score: 60 }, sd: { score: 66 }, co: { score: 74 }, st: { score: 58 } }, { size: 220, labels: false, title: '기질과 성품 꽃잎' }),
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),

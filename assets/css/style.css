@@ -1695,6 +1695,25 @@ body.has-update .toast { bottom: 84px; }
   .ls-scene, .ls-chapters li { break-inside: avoid; }
 }
 
+/* ── 자아분화 검사 ─────────────────────────── */
+.dc { display: block; width: 100%; height: auto; font-family: var(--font-sans); overflow: visible; }
+.dc-other { fill: #9aa3bd; fill-opacity: .16; stroke: #9aa3bd; stroke-width: 1.5; }
+.dc-other--ghost { fill-opacity: .1; stroke-dasharray: 4 4; }
+.dc-swing { fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.dc-wave { fill: none; stroke: #eb6834; stroke-opacity: .5; stroke-width: 1.5; stroke-dasharray: 3 5; }
+.dc-lab { font-size: 14px; font-weight: 700; fill: var(--ink); }
+.dc-lab--o { font-size: 12.5px; fill: var(--ink-2); }
+.dc-cover-fig { max-width: 340px; justify-self: center; }
+.dc-cap { text-align: center; margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.6; }
+.df-hint { display: block; font-size: var(--fs-xs); color: var(--ink-3); }
+.df-fam { list-style: none; display: grid; gap: 8px; }
+.df-fam li { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line-2); line-height: 1.6; }
+.df-fam li:first-child { border-top: 0; padding-top: 2px; }
+.df-fam .a { font-size: var(--fs-xs); font-weight: 700; color: var(--brand-deep); background: var(--brand-soft); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+@media print {
+  .dc-me, .dc-other, .dc-wave { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 /* ── 첫 화면 검사 분류 ───────────────────────── */
 .tg-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 26px; }
 .tg-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px 9px 16px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; font-size: var(--fs-s); transition: border-color .12s, background .12s; }
