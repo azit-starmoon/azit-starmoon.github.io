@@ -1627,6 +1627,8 @@ body.has-update .toast { bottom: 84px; }
 @media print {
   .em-cell.is-on, .em-dot, .es-pill, .es-worth-track span, .es-self-track, .es-bases .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .es-card, .es-map, .es-worth { break-inside: avoid; }
+}
+
 /* ── 회복탄력성 검사 ───────────────────────── */
 .rs-domain-what { color: var(--ink-3); font-size: var(--fs-s); line-height: 1.65; margin-bottom: 6px; }
 .rs-domain .hd i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; display: inline-block; }

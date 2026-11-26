@@ -38,6 +38,24 @@ def free_port():
         return s.getsockname()[1]
 
 
+def css_check():
+    # 합치다가 닫는 괄호가 빠지면 그 뒤 스타일이 통째로 안 먹으므로, 괄호 짝을 센다
+    bad = []
+    for p in sorted(ROOT.rglob('*.css')):
+        if {'.git', 'node_modules'} & set(p.relative_to(ROOT).parts):
+            continue
+        text = p.read_text(encoding='utf-8')
+        depth = 0
+        for n, line in enumerate(text.split('\n'), 1):
+            depth += line.count('{') - line.count('}')
+            if depth < 0:
+                bad.append(f'{p.relative_to(ROOT)}:{n}: 여는 괄호보다 닫는 괄호가 많음')
+                depth = 0
+        if depth:
+            bad.append(f'{p.relative_to(ROOT)}: 닫히지 않은 괄호 {depth}개')
+    return bad
+
+
 def syntax_check():
     bad = []
     for p in sorted(ROOT.rglob('*.js')):
@@ -250,7 +268,7 @@ def main():
     ap.add_argument('--seed', type=int, default=7)
     args = ap.parse_args()
 
-    bad = syntax_check()
+    bad = syntax_check() + css_check()
     report = asyncio.run(run(args))
     if bad:
         report['failed'] = [f'문법 오류: {b}' for b in bad] + report['failed']
