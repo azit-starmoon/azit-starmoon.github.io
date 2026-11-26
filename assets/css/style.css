@@ -1627,4 +1627,16 @@ body.has-update .toast { bottom: 84px; }
 @media print {
   .em-cell.is-on, .em-dot, .es-pill, .es-worth-track span, .es-self-track, .es-bases .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .es-card, .es-map, .es-worth { break-inside: avoid; }
+/* ── 회복탄력성 검사 ───────────────────────── */
+.rs-domain-what { color: var(--ink-3); font-size: var(--fs-s); line-height: 1.65; margin-bottom: 6px; }
+.rs-domain .hd i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
+.rs-balance { list-style: none; display: grid; gap: 6px; margin-top: 14px; }
+.rs-balance li { display: grid; grid-template-columns: 10px 96px 1fr 30px; gap: 10px; align-items: center; }
+.rs-balance i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.rs-balance .nm { font-size: var(--fs-s); color: var(--ink-2); }
+.rs-balance .track { position: relative; height: 10px; background: var(--line-2); border-radius: 4px; }
+.rs-balance .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; min-width: 2px; }
+.rs-balance .val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; font-size: var(--fs-s); }
+@media print {
+  .rs-balance .fill, .rs-balance i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

@@ -14,6 +14,7 @@ import { interestHex } from '../../../tests/career/chart.js';
 import { skillHex } from '../../../tests/emotion/chart.js';
 import { copeRose } from '../../../tests/coping/chart.js';
 import { esteemMap } from '../../../tests/esteem/chart.js';
+import { resilRose } from '../../../tests/resilience/chart.js';
 
 const GLYPH = {
   enneagram: () => constellation({ 1: 60, 2: 50, 3: 55, 4: 75, 5: 45, 6: 60, 7: 50, 8: 45, 9: 65 }, { core: 9, labels: false, size: 200, title: '아홉 유형 별자리' }),
@@ -38,6 +39,7 @@ const GLYPH = {
   emotion: () => skillHex({ aw: { score: 74 }, cl: { score: 66 }, ac: { score: 52 }, im: { score: 70 }, go: { score: 80 }, st: { score: 60 } }, { size: 220, total: 67, labels: false, title: '감정을 다루는 힘 육각형' }),
   coping: () => copeRose({ ps: { score: 72 }, pl: { score: 64 }, hs: { score: 50 }, es: { score: 68 }, pr: { score: 60 }, ac: { score: 55 }, av: { score: 40 }, sb: { score: 30 } }, { size: 220, center: 62, labels: false, title: '여덟 가지 대처 꽃잎' }),
   esteem: () => esteemMap(70, 32, { size: 220, type: 'secure', labels: false, title: '자존감 지도' }),
+  resilience: () => resilRose({ er: { score: 62 }, ic: { score: 55 }, ca: { score: 70 }, co: { score: 66 }, em: { score: 80 }, cn: { score: 74 }, op: { score: 58 }, gr: { score: 76 }, ls: { score: 64 } }, { size: 220, center: 67, labels: false, title: '아홉 요인 회복탄력성 지도' }),
   attachment: () => attachMap([{ x: 30, y: 34, main: true }, { x: 22, y: 70 }, { x: 68, y: 40 }, { x: 40, y: 22 }], { size: 220, axis: false, quadLabels: false, labels: false, mark: 1.7, title: '불안과 회피 두 축의 애착 지도' }),
 };
 
