@@ -97,7 +97,8 @@ export function renderReport(el, rec, ctx = {}) {
   const toc = `<nav class="toc no-print" aria-label="결과지 목차"><div class="toc-inner">${tocItems.map(([id, label]) => `<a href="#r-${id}">${esc(label)}</a>`).join('')}</div></nav>`;
 
   // ── 요약 ─────────────────────────────────────
-  const nearNames = s.near.map((k) => DIMS[k].name);
+  // Realtime Database는 빈 배열을 저장하지 않아서, 경계에 걸린 기질이 없으면 near가 아예 없이 돌아온다
+  const nearNames = (s.near || []).map((k) => DIMS[k].name);
   const nearText = nearNames.length
     ? ` 다만 ${nearNames.join(', ')}${hasBatchim(nearNames[nearNames.length - 1]) ? '은' : '는'} 가운데에 가까워서, 상황에 따라 반대쪽 모습도 함께 나타날 수 있어요.`
     : '';

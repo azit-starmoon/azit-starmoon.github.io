@@ -59,7 +59,8 @@ export default {
     },
   ],
   score: (answers) => scoreAll(answers),
-  summary: (s) => `${s.active.length ? s.topNames.join(', ') : '두드러진 규칙 없음'} (주된 대처: ${COPING_TEXT[s.primaryCoping].name})`,
-  glyph: (s) => (s.active.length ? SCHEMAS[s.active[0]].name.slice(0, 1) : '·'),
+  // 저장소에서 다시 읽은 점수는 빈 배열(작동하는 도식 없음)이 빠져 있을 수 있다
+  summary: (s) => `${(s.active || []).length ? (s.topNames || []).join(', ') : '두드러진 규칙 없음'} (주된 대처: ${COPING_TEXT[s.primaryCoping].name})`,
+  glyph: (s) => ((s.active || []).length ? SCHEMAS[s.active[0]].name.slice(0, 1) : '·'),
   render: renderReport,
 };

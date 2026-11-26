@@ -14,6 +14,16 @@ function gate(title, text, extra = '') {
   box.innerHTML = `<div class="wrap"><div class="gate"><h1>${esc(title)}</h1><p>${esc(text)}</p>${extra}</div></div>`;
 }
 
+// 결과지를 그리다 오류가 나면 빈 화면 대신 안내를 남긴다 (원인은 콘솔에 남긴다)
+function draw(def, el, rec, ctx, ask) {
+  try {
+    def.render(el, rec, ctx);
+  } catch (err) {
+    console.error(err);
+    el.innerHTML = `<div class="wrap"><div class="gate"><h1>결과지를 그리지 못했어요</h1><p>결과는 그대로 저장되어 있어요. 새로고침해도 같으면 ${esc(ask)}에게 알려 주세요.</p></div></div>`;
+  }
+}
+
 async function renderShared() {
   mountHeader('');
   await ready();
@@ -28,7 +38,7 @@ async function renderShared() {
   if (!def) { gate('결과지를 열 수 없어요', '이 검사는 지금 열려 있지 않아요.'); return; }
   document.title = `${p.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
   box.innerHTML = `<div class="shared-note">AZIT : Star&amp;Moon에서 공유한 ${esc(p.name || '')} 님의 결과지예요.</div><div data-body></div>`;
-  def.render(box.querySelector('[data-body]'), { name: p.name, createdAt: p.createdAt, scores: p.scores }, { shared: true, rid: share.resultId });
+  draw(def, box.querySelector('[data-body]'), { name: p.name, createdAt: p.createdAt, scores: p.scores }, { shared: true, rid: share.resultId }, '링크를 보낸 분');
   markCode(box, p.testId);
   mountFooter();
 }
@@ -66,7 +76,7 @@ async function renderOwned() {
     </div>
     ${admin && !mine ? `<div class="shared-note">${esc(rec.ownerName || rec.email || '')} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</div>` : ''}
     <div data-body></div>`;
-  def.render(box.querySelector('[data-body]'), rec, { shared: false, rid });
+  draw(def, box.querySelector('[data-body]'), rec, { shared: false, rid }, '관리자');
   markCode(box, rec.testId);
   mountFooter();
 
