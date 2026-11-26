@@ -1628,3 +1628,36 @@ body.has-update .toast { bottom: 84px; }
   .em-cell.is-on, .em-dot, .es-pill, .es-worth-track span, .es-self-track, .es-bases .fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .es-card, .es-map, .es-worth { break-inside: avoid; }
 }
+
+/* ── 첫 화면 검사 분류 ───────────────────────── */
+.tg-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 26px; }
+.tg-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px 9px 16px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; font-size: var(--fs-s); transition: border-color .12s, background .12s; }
+.tg-chip:hover { border-color: var(--brand); background: var(--brand-soft); }
+.tg-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tg-chip .n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--tint); color: var(--ink-2); font-size: var(--fs-xs); font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.test-groups { display: grid; gap: 40px; }
+.tg-head { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 14px; row-gap: 2px; padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.tg-head h3 { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; }
+.tg-q { color: var(--brand-deep); font-weight: 600; font-size: var(--fs-s); line-height: 1.4; }
+.tg-desc { grid-column: 1 / -1; color: var(--ink-2); font-size: var(--fs-s); margin-top: 2px; }
+.tg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tcard { display: grid; grid-template-columns: 96px 1fr; column-gap: 16px; align-items: start; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 16px; box-shadow: var(--shadow-s); }
+.tcard-glyph { width: 96px; height: 96px; border-radius: 18px; background: var(--sky); border: 1px solid var(--line-2); display: grid; place-items: center; padding: 8px; }
+.tcard-glyph svg { width: 100%; height: 100%; }
+.tcard-body { min-width: 0; display: flex; flex-direction: column; height: 100%; }
+.tcard h4 { font-family: var(--font-display); font-size: var(--fs-m); font-weight: 600; line-height: 1.35; }
+.tcard-desc { color: var(--ink-2); font-size: var(--fs-s); line-height: 1.6; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tcard-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 10px; }
+.tcard-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--ink-3); font-size: var(--fs-xs); }
+.tcard-go { flex-shrink: 0; }
+@media (max-width: 820px) {
+  .tg-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .tcard { grid-template-columns: 64px 1fr; column-gap: 14px; padding: 14px; }
+  .tcard-glyph { width: 64px; height: 64px; border-radius: 14px; padding: 5px; }
+  .tcard-desc { -webkit-line-clamp: 2; }
+  .tg-head { grid-template-columns: 1fr; padding-bottom: 12px; }
+  .tg-chip { padding: 8px 12px 8px 14px; }
+  .test-groups { gap: 32px; }
+}

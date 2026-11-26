@@ -58,6 +58,7 @@
 
 ## 3. 연결할 곳
 1. `assets/js/registry.js`: 해당 항목을 `status: 'open'`으로 바꾸고 `items`, `minutes`, `parts`, `gets`를 채운다.
+   같은 파일의 `GROUPS`(첫 화면 분류: 성격과 기질, 마음 건강, 관계와 내면, 강점과 진로)에서 알맞은 묶음의 `tests`에 id가 있는지 확인하고, 없으면 넣는다.
 2. `assets/js/pages/home.js`: `GLYPH[<id>]`에 첫 화면 카드 그림(차트 함수에 예시 값) 추가.
 3. `assets/js/pages/admin.js`: CSV 내보내기에 이 검사의 핵심 열 추가(`head`와 각 행 모두).
 4. `README.md`: 검사 목록과 폴더 구조에 한 줄씩.

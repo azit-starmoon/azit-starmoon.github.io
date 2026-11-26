@@ -1,6 +1,6 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, copyText } from '../ui.js';
 import { listMyResults, deleteResult, createShare, revokeShare, resultUrl, shareUrl } from '../backend.js';
-import { TESTS } from '../registry.js';
+import { TESTS, groupIds } from '../registry.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 
@@ -44,7 +44,7 @@ async function load() {
   const tests = [...new Set(list.map((r) => r.testId))];
   box.innerHTML = `<div class="toolbar">
       <input class="input" type="search" placeholder="검사자 이름으로 찾기" value="${esc(view.q)}" data-q aria-label="검사자 이름으로 찾기">
-      <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${tests.map((t) => `<option value="${esc(t)}" ${view.test === t ? 'selected' : ''}>${esc(title(t))}</option>`).join('')}</select>
+      <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(tests).map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((t) => `<option value="${esc(t)}" ${view.test === t ? 'selected' : ''}>${esc(title(t))}</option>`).join('')}</optgroup>`).join('')}</select>
       <span class="spacer"></span><span class="tag" data-count></span>
     </div>
     <ul class="record-list" data-rows></ul>`;

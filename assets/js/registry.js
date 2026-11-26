@@ -115,6 +115,29 @@ export const TESTS = [
   },
 ];
 
+// 첫 화면과 결과 목록에서 검사를 묶어 보여 주는 분류. 새 검사는 알맞은 묶음의 tests에 id를 넣는다.
+// 어느 묶음에도 없는 열린 검사는 '그 밖의 검사'로 따로 보인다.
+export const GROUPS = [
+  { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'hsp'] },
+  { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['esteem', 'emotion', 'coping', 'resilience'] },
+  { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가까운 관계에서의 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'schema'] },
+  { id: 'growth', name: '강점과 진로', question: '무엇을 향해 나아갈까', desc: '내가 가진 힘과 중요하게 여기는 것, 마음이 끌리는 일을 살펴요.', tests: ['strengths', 'values', 'career'] },
+];
+const OTHER = { id: 'other', name: '그 밖의 검사', question: '', desc: '', tests: [] };
+
+export function groupOf(id) {
+  return GROUPS.find((g) => g.tests.includes(id)) || OTHER;
+}
+
+// ids(검사 id 목록)를 묶음 차례대로 나눈다. 빈 묶음은 빼고, 묶음 안에서는 GROUPS에 적은 차례를 따른다.
+export function groupIds(ids) {
+  const set = new Set(ids);
+  const out = GROUPS.map((g) => ({ ...g, tests: g.tests.filter((t) => set.has(t)) })).filter((g) => g.tests.length);
+  const rest = ids.filter((t) => !GROUPS.some((g) => g.tests.includes(t)));
+  if (rest.length) out.push({ ...OTHER, tests: rest });
+  return out;
+}
+
 export function getTestMeta(id) {
   return TESTS.find((t) => t.id === id) || null;
 }
