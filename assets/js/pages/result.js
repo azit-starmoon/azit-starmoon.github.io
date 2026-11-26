@@ -66,17 +66,21 @@ async function renderOwned() {
   if (!def) { gate('결과지를 열 수 없어요', '이 검사는 지금 열려 있지 않아요.'); return; }
   const admin = st.admin;
   const mine = st.user.uid === uid;
+  const canEdit = mine || st.owner; // 다른 계정 결과의 공유·지우기는 담당자만
+  const who = esc(rec.ownerName || rec.email || '');
   document.title = `${rec.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
   box.innerHTML = `<div class="report-actions no-print">
-      <button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>
+      ${canEdit ? `<button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>` : ''}
       <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
       <a class="btn btn--ghost btn--small" href="${personUrl(uid, rid)}">종합 결과지</a>
       ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">검사 결과 목록</a>`}
-      <button type="button" class="btn btn--ghost btn--small" data-act="delete">결과 지우기</button>
+      ${canEdit ? '<button type="button" class="btn btn--ghost btn--small" data-act="delete">결과 지우기</button>' : ''}
     </div>
-    ${admin && !mine ? `<div class="shared-note">${esc(rec.ownerName || rec.email || '')} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</div>` : ''}
+    ${admin && !mine ? `<div class="shared-note">${st.owner
+      ? `${who} 상담사님 계정의 결과를 담당자 권한으로 보고 있어요.`
+      : `${who} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요. 공유와 지우기는 담당자만 할 수 있어요.`}</div>` : ''}
     <div data-body></div>`;
-  draw(def, box.querySelector('[data-body]'), rec, { shared: false, rid }, '관리자');
+  draw(def, box.querySelector('[data-body]'), rec, { shared: false, rid }, '담당자');
   markCode(box, rec.testId);
   mountFooter();
 

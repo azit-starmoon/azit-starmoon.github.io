@@ -1946,3 +1946,11 @@ body.has-update .toast { bottom: 84px; }
 .birth-pick label { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-s); color: var(--ink-2); cursor: pointer; }
 .birth-pick input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand); flex-shrink: 0; }
 .birth-pick strong { color: var(--ink); }
+
+/* ── 계정 단계 (담당자 > 관리자 > 상담사) ── */
+.role-chip { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; background: var(--tint); color: var(--ink-2); font-size: var(--fs-xs); font-weight: 600; font-style: normal; line-height: 1.5; vertical-align: 2px; white-space: nowrap; }
+.role-chip[data-role='owner'] { background: var(--star-soft); color: var(--star-ink); }
+.role-chip[data-role='admin'] { background: var(--brand-soft); color: var(--brand-deep); }
+strong .role-chip { margin-left: 6px; }
+.account-menu .who .role-chip { margin-top: 6px; }
+.role-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 16px; color: var(--ink-2); font-size: var(--fs-s); }

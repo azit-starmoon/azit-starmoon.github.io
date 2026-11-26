@@ -8,7 +8,7 @@
 
 하는 일
  1. 모든 .js 파일 문법 검사 (node --check)
- 2. 이 폴더를 로컬 서버로 띄우고, 체험 모드 관리자 계정으로 로그인
+ 2. 이 폴더를 로컬 서버로 띄우고, 체험 모드 담당자 계정으로 로그인
     (잠금 화면은 코드를 쓰지 않고 '열린 상태'를 저장소에 직접 적어서 넘긴다. 코드는 저장소에 두지 않는다)
  3. 열린 검사를 하나씩 끝까지 무작위로 답해서 '검사 결과가 전송되었습니다'까지 확인
     - 첫 검사는 중간에 '저장하고 나가기' → 첫 화면 '이어서 할 검사' → 이어서 하기까지 확인
@@ -18,7 +18,8 @@
  6. 결과지 그리기: 검사마다 여러 모양의 모의 응답(고루, 극단, 무작위, 한쪽 끝, 같은 답)을 채점해서,
     실제 데이터베이스에서 읽어 온 모양(빈 배열·빈 객체가 빠진 상태, backend.js rtdbShape)으로
     결과지(상담사용·공유용), 요약, 짝 읽기를 그려 본다. 무작위 응답만으로는 잘 안 나오는 끝자락 점수도 본다
- 7. 모든 화면의 자바스크립트 오류 수집
+ 7. 계정 단계: 담당자 화면, 관리자 화면(담당자 기능 없음, 다른 계정 결과는 열기만), 상담사 계정(관리 화면에 못 들어옴)
+ 8. 모든 화면의 자바스크립트 오류 수집
 
 필요한 것: python3, playwright (pip install playwright --break-system-packages; python3 -m playwright install chromium)
 """
@@ -189,8 +190,8 @@ async def run(args):
                 if shots:
                     await pg.screenshot(path=str(shots / f'{name}.png'))
 
-            # 로그인 (체험 모드 관리자)
-            await pg.goto(base + 'login.html?demo=1&demorole=admin')
+            # 로그인 (체험 모드 담당자: 모든 기능)
+            await pg.goto(base + 'login.html?demo=1&demorole=owner')
             await pg.wait_for_selector('[data-login]', timeout=8000)
             await pg.click('[data-login]')
             await pg.wait_for_timeout(1200)
@@ -431,6 +432,57 @@ async def run(args):
                         detail = f"{r.get('renders', 0)}번 그림" + (f", 저장소에서 빠지는 칸 {', '.join(r['emptied'][:6])}" if r.get('emptied') else '')
                     ok(f"결과지 그리기 ({t['title']})", not fails, detail)
                 ok('짝 읽기 그리기', not fz['pairFails'], '; '.join(f'{k} {v}번' for k, v in fz['pairFails'].items()) or '함께 고른 검사의 짝 모두')
+
+            # 계정 단계: 담당자는 모든 기능, 관리자는 승인과 모든 결과 보기만, 상담사는 관리 화면에 못 들어온다
+            await unlock('result')
+            await pg.goto(base + 'admin.html')
+            await pg.wait_for_timeout(1500)
+            me_uid = await pg.evaluate("JSON.parse(localStorage.getItem('azit:demo:user')).uid")
+            owner_line = await pg.inner_text('.role-line') if await pg.locator('.role-line').count() else ''
+            owner_tools = [s for s in ('[data-csv]', '[data-admins]', '[data-ia-run]') if not await pg.locator(s).count()]
+            ok('담당자 화면', '담당자' in owner_line and not owner_tools, f'없는 기능 {owner_tools}' if owner_tools else ' '.join(owner_line.split())[:40])
+            # 다른 상담사 계정의 결과와 승인 기록을 하나 흉내 낸다
+            other = await pg.evaluate("""() => {
+              const u = JSON.parse(localStorage.getItem('azit:demo:user'));
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const src = db.results && db.results[u.uid] && Object.values(db.results[u.uid])[0];
+              if (!src) return false;
+              const rec = { ...src, uid: 'demo-other', email: 'other@azit.local', ownerName: '다른 상담사', name: '다른검사자' };
+              delete rec.shareToken;
+              db.results['demo-other'] = { 'smoke-other': rec };
+              db.members = db.members || {};
+              db.members['demo-other'] = { name: '다른 상담사', email: 'other@azit.local', approvedAt: Date.now() };
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+              return true;
+            }""")
+            if other:
+                await pg.goto(base + 'admin.html?demorole=admin')
+                await pg.wait_for_timeout(1500)
+                line = await pg.inner_text('.role-line') if await pg.locator('.role-line').count() else ''
+                shown = [s for s in ('[data-csv]', '[data-admins]', '[data-ia-run]', '[data-fill-birth]') if await pg.locator(s).count()]
+                other_acts = await pg.locator('tr[data-key^="demo-other/"] [data-act]').count()
+                own_acts = await pg.locator(f'tr[data-key^="{me_uid}/"] [data-act]').count()
+                approve_ok = await pg.locator('#req-t').count() > 0 and await pg.locator('li[data-uid="demo-other"] [data-mem="revoke"]').count() > 0
+                ok('관리자 화면', '관리자' in line and not shown and other_acts == 0 and own_acts > 0 and approve_ok,
+                   f'담당자 기능 {shown or "없음"}, 다른 계정 결과의 공유·지우기 {other_acts}개, 내 결과 {own_acts}개, 승인 취소 {"있음" if approve_ok else "없음"}')
+                await pg.goto(base + 'result.html?u=demo-other&r=smoke-other')
+                await pg.wait_for_timeout(1500)
+                acts = await pg.locator('.report-actions [data-act="share"], .report-actions [data-act="delete"]').count()
+                note = await pg.inner_text('.shared-note') if await pg.locator('.shared-note').count() else ''
+                drawn = await pg.locator('[data-body] .cover').count()
+                ok('다른 계정 결과지 (관리자)', drawn and acts == 0 and '관리자 권한' in note, f'결과지 {"그려짐" if drawn else "안 그려짐"}, 공유·지우기 단추 {acts}개, {note[:40]}')
+                await pg.goto(base + 'index.html?demorole=member')
+                await pg.wait_for_timeout(1500)
+                link_hidden = await pg.locator('[data-admin-link]').is_hidden()
+                chip = (await pg.text_content('[data-account] [data-role]') or '').strip() if await pg.locator('[data-account] [data-role]').count() else ''
+                await pg.goto(base + 'admin.html')
+                await pg.wait_for_timeout(1200)
+                gate = (await pg.inner_text('.gate h2')).strip() if await pg.locator('.gate h2').count() else ''
+                await pg.goto(base + 'me.html')
+                await pg.wait_for_timeout(1200)
+                me_ok = pg.url.split('?')[0].endswith('me.html') and await pg.locator('.record').count() > 0
+                ok('상담사 계정', link_hidden and chip == '상담사' and gate == '관리 권한이 없어요' and me_ok,
+                   f'관리 메뉴 {"숨김" if link_hidden else "보임"}, 계정 표시 {chip or "없음"}, 관리 화면 "{gate}", 내 결과 목록 {"열림" if me_ok else "안 열림"}')
             await browser.close()
     finally:
         srv.terminate()

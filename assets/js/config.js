@@ -19,6 +19,11 @@ export const FIREBASE = {
 
 export const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.0/';
 
+// 계정 단계: 담당자 > 관리자 > 상담사.
+// 담당자는 이 구글 계정 하나예요. 화면에서 담당자 기능(관리자 지정, 다른 계정 결과 공유·지우기, 생년월일 넣기, CSV, 문항 분석)을 여는 데 써요.
+// 보안 규칙(firebase/database.rules.json)에도 같은 주소가 있어요. 바꿀 때는 둘 다 바꾸고 규칙을 다시 게시해요(tools/rules-check.mjs가 둘이 같은지 봐요).
+export const OWNER_EMAIL = 'petter350329@gmail.com';
+
 // 화면 잠금 번호. 번호 그대로가 아니라 'azit-starmoon:<종류>:<번호>'의 SHA-256 값만 둔다.
 // test: 검사 목록을 열 때, result: 검사 결과와 관리 화면을 열 때. 바꾸는 법은 README의 '화면 잠금'에 있어요.
 export const LOCKS = {

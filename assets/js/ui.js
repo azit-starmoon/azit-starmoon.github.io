@@ -1,6 +1,6 @@
 // AZIT : Star&Moon — 화면 공통 요소
 import { SITE } from './config.js';
-import { ready, onUser, signIn, signOut, isAdmin, isDemo, currentUser, listRequests } from './backend.js';
+import { ready, onUser, signIn, signOut, isAdmin, myRole, ROLE_NAME, isDemo, currentUser, listRequests } from './backend.js';
 import { relockAll } from './lock.js';
 import { isInAppBrowser, escapeInApp, isIOS } from './inapp.js';
 import { watchForUpdate } from './update.js';
@@ -211,7 +211,7 @@ export function mountHeader(active = '') {
       u.photo ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : initial
     }</button>
     <div class="account-menu" data-open="false">
-      <div class="who"><strong>${esc(u.name)}</strong><span>${esc(u.email)}</span></div>
+      <div class="who"><strong>${esc(u.name)}</strong><span>${esc(u.email)}</span><em class="role-chip" data-role hidden></em></div>
       <a href="me.html">검사 결과</a>
       <a href="admin.html" data-admin-item hidden>관리</a>
       <button type="button" data-logout>로그아웃</button>
@@ -232,6 +232,13 @@ export function mountHeader(active = '') {
     adminLink.hidden = !admin;
     const item = acc.querySelector('[data-admin-item]');
     if (item) item.hidden = !admin;
+    myRole().then((role) => {
+      const chip = acc.querySelector('[data-role]');
+      if (!chip || !role) return;
+      chip.textContent = ROLE_NAME[role];
+      chip.dataset.role = role;
+      chip.hidden = false;
+    }).catch(() => {});
     if (admin) {
       try { setRequestBadge(Object.keys(await listRequests()).length); } catch (e) { /* 요청 목록을 못 읽어도 헤더는 그대로 */ }
     }

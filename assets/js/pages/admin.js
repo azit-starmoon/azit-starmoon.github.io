@@ -1,8 +1,9 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, shortDate, copyText, resultCode, setRequestBadge } from '../ui.js';
 import {
-  claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser, setResultBirth,
-  isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
+  listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser, setResultBirth,
+  isUserAdmin, setUserAdmin, listAdmins, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
+import { OWNER_EMAIL } from '../config.js';
 import { TESTS, groupIds, loadTest } from '../registry.js';
 import { fmtBirth, parseBirth, longBirth } from '../examinee.js';
 import { requireLogin } from '../guard.js';
@@ -19,6 +20,9 @@ let all = [];
 let users = {};
 let requests = {};
 let members = {};
+let admins = {};
+// 지금 들어온 계정. 담당자(owner)는 모든 기능, 관리자는 상담사 승인과 모든 결과 보기만
+const me = { uid: '', owner: false };
 const view = { q: '', test: '' };
 const ia = { test: '', level: 0, flat: true, ran: false }; // 문항 분석 화면 상태
 
@@ -32,30 +36,35 @@ const ia = { test: '', level: 0, flat: true, ran: false }; // 문항 분석 화�
   mountHeader('admin');
   mountFooter();
   if (!st.admin) {
-    box.innerHTML = `<div class="gate" style="margin-top:8px"><h2>관리자 권한이 없어요</h2>
-      <p>사이트를 처음 연 사람이라면 이 계정을 첫 관리자로 등록할 수 있어요. 이미 관리자가 있다면 기존 관리자에게 지정을 요청해 주세요.</p>
-      <button type="button" class="btn" data-claim>이 계정을 첫 관리자로 등록하기</button></div>`;
-    box.querySelector('[data-claim]').addEventListener('click', async (e) => {
-      e.target.disabled = true;
-      try {
-        await claimAdmin();
-        toast('관리자로 등록했어요.');
-        setTimeout(() => location.reload(), 700);
-      } catch (err) {
-        console.error(err);
-        toast('이미 다른 관리자가 있어요. 기존 관리자에게 지정을 요청해 주세요.');
-        e.target.disabled = false;
-      }
-    });
+    box.innerHTML = `<div class="gate" style="margin-top:8px"><h2>관리 권한이 없어요</h2>
+      <p>관리 화면은 담당자와 관리자만 쓸 수 있어요. 관리자 지정이 필요하면 담당자에게 요청해 주세요.</p>
+      <a class="btn" href="index.html">처음으로</a></div>`;
     return;
+  }
+  me.uid = st.user.uid;
+  me.owner = !!st.owner;
+  // 담당자 계정이 관리자 목록(admins)에 없으면 올려 둔다. 지금 규칙은 담당자를 이메일로 알아봐서 없어도 되지만,
+  // 예전 규칙(관리자 목록에 있어야 모든 결과를 읽음)이 게시되어 있는 동안에도 관리 화면이 열리게 하려는 것
+  // (예전 규칙에서는 관리자가 한 명도 없을 때만 된다)
+  if (me.owner && !isDemo && !(await isUserAdmin(me.uid))) {
+    try { await setUserAdmin(me.uid, true); } catch (e) { console.warn(e); }
   }
   await load();
 })();
 
+// 담당자 계정의 uid (로그인한 적이 있으면 users에서 이메일로 찾는다)
+function ownerUid() {
+  if (me.owner) return me.uid;
+  const want = String(OWNER_EMAIL || '').toLowerCase();
+  return Object.keys(users || {}).find((uid) => String((users[uid] || {}).email || '').toLowerCase() === want) || '';
+}
+
+const canEditResult = (r) => me.owner || r.uid === me.uid;
+
 async function load() {
   box.innerHTML = '<p class="loading">불러오고 있어요</p>';
   try {
-    [all, users, requests, members] = await Promise.all([listAllResults(), listUsers(), listRequests(), listMembers()]);
+    [all, users, requests, members, admins] = await Promise.all([listAllResults(), listUsers(), listRequests(), listMembers(), listAdmins()]);
   } catch (e) {
     console.error(e);
     box.innerHTML = '<div class="empty"><p>목록을 불러오지 못했어요. Firebase 보안 규칙이 최신으로 게시되었는지 확인해 주세요.</p></div>';
@@ -90,7 +99,16 @@ function draw() {
   all.filter((r) => r.testId === 'enneagram' && r.scores).forEach((r) => { dist[Number(r.scores.core)] = (dist[Number(r.scores.core)] || 0) + 1; });
   const maxD = Math.max(1, ...Object.values(dist));
 
+  const owner = ownerUid();
+  const roleTag = (uid) => (uid && uid === owner ? '<em class="role-chip" data-role="owner">담당자</em>' : admins[uid] ? '<em class="role-chip" data-role="admin">관리자</em>' : '');
+  // 관리자는 상담사의 승인만 취소할 수 있다 (관리자·담당자 계정은 담당자만)
+  const canRevoke = (uid) => uid !== me.uid && (me.owner || (!admins[uid] && uid !== owner));
+
   box.innerHTML = `
+    <p class="role-line">${me.owner
+      ? '<em class="role-chip" data-role="owner">담당자</em> 모든 관리 기능을 쓸 수 있어요.'
+      : '<em class="role-chip" data-role="admin">관리자</em> 상담사 승인과 모든 결과 보기를 할 수 있어요. 다른 계정 결과의 공유·지우기, 생년월일 넣기, CSV, 문항 분석, 관리자 지정은 담당자가 해요.'}</p>
+
     <section class="admin-block" aria-labelledby="req-t">
       <h2 id="req-t">승인 요청 <span class="count">${reqEntries.length}</span></h2>
       ${reqEntries.length ? `<ul class="req-list">${reqEntries.map(([uid, r]) => `<li class="req" data-uid="${esc(uid)}">
@@ -103,10 +121,10 @@ function draw() {
       <h2 id="mem-t">승인된 상담사 <span class="count">${memEntries.length}</span></h2>
       ${memEntries.length ? `<ul class="req-list">${memEntries
         .map(([uid, m]) => `<li class="req req--member" data-uid="${esc(uid)}">
-          <div><strong>${esc(m.name || '')}</strong><span>${esc(m.email || '')}, ${esc(shortDate(m.approvedAt))} 승인, 검사 결과 ${countBy[uid] || 0}건</span>${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}</div>
-          <div class="acts"><button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button></div>
+          <div><strong>${esc(m.name || '')}${roleTag(uid)}</strong><span>${esc(m.email || '')}, ${esc(shortDate(m.approvedAt))} 승인, 검사 결과 ${countBy[uid] || 0}건</span>${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}</div>
+          <div class="acts">${canRevoke(uid) ? '<button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button>' : ''}</div>
         </li>`)
-        .join('')}</ul>` : '<p class="muted-box">아직 승인된 상담사가 없어요. 관리자 계정은 승인 없이 이용할 수 있어요.</p>'}
+        .join('')}</ul>` : '<p class="muted-box">아직 승인된 상담사가 없어요. 담당자와 관리자 계정은 승인 없이 이용할 수 있어요.</p>'}
     </section>
 
     <section class="admin-block" aria-labelledby="res-t">
@@ -122,20 +140,20 @@ function draw() {
           .map((t) => `<div class="dist-col" title="${t}번 ${dist[t]}건"><span class="v">${dist[t]}</span><span class="b" style="height:${((dist[t] / maxD) * 80).toFixed(0)}px"></span><span class="t">${t}</span></div>`)
           .join('')}</div>
       </section>
-      ${all.some((r) => !r.birth) ? `<p class="birth-missing">생년월일 없이 저장된 결과가 ${all.filter((r) => !r.birth).length}건 있어요. 같은 분의 결과로 묶이도록 생년월일을 넣을 수 있어요. <button type="button" class="btn btn--ghost btn--small" data-fill-birth>생년월일 넣기</button></p>` : ''}
+      ${me.owner && all.some((r) => !r.birth) ? `<p class="birth-missing">생년월일 없이 저장된 결과가 ${all.filter((r) => !r.birth).length}건 있어요. 같은 분의 결과로 묶이도록 생년월일을 넣을 수 있어요. <button type="button" class="btn btn--ghost btn--small" data-fill-birth>생년월일 넣기</button></p>` : ''}
       <div class="toolbar">
         <input class="input" type="search" placeholder="이름이나 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자·상담사 이름이나 검사자 생년월일로 찾기">
         <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
           .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${view.test === id ? 'selected' : ''}>${esc(title(id))}</option>`).join('')}</optgroup>`)
           .join('')}</select>
-        <span class="spacer"></span>
+        ${me.owner ? `<span class="spacer"></span>
         <button type="button" class="btn btn--ghost btn--small" data-csv>CSV 내려받기</button>
-        <button type="button" class="btn btn--ghost btn--small" data-admins>관리자 지정</button>
+        <button type="button" class="btn btn--ghost btn--small" data-admins>관리자 지정</button>` : ''}
       </div>
       <div class="table-wrap"><table class="list"><thead><tr><th>검사자</th><th>상담사</th><th>검사</th><th>결과</th><th>검사일</th><th>공유</th><th></th></tr></thead><tbody data-rows></tbody></table></div>
     </section>
 
-    <section class="admin-block" aria-labelledby="ia-t">
+    ${me.owner ? `<section class="admin-block" aria-labelledby="ia-t">
       <h2 id="ia-t">문항 분석</h2>
       <p class="ia-lead">쌓인 응답으로 척도마다 문항들이 같은 마음을 일관되게 재는지(신뢰도, Cronbach α), 척도와 따로 노는 문항은 없는지 살펴봐요. 계산은 이 브라우저 안에서만 하고, 응답은 어디로도 보내지 않아요.</p>
       <div class="toolbar">
@@ -149,16 +167,16 @@ function draw() {
         <button type="button" class="btn btn--ghost btn--small" data-ia-csv hidden>문항 응답 CSV (이름 없이)</button>
       </div>
       <div data-ia-out></div>
-    </section>`;
+    </section>` : ''}`;
   drawRows();
 
   box.querySelector('[data-q]').addEventListener('input', (e) => { view.q = e.target.value; drawRows(); });
   box.querySelector('[data-test]').addEventListener('change', (e) => { view.test = e.target.value; drawRows(); });
-  box.querySelector('[data-csv]').addEventListener('click', exportCsv);
-  box.querySelector('[data-admins]').addEventListener('click', manageAdmins);
-  const fb = box.querySelector('[data-fill-birth]');
-  if (fb) fb.addEventListener('click', fillBirth);
-  wireItemStats();
+  const on = (sel, fn) => { const el = box.querySelector(sel); if (el) el.addEventListener('click', fn); };
+  on('[data-csv]', exportCsv);
+  on('[data-admins]', manageAdmins);
+  on('[data-fill-birth]', fillBirth);
+  if (box.querySelector('[data-ia-run]')) wireItemStats();
   box.querySelectorAll('[data-req]').forEach((b) => b.addEventListener('click', onRequest));
   box.querySelectorAll('[data-mem]').forEach((b) => b.addEventListener('click', onMember));
 }
@@ -212,9 +230,9 @@ function drawRows() {
       <td>${esc(r.summary || '')}</td>
       <td>${esc(shortDate(r.createdAt))}</td>
       <td>${r.shareToken ? '공유 중' : '–'}</td>
-      <td class="acts"><a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">열기</a>
+      <td class="acts"><a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">열기</a>${canEditResult(r) ? `
         <button type="button" class="btn btn--ghost btn--small" data-act="share">공유</button>
-        <button type="button" class="btn btn--text btn--small" data-act="delete">지우기</button></td>
+        <button type="button" class="btn btn--text btn--small" data-act="delete">지우기</button>` : ''}</td>
     </tr>`)
     .join('');
   tb.onclick = async (e) => {
@@ -256,9 +274,10 @@ function drawRows() {
   };
 }
 
-// ── 생년월일 넣기 (관리자) ─────────────────────
+// ── 생년월일 넣기 (담당자) ─────────────────────
 // 생년월일을 받기 전에 저장된 결과에 생년월일을 넣어, 종합 결과지에서 이름 + 생년월일로 함께 묶이게 한다
 async function fillBirth() {
+  if (!me.owner) return;
   const missing = all.filter((r) => !r.birth);
   if (!missing.length) return;
   let birth = '';
@@ -397,6 +416,7 @@ function csvCell(v) {
 }
 
 function exportCsv() {
+  if (!me.owner) return; // 모든 결과를 한꺼번에 내보내는 일은 담당자만
   const rows = filtered();
   const head = ['검사자', '생년월일', '상담사', '상담사 이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
     '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심',
@@ -493,16 +513,17 @@ function exportCsv() {
 }
 
 async function manageAdmins() {
+  if (!me.owner) { toast('관리자 지정은 담당자만 할 수 있어요.'); return; }
   if (isDemo) { toast('체험 모드에서는 관리자 지정을 쓸 수 없어요.'); return; }
-  const me = currentUser();
+  const self = currentUser();
   const list = Object.entries(users || {}).sort((a, b) => (b[1].updatedAt || 0) - (a[1].updatedAt || 0));
   const flags = await Promise.all(list.map(([uid]) => isUserAdmin(uid)));
   await modal({
     title: '관리자 지정',
-    body: `<p>한 번이라도 로그인한 사람만 목록에 나와요. 관리자는 모든 결과를 보고, 상담사를 승인할 수 있어요.</p>
+    body: `<p>한 번이라도 로그인한 사람만 목록에 나와요. 관리자는 상담사를 승인하고 모든 결과를 볼 수 있어요. 다른 계정 결과의 공유·지우기, 생년월일 넣기, CSV, 문항 분석, 관리자 지정은 담당자만 해요.</p>
       <ul class="record-list" style="margin-top:14px;max-height:50vh;overflow:auto">${list
         .map(([uid, u], i) => `<li class="record" style="grid-template-columns:1fr auto;padding:12px 14px"><div class="meta"><strong>${esc(u.name || '')}</strong><span>${esc(u.email || '')}</span></div>
-          <div class="acts">${uid === me.uid ? '<span class="tag tag--star">나</span>' : `<button type="button" class="btn ${flags[i] ? 'btn--ghost' : ''} btn--small" data-toggle="${esc(uid)}" data-on="${flags[i]}">${flags[i] ? '관리자 해제' : '관리자로 지정'}</button>`}</div></li>`)
+          <div class="acts">${uid === self.uid ? '<em class="role-chip" data-role="owner">담당자</em>' : `<button type="button" class="btn ${flags[i] ? 'btn--ghost' : ''} btn--small" data-toggle="${esc(uid)}" data-on="${flags[i]}">${flags[i] ? '관리자 해제' : '관리자로 지정'}</button>`}</div></li>`)
         .join('')}</ul>`,
     actions: [{ label: '닫기', value: true, primary: true }],
     onOpen: (root) => {
@@ -522,4 +543,6 @@ async function manageAdmins() {
       });
     },
   });
+  admins = await listAdmins(); // 승인된 상담사 목록의 '관리자' 표시를 새로 맞춘다
+  draw();
 }

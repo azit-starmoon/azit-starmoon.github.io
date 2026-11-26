@@ -35,7 +35,7 @@ const glyph = (r) => {
   const uid = UID || st.user.uid;
   const mine = uid === st.user.uid;
   if (!RID) { gate('검사자를 고르지 않았어요', '검사 결과 목록에서 검사자의 종합 결과지를 열어 주세요.'); return; }
-  if (!mine && !st.admin) { gate('볼 수 없는 결과예요', '다른 상담사님 계정의 결과는 관리자만 모아 볼 수 있어요.'); return; }
+  if (!mine && !st.admin) { gate('볼 수 없는 결과예요', '다른 상담사님 계정의 결과는 담당자와 관리자만 모아 볼 수 있어요.'); return; }
   let all = [];
   try {
     all = await listResultsOf(uid);
@@ -57,14 +57,14 @@ const glyph = (r) => {
     others.get(k).n++;
   });
   document.title = `${name} 님의 종합 결과지 | AZIT : Star&Moon`;
-  render(name, list, { mine, owner: anchor.ownerName || anchor.email || '', birth: anchor.birth || '', others: [...others.values()] });
+  render(name, list, { mine, owner: anchor.ownerName || anchor.email || '', birth: anchor.birth || '', others: [...others.values()], viewer: st.owner ? '담당자' : '관리자' });
 })();
 
 function gate(t, d) {
   box.innerHTML = `<div class="gate"><h1>${esc(t)}</h1><p>${esc(d)}</p><a class="btn" href="me.html">검사 결과 목록으로</a></div>`;
 }
 
-function render(name, list, { mine, owner, birth, others }) {
+function render(name, list, { mine, owner, birth, others, viewer }) {
   // 검사마다 가장 최근 결과를 쓰고, 이전 결과는 날짜로만 남긴다
   const byTest = new Map();
   list.forEach((r) => { if (!byTest.has(r.testId)) byTest.set(r.testId, []); byTest.get(r.testId).push(r); });
@@ -105,7 +105,7 @@ function render(name, list, { mine, owner, birth, others }) {
       <p class="pp-birth no-print">${birth ? `생년월일 ${esc(fmtBirth(birth))}` : '생년월일 없이 저장된 결과예요'}</p>
       <p>${count} 한 장에 모았어요. ${esc(period)}.</p>
       ${others.length ? `<p class="pp-others no-print">이름이 같은 다른 기록: ${others.map((o) => `<a href="${personUrl(o.uid, o.rid)}">${o.birth ? esc(fmtBirth(o.birth)) : '생년월일 없음'} (${o.n}건)</a>`).join(', ')}</p>` : ''}
-      ${!mine && owner ? `<p class="pp-owner">${esc(owner)} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</p>` : ''}
+      ${!mine && owner ? `<p class="pp-owner">${esc(owner)} 상담사님 계정의 결과를 ${viewer} 권한으로 보고 있어요.</p>` : ''}
       <div class="pp-acts no-print">
         <button type="button" class="btn btn--ghost btn--small" data-print>PDF로 저장</button>
         <a class="btn btn--ghost btn--small" href="${mine ? 'me.html' : 'admin.html'}">${mine ? '검사 결과 목록' : '관리로 돌아가기'}</a>

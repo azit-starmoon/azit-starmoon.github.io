@@ -1,12 +1,14 @@
 // AZIT : Star&Moon — 로그인과 저장소
 // Firebase(구글 로그인 + Realtime Database)를 쓰고, 설정이 없거나 ?demo=1 이면
 // 이 기기 안에서만 동작하는 체험 모드로 같은 기능을 흉내 낸다.
-import { FIREBASE, FIREBASE_SDK } from './config.js';
+import { FIREBASE, FIREBASE_SDK, OWNER_EMAIL } from './config.js';
 
 const DEMO_FLAG = 'azit:demo';
 const DEMO_DB = 'azit:demo:db';
 const DEMO_USER = 'azit:demo:user';
-const DEMO_ROLE = 'azit:demo:role'; // 체험 모드에서 'user'로 두면 승인 전 계정을 흉내 낸다
+// 체험 모드의 계정 단계: owner(담당자, 기본), admin(관리자), member(상담사), user(승인 전)
+const DEMO_ROLE = 'azit:demo:role';
+const DEMO_ROLES = ['owner', 'admin', 'member', 'user'];
 
 (() => {
   try {
@@ -15,10 +17,17 @@ const DEMO_ROLE = 'azit:demo:role'; // 체험 모드에서 'user'로 두면 승�
     if (p === '1') localStorage.setItem(DEMO_FLAG, '1');
     if (p === '0') localStorage.removeItem(DEMO_FLAG);
     const r = q.get('demorole');
-    if (r === 'user') localStorage.setItem(DEMO_ROLE, 'user');
-    if (r === 'admin') localStorage.removeItem(DEMO_ROLE);
+    if (r === 'owner') localStorage.removeItem(DEMO_ROLE);
+    else if (DEMO_ROLES.includes(r)) localStorage.setItem(DEMO_ROLE, r);
   } catch (e) { /* 저장소를 못 쓰는 환경 */ }
 })();
+
+function demoRole() {
+  try {
+    const r = localStorage.getItem(DEMO_ROLE);
+    return DEMO_ROLES.includes(r) ? r : 'owner';
+  } catch (e) { return 'owner'; }
+}
 
 function readFlag() {
   try { return localStorage.getItem(DEMO_FLAG) === '1'; } catch (e) { return false; }
@@ -219,31 +228,53 @@ async function touchUser() {
   await dbSet(`users/${user.uid}`, { name: user.name, email: user.email, photo: user.photo || '', updatedAt: Date.now() });
 }
 
-// ── 관리자 ────────────────────────────────────────
+// ── 계정 단계 ─────────────────────────────────────
+// 담당자(owner) > 관리자(admin) > 상담사(member)
+//  담당자: config.js의 OWNER_EMAIL 계정 하나. 모든 기능 (관리자 지정, 다른 계정 결과 공유·지우기, 생년월일 넣기, CSV, 문항 분석)
+//  관리자: 담당자가 지정(admins). 상담사 승인·거절·승인 취소, 모든 결과 보기
+//  상담사: 담당자나 관리자가 승인(members). 검사 진행, 내 계정의 결과 보기·공유·지우기
+// 화면에서 나누고, 데이터베이스 보안 규칙(firebase/database.rules.json)도 같은 선을 지킨다(콘솔에 게시해야 적용).
+// 규칙은 담당자를 구글 계정 주소(auth.token.email, 확인된 이메일)로 알아본다. 규칙을 고치면 node tools/rules-check.mjs로 확인.
+export const ROLE_NAME = { owner: '담당자', admin: '관리자', member: '상담사' };
+
+export async function isOwner() {
+  await ready();
+  if (!user) return false;
+  if (MODE === 'demo') return demoRole() === 'owner';
+  return !!OWNER_EMAIL && String(user.email || '').toLowerCase() === OWNER_EMAIL.toLowerCase();
+}
+
+// 관리 화면을 쓸 수 있는지 (관리자이거나 담당자)
 export async function isAdmin() {
   await ready();
   if (!user) return false;
-  if (MODE === 'demo') {
-    try { return localStorage.getItem(DEMO_ROLE) !== 'user'; } catch (e) { return true; }
-  }
+  if (MODE === 'demo') return demoRole() === 'owner' || demoRole() === 'admin';
+  if (await isOwner()) return true;
   try { return (await dbGet(`admins/${user.uid}`)) === true; } catch (e) { return false; }
 }
 
 export async function isUserAdmin(uid) {
-  if (MODE === 'demo') return uid === (user && user.uid) && (await isAdmin());
+  if (MODE === 'demo') return uid === (user && user.uid) && demoRole() === 'admin';
   try { return (await dbGet(`admins/${uid}`)) === true; } catch (e) { return false; }
+}
+
+// 관리자로 지정된 계정들 { uid: true } (못 읽으면 빈 목록)
+export async function listAdmins() {
+  if (MODE === 'demo') return user && demoRole() === 'admin' ? { [user.uid]: true } : {};
+  try { return (await dbGet('admins')) || {}; } catch (e) { return {}; }
 }
 
 export async function setUserAdmin(uid, on) {
   requireUser();
+  if (!(await isOwner())) throw new Error('관리자 지정은 담당자만 할 수 있어요.');
   if (on) await dbSet(`admins/${uid}`, true);
   else await dbRemove(`admins/${uid}`);
 }
 
-export async function claimAdmin() {
+// 다른 계정의 결과를 바꾸는 일(공유, 지우기, 생년월일 넣기)은 담당자만
+async function requireOwnOrOwner(uid) {
   const u = requireUser();
-  await dbSet(`admins/${u.uid}`, true);
-  return true;
+  if (uid !== u.uid && !(await isOwner())) throw new Error('다른 계정의 결과는 담당자만 바꿀 수 있어요.');
 }
 
 // ── 승인된 상담사 ─────────────────────────────────
@@ -251,12 +282,29 @@ async function safeGet(path) {
   try { return await dbGet(path); } catch (e) { return null; }
 }
 
-// 지금 로그인한 계정이 사이트를 쓸 수 있는지
+async function myMember() {
+  const m = await safeGet(`members/${user.uid}`);
+  if (m || MODE !== 'demo' || demoRole() !== 'member') return m;
+  return { name: user.name, email: user.email, approvedAt: 0 }; // 체험 모드의 승인된 상담사
+}
+
+// 화면 머리의 계정 메뉴에 보여 줄 단계
+export async function myRole() {
+  await ready();
+  if (!user) return null;
+  if (await isOwner()) return 'owner';
+  if (await isAdmin()) return 'admin';
+  return (await myMember()) ? 'member' : null;
+}
+
+// 지금 로그인한 계정이 사이트를 쓸 수 있는지. role: owner | admin | member | null(승인 전)
+// admin은 관리 화면을 쓸 수 있는지(관리자 또는 담당자), owner는 담당자인지
 export async function accessStatus() {
   await ready();
-  if (!user) return { user: null, admin: false, member: null, request: null, approved: false };
-  const [admin, member, request] = await Promise.all([isAdmin(), safeGet(`members/${user.uid}`), safeGet(`requests/${user.uid}`)]);
-  return { user, admin, member, request, approved: !!(admin || member) };
+  if (!user) return { user: null, role: null, owner: false, admin: false, member: null, request: null, approved: false };
+  const [owner, admin, member, request] = await Promise.all([isOwner(), isAdmin(), myMember(), safeGet(`requests/${user.uid}`)]);
+  const role = owner ? 'owner' : admin ? 'admin' : member ? 'member' : null;
+  return { user, role, owner, admin, member, request, approved: !!role };
 }
 
 export function greetingName(status) {
@@ -283,8 +331,14 @@ export async function listMembers() {
   return (await dbGet('members')) || {};
 }
 
+async function requireStaff() {
+  requireUser();
+  if (!(await isAdmin())) throw new Error('관리자나 담당자만 할 수 있어요.');
+}
+
 export async function approveMember(uid, info = {}) {
   const u = requireUser();
+  await requireStaff();
   await dbSet(`members/${uid}`, {
     name: String(info.name || '').slice(0, 30) || '상담사',
     email: info.email || '',
@@ -296,10 +350,14 @@ export async function approveMember(uid, info = {}) {
 }
 
 export async function rejectRequest(uid) {
+  await requireStaff();
   await dbRemove(`requests/${uid}`);
 }
 
+// 관리자는 상담사의 승인만 취소할 수 있고, 관리자 계정의 승인은 담당자만 취소한다
 export async function revokeMember(uid) {
+  await requireStaff();
+  if (!(await isOwner()) && (await isUserAdmin(uid))) throw new Error('관리자 계정의 승인은 담당자만 취소할 수 있어요.');
   await dbRemove(`members/${uid}`);
 }
 
@@ -341,11 +399,11 @@ export async function getResult(uid, rid) {
   return dbGet(`results/${uid}/${rid}`);
 }
 
-// 관리자: 생년월일 없이 저장된 예전 결과에 생년월일을 넣는다 (상담사는 저장된 결과를 고칠 수 없다)
+// 담당자: 생년월일 없이 저장된 예전 결과에 생년월일을 넣는다 (저장된 결과를 고치는 건 담당자만)
 export async function setResultBirth(uid, rid, birth) {
   requireUser();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birth || ''))) throw new Error('생년월일 형식이 아니에요.');
-  if (!(await isAdmin())) throw new Error('관리자만 할 수 있어요.');
+  if (!(await isOwner())) throw new Error('담당자만 할 수 있어요.');
   await dbSet(`results/${uid}/${rid}/birth`, birth);
 }
 
@@ -381,6 +439,7 @@ export async function listUsers() {
 }
 
 export async function deleteResult(uid, rid) {
+  await requireOwnOrOwner(uid);
   const rec = await dbGet(`results/${uid}/${rid}`);
   if (rec && rec.shareToken) {
     try { await dbRemove(`shares/${rec.shareToken}`); } catch (e) { /* 이미 지워짐 */ }
@@ -399,6 +458,7 @@ function newToken() {
 
 export async function createShare(uid, rid) {
   const u = requireUser();
+  await requireOwnOrOwner(uid);
   const rec = await getResult(uid, rid);
   if (!rec) throw new Error('결과를 찾을 수 없어요.');
   if (rec.shareToken) {
@@ -419,6 +479,7 @@ export async function createShare(uid, rid) {
 }
 
 export async function revokeShare(uid, rid) {
+  await requireOwnOrOwner(uid);
   const rec = await getResult(uid, rid);
   if (rec && rec.shareToken) {
     await dbRemove(`shares/${rec.shareToken}`);
