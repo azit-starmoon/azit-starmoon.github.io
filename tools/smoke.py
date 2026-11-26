@@ -4,6 +4,7 @@
     python3 tools/smoke.py            # 결과를 출력하고, 문제가 있으면 종료 코드 1
     python3 tools/smoke.py --only schema,attachment
     python3 tools/smoke.py --shots /tmp/azit-shots   # 화면 캡처도 남긴다
+    python3 tools/smoke.py --fuzz 600                # 결과지 그리기 점검을 더 촘촘히 (기본 160, 0이면 건너뜀)
 
 하는 일
  1. 모든 .js 파일 문법 검사 (node --check)
@@ -14,7 +15,10 @@
  4. 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
  5. 관리 화면이 오류 없이 열리는지, 생년월일 없는 예전 결과(흉내 낸 1건)에 '생년월일 넣기'가 되는지,
     CSV 열이 머리줄과 맞고 '생년월일' 열이 빈칸 없이 채워지는지
- 6. 모든 화면의 자바스크립트 오류 수집
+ 6. 결과지 그리기: 검사마다 여러 모양의 모의 응답(고루, 극단, 무작위, 한쪽 끝, 같은 답)을 채점해서,
+    실제 데이터베이스에서 읽어 온 모양(빈 배열·빈 객체가 빠진 상태, backend.js rtdbShape)으로
+    결과지(상담사용·공유용), 요약, 짝 읽기를 그려 본다. 무작위 응답만으로는 잘 안 나오는 끝자락 점수도 본다
+ 7. 모든 화면의 자바스크립트 오류 수집
 
 필요한 것: python3, playwright (pip install playwright --break-system-packages; python3 -m playwright install chromium)
 """
@@ -34,6 +38,78 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 PAIR_IDS = ('attachment', 'godattach')  # 같은 이름으로 해서 종합 결과지의 짝 읽기를 확인한다
+
+# 결과지 그리기 점검 (브라우저 안에서 돈다). 모의 응답 만드는 법은 tools/validate.mjs의 answersFor와 같은 갈래
+RENDER_FUZZ_JS = r"""async ({ ids, n }) => {
+  const { rtdbShape } = await import('./assets/js/backend.js');
+  const { PAIRS } = await import('./assets/js/pairs.js');
+  const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const gaussOf = (rnd) => () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const isRev = (it) => it.r === true || it.key === -1;
+  const modes = ['latent', 'wide', 'wide', 'random', 'yes', 'no', 'flat', 'neutral'];
+  const el = document.createElement('div');
+  const out = {}; const samples = {};
+  for (const id of ids) {
+    const def = (await import(`./tests/${id}/index.js`)).default;
+    const fails = {}; const emptied = new Set(); let renders = 0;
+    samples[id] = [];
+    for (let i = 0; i < n; i++) {
+      const mode = modes[i % modes.length];
+      const rnd = mulberry32(i * 7919 + 17); const g = gaussOf(rnd);
+      const th = new Map(); const thOf = (k) => { if (!th.has(k)) th.set(k, g() * (mode === 'wide' ? 2.5 : 1)); return th.get(k); };
+      const ans = {};
+      for (const p of def.parts) {
+        for (const it of p.items || p.build(ans)) {
+          const key = String(it.d ?? it.facet ?? it.scale ?? it.dim ?? it.type ?? it.s ?? '_');
+          if (p.kind === 'likert') {
+            const vals = p.scale.map((x) => Number(x.value)); const min = Math.min(...vals), max = Math.max(...vals);
+            let v;
+            if (mode === 'random') v = min + Math.floor(rnd() * (max - min + 1));
+            else if (mode === 'neutral' || mode === 'flat') v = Math.floor((min + max) / 2);
+            else if (mode === 'yes') v = max; else if (mode === 'no') v = min;
+            else { const z = 0.8 * thOf(`${p.id}:${key}`) + 0.6 * g(); const k = max - min + 1; v = min; for (let c = 0; c < k - 1; c++) if (z > -1.6 + (3.2 * c) / (k - 2)) v++; if (isRev(it)) v = min + max - v; }
+            ans[it.id] = Math.max(min, Math.min(max, v));
+          } else if (p.kind === 'pair') {
+            if (mode === 'random') ans[it.id] = [2, 1, -1, -2][Math.floor(rnd() * 4)];
+            else if (mode === 'neutral' || mode === 'flat') ans[it.id] = 1; else if (mode === 'yes') ans[it.id] = 2; else if (mode === 'no') ans[it.id] = -2;
+            else { const d = thOf(String(it.lo)) - thOf(String(it.hi)) + 0.7 * g(); const s = Math.abs(d) > 0.8 ? 2 : 1; ans[it.id] = d > 0 ? s : -s; }
+          } else if (p.kind === 'rank') {
+            const keys = it.options.map((o) => o.key);
+            ans[it.id] = (mode === 'neutral' || mode === 'flat') ? keys : keys.map((k) => [k, rnd()]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+          } else if (p.kind === 'text') {
+            ans[it.id] = (mode === 'latent' || mode === 'wide') && rnd() < 0.7 ? '모의 응답으로 적은 글이에요.\n둘째 줄이에요.' : '';
+          }
+        }
+      }
+      const fail = (what, e) => {
+        const k = `${what}: ${e && e.message}`;
+        if (!fails[k]) fails[k] = { count: 0, mode, at: String(e && e.stack).split('\n').slice(1, 2).map((x) => x.trim().replace(location.origin, '')).join('') };
+        fails[k].count++;
+      };
+      let s;
+      try { s = def.score(ans, { durationSec: mode === 'flat' ? 60 : 900 }); } catch (e) { fail('채점', e); continue; }
+      const raw = JSON.parse(JSON.stringify({ testId: id, version: def.version, name: '점검', birth: '1990-01-01', createdAt: Date.now(), answers: ans, scores: s, summary: def.summary(s), durationSec: mode === 'flat' ? 60 : 900 }));
+      const rec = rtdbShape(raw);
+      (function walk(a, b, p) { if (a && typeof a === 'object') Object.keys(a).forEach((k) => { if (b == null || b[k] === undefined) emptied.add(p + k); else walk(a[k], b[k], `${p}${k}.`); }); })(raw.scores, rec.scores, '');
+      samples[id].push(rec.scores || {});
+      const tries = [
+        ['결과지', () => def.render(el, rec, { shared: false, rid: 'x' })],
+        ['공유 결과지', () => def.render(el, { name: rec.name, createdAt: rec.createdAt, scores: rec.scores }, { shared: true, rid: 'x' })],
+        ['요약', () => def.summary(rec.scores)],
+        ...(def.glyph ? [['기호', () => def.glyph(rec.scores)]] : []),
+      ];
+      for (const [what, fn] of tries) { try { fn(); renders++; } catch (e) { fail(what, e); } }
+    }
+    out[id] = { renders, emptied: [...emptied], fails };
+  }
+  const pairFails = {};
+  for (const p of PAIRS) {
+    const A = samples[p.a]; const B = samples[p.b];
+    if (!A || !B || !A.length || !B.length) continue;
+    A.forEach((a, i) => { try { p.render(a, B[(i * 7) % B.length]); } catch (e) { const k = `${p.a}+${p.b}: ${e.message}`; pairFails[k] = (pairFails[k] || 0) + 1; } });
+  }
+  return { out, pairFails };
+}"""
 
 
 def free_port():
@@ -342,6 +418,19 @@ async def run(args):
                     ok('문항 분석', not missing, f'척도 정의가 없는 검사 {missing}' if missing else (await pg.inner_text('[data-ia-out]'))[:60])
                 except Exception:
                     ok('문항 분석', False, '결과가 그려지지 않음')
+
+            # 결과지 그리기: 여러 모양의 모의 응답을 데이터베이스에서 읽어 온 모양으로 그려 본다
+            if args.fuzz > 0:
+                fz = await pg.evaluate(RENDER_FUZZ_JS, {'ids': [t['id'] for t in tests], 'n': args.fuzz})
+                for t in tests:
+                    r = fz['out'].get(t['id'], {})
+                    fails = r.get('fails') or {}
+                    if fails:
+                        detail = '; '.join(f"{v['count']}번 {k} [{v['mode']}] {v['at']}" for k, v in list(fails.items())[:3])
+                    else:
+                        detail = f"{r.get('renders', 0)}번 그림" + (f", 저장소에서 빠지는 칸 {', '.join(r['emptied'][:6])}" if r.get('emptied') else '')
+                    ok(f"결과지 그리기 ({t['title']})", not fails, detail)
+                ok('짝 읽기 그리기', not fz['pairFails'], '; '.join(f'{k} {v}번' for k, v in fz['pairFails'].items()) or '함께 고른 검사의 짝 모두')
             await browser.close()
     finally:
         srv.terminate()
@@ -357,6 +446,7 @@ def main():
     ap.add_argument('--only', help='쉼표로 구분한 검사 id만')
     ap.add_argument('--shots', help='화면 캡처를 남길 폴더')
     ap.add_argument('--seed', type=int, default=7)
+    ap.add_argument('--fuzz', type=int, default=160, help='결과지 그리기 점검에서 검사마다 만들 모의 응답 수 (0이면 건너뜀)')
     args = ap.parse_args()
 
     bad = syntax_check() + css_check()

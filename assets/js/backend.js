@@ -44,6 +44,29 @@ function normalize(u) {
   };
 }
 
+// ── Realtime Database가 돌려주는 모양 ────────────────
+// null·빈 배열·빈 객체는 저장되지 않는다(안이 비면 그 칸이 통째로 사라진다).
+// 배열은 번호 키로 저장되었다가, 키가 모두 번호이고 절반 넘게 차 있으면 배열로 돌아온다(빈 자리는 비어 있음).
+// Firebase SDK의 val()과 같은 규칙이다. 체험 모드 저장소도 이 모양을 따라서, 실제에서만 생기던 문제가
+// 체험 모드와 점검(tools/smoke.py)에서 먼저 드러나게 한다.
+export function rtdbShape(v) {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v !== 'object') return v;
+  const entries = (Array.isArray(v) ? v.map((x, i) => [String(i), x]) : Object.entries(v))
+    .map(([k, x]) => [k, rtdbShape(x)])
+    .filter(([, x]) => x !== undefined);
+  if (!entries.length) return undefined;
+  if (entries.every(([k]) => /^(0|[1-9]\d*)$/.test(k))) {
+    const max = Math.max(...entries.map(([k]) => Number(k)));
+    if (max < 2 * entries.length) {
+      const arr = [];
+      entries.forEach(([k, x]) => { arr[Number(k)] = x; });
+      return arr;
+    }
+  }
+  return Object.fromEntries(entries);
+}
+
 // ── 체험 모드 저장소 ───────────────────────────────
 function demoRead() {
   try { return JSON.parse(localStorage.getItem(DEMO_DB) || '{}'); } catch (e) { return {}; }
@@ -56,7 +79,8 @@ function demoGet(path) {
     if (node == null || typeof node !== 'object') return null;
     node = node[k];
   }
-  return node === undefined ? null : node;
+  const v = rtdbShape(node);
+  return v === undefined ? null : v;
 }
 function demoSet(path, value) {
   const tree = demoRead();
@@ -67,8 +91,9 @@ function demoSet(path, value) {
     node = node[ks[i]];
   }
   const last = ks[ks.length - 1];
-  if (value === null || value === undefined) delete node[last];
-  else node[last] = JSON.parse(JSON.stringify(value));
+  const v = value === null || value === undefined ? undefined : rtdbShape(JSON.parse(JSON.stringify(value)));
+  if (v === undefined) delete node[last];
+  else node[last] = v;
   demoWrite(tree);
 }
 function pushKey() {
