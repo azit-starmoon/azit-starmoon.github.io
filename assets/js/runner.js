@@ -4,6 +4,7 @@
 import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDraft } from './backend.js';
 import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
+import { codeOf } from './registry.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -234,7 +235,7 @@ export async function runTest(def, mount, opts = {}) {
       ? `<a class="btn btn--block" href="login.html">로그인하러 가기</a>`
       : `<button type="button" class="btn btn--block" data-act="start">${sessions.length ? '새 검사자로 시작하기' : '검사 시작하기'}</button>`;
     stage.innerHTML = `<section class="intro-card" aria-labelledby="intro-title">
-      <p class="intro-kicker">${esc(intro.kicker)}</p>
+      <p class="intro-kicker">${codeOf(def.id) ? `<span class="intro-code">${esc(codeOf(def.id))}</span>` : ''}${esc(intro.kicker)}</p>
       <h1 class="intro-title" id="intro-title" tabindex="-1" data-focus>${esc(def.title)}</h1>
       ${sessions.length ? resumeBox(sessions) : ''}
       <p class="intro-lead">${esc(intro.lead)}</p>

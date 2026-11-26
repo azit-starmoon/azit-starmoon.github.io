@@ -62,8 +62,9 @@
 기존 검사에서 검증된 색: `#2a78d6`, `#eb6834`, `#1baf7a`, `#eda100`, `#e87ba4`(이 순서로 인접 대비 통과).
 
 ## 3. 연결할 곳
-1. `assets/js/registry.js`: 해당 항목을 `status: 'open'`으로 바꾸고 `items`, `minutes`, `parts`, `gets`를 채운다.
-   같은 파일의 `GROUPS`(첫 화면 분류: 성격과 기질, 마음 건강, 관계와 내면, 강점과 진로)에서 알맞은 묶음의 `tests`에 id가 있는지 확인하고, 없으면 넣는다.
+1. `assets/js/registry.js`: 해당 항목을 `status: 'open'`으로 바꾸고 `code`, `items`, `minutes`, `parts`, `gets`를 채운다.
+   `code`는 검사 약칭으로 `AZ-` 뒤에 영문 두 글자나 글자와 숫자(예: `AZ-B5`)를 쓰고, 다른 검사와 겹치지 않게 한다. 첫 화면 카드, 검사 소개, 결과지 표지에 함께 보인다.
+   같은 파일의 `GROUPS`(첫 화면 분류: 성격과 기질, 마음 건강, 관계와 내면, 강점과 삶의 방향)에서 알맞은 묶음의 `tests`에 id가 있는지 확인하고, 없으면 넣는다.
 2. `assets/js/pages/home.js`: `GLYPH[<id>]`에 첫 화면 카드 그림(차트 함수에 예시 값) 추가.
 3. `assets/js/pages/admin.js`: CSV 내보내기에 이 검사의 핵심 열 추가(`head`와 각 행 모두).
 4. `README.md`: 검사 목록과 폴더 구조에 한 줄씩.

@@ -81,7 +81,7 @@ const GLYPH = {
         return `<article class="tcard" aria-labelledby="ft-${t.id}">
           <div class="tcard-glyph" aria-hidden="true">${GLYPH[t.id] ? GLYPH[t.id]() : ''}</div>
           <div class="tcard-body">
-            <h4 id="ft-${t.id}">${esc(t.title)}</h4>
+            <h4 id="ft-${t.id}">${esc(t.title)}${t.code ? ` <span class="tcard-code">${esc(t.code)}</span>` : ''}</h4>
             <p class="tcard-desc">${esc(t.desc)}</p>
             <div class="tcard-foot">
               <div class="tcard-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>

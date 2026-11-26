@@ -2,7 +2,7 @@ import { mountHeader, mountFooter, esc, toast, modal, copyText } from '../ui.js'
 import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
-import { loadTest } from '../registry.js';
+import { loadTest, codeOf } from '../registry.js';
 
 const box = document.querySelector('[data-report]');
 const q = new URLSearchParams(location.search);
@@ -29,7 +29,15 @@ async function renderShared() {
   document.title = `${p.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
   box.innerHTML = `<div class="shared-note">AZIT : Star&amp;Moon에서 공유한 ${esc(p.name || '')} 님의 결과지예요.</div><div data-body></div>`;
   def.render(box.querySelector('[data-body]'), { name: p.name, createdAt: p.createdAt, scores: p.scores }, { shared: true, rid: share.resultId });
+  markCode(box, p.testId);
   mountFooter();
+}
+
+// 결과지 표지의 '○○ 검사 결과지' 앞에 검사 약칭을 붙인다 (모든 결과지가 같은 표지 틀을 쓴다)
+function markCode(el, id) {
+  const code = codeOf(id);
+  const doc = el && el.querySelector('.cover-top .doc');
+  if (code && doc && !doc.querySelector('.doc-code')) doc.insertAdjacentHTML('afterbegin', `<span class="doc-code">${esc(code)}</span>`);
 }
 
 async function renderOwned() {
@@ -58,6 +66,7 @@ async function renderOwned() {
     ${admin && !mine ? `<div class="shared-note">${esc(rec.ownerName || rec.email || '')} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</div>` : ''}
     <div data-body></div>`;
   def.render(box.querySelector('[data-body]'), rec, { shared: false, rid });
+  markCode(box, rec.testId);
   mountFooter();
 
   box.querySelector('.report-actions').addEventListener('click', async (e) => {
