@@ -1,10 +1,10 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, shortDate, copyText, resultCode, setRequestBadge } from '../ui.js';
 import {
-  claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser,
+  claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser, setResultBirth,
   isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
 import { TESTS, groupIds, loadTest } from '../registry.js';
-import { fmtBirth } from '../examinee.js';
+import { fmtBirth, parseBirth, longBirth } from '../examinee.js';
 import { requireLogin } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { TEMP_TYPES as TC_TYPES, CHAR_SHAPES as TC_SHAPES } from '../../../tests/temperament/content.js';
@@ -122,6 +122,7 @@ function draw() {
           .map((t) => `<div class="dist-col" title="${t}번 ${dist[t]}건"><span class="v">${dist[t]}</span><span class="b" style="height:${((dist[t] / maxD) * 80).toFixed(0)}px"></span><span class="t">${t}</span></div>`)
           .join('')}</div>
       </section>
+      ${all.some((r) => !r.birth) ? `<p class="birth-missing">생년월일 없이 저장된 결과가 ${all.filter((r) => !r.birth).length}건 있어요. 같은 분의 결과로 묶이도록 생년월일을 넣을 수 있어요. <button type="button" class="btn btn--ghost btn--small" data-fill-birth>생년월일 넣기</button></p>` : ''}
       <div class="toolbar">
         <input class="input" type="search" placeholder="이름이나 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자·상담사 이름이나 검사자 생년월일로 찾기">
         <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
@@ -155,6 +156,8 @@ function draw() {
   box.querySelector('[data-test]').addEventListener('change', (e) => { view.test = e.target.value; drawRows(); });
   box.querySelector('[data-csv]').addEventListener('click', exportCsv);
   box.querySelector('[data-admins]').addEventListener('click', manageAdmins);
+  const fb = box.querySelector('[data-fill-birth]');
+  if (fb) fb.addEventListener('click', fillBirth);
   wireItemStats();
   box.querySelectorAll('[data-req]').forEach((b) => b.addEventListener('click', onRequest));
   box.querySelectorAll('[data-mem]').forEach((b) => b.addEventListener('click', onMember));
@@ -253,6 +256,55 @@ function drawRows() {
   };
 }
 
+// ── 생년월일 넣기 (관리자) ─────────────────────
+// 생년월일을 받기 전에 저장된 결과에 생년월일을 넣어, 종합 결과지에서 이름 + 생년월일로 함께 묶이게 한다
+async function fillBirth() {
+  const missing = all.filter((r) => !r.birth);
+  if (!missing.length) return;
+  let birth = '';
+  let picked = [];
+  const res = await modal({
+    title: '생년월일 넣기',
+    body: `<p>생년월일 없이 저장된 결과예요. 같은 분의 결과를 고르고 생년월일을 적어 주세요.</p>
+      <ul class="birth-pick">${missing.map((r) => `<li><label><input type="checkbox" data-pick="${esc(r.uid)}/${esc(r.rid)}" checked><span><strong>${esc(r.name || '이름 없음')}</strong> ${esc(title(r.testId))}, ${esc(shortDate(r.createdAt))}, ${esc(ownerLabel(r))}</span></label></li>`).join('')}</ul>
+      <div class="field"><label for="fb-birth">생년월일</label><input class="input" id="fb-birth" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="예: 19950312"><p class="field-hint field-hint--quiet" data-fb-hint aria-live="polite"></p></div>`,
+    actions: [{ label: '취소', value: false }, { label: '넣기', value: true, primary: true }],
+    onOpen: (root) => {
+      const input = root.querySelector('#fb-birth');
+      const hint = root.querySelector('[data-fb-hint]');
+      const go = root.querySelector('.modal-actions [data-i="1"]');
+      const sync = () => {
+        birth = parseBirth(input.value);
+        picked = [...root.querySelectorAll('[data-pick]:checked')].map((x) => x.dataset.pick);
+        const typed = input.value.replace(/\D/g, '');
+        hint.textContent = birth ? longBirth(birth) : typed.length >= 6 ? '날짜를 다시 확인해 주세요. 8자리(19950312)나 6자리(950312)로 적어요.' : '';
+        hint.classList.toggle('is-error', !birth && typed.length >= 6);
+        go.disabled = !(birth && picked.length);
+      };
+      input.addEventListener('input', sync);
+      root.querySelectorAll('[data-pick]').forEach((x) => x.addEventListener('change', sync));
+      sync();
+      input.focus();
+    },
+  });
+  if (!res || !birth || !picked.length) return;
+  let done = 0;
+  try {
+    for (const key of picked) {
+      const [uid, rid] = key.split('/');
+      await setResultBirth(uid, rid, birth);
+      const rec = all.find((x) => x.uid === uid && x.rid === rid);
+      if (rec) rec.birth = birth;
+      done++;
+    }
+    toast(`${done}건에 생년월일을 넣었어요.`);
+  } catch (err) {
+    console.error(err);
+    toast(done ? `${done}건까지 넣고 멈췄어요. 다시 시도해 주세요.` : '생년월일을 넣지 못했어요.');
+  }
+  draw();
+}
+
 // ── 문항 분석 ─────────────────────────────────
 // 분석 모듈(검사 16개의 문항 정의)은 처음 '분석하기'를 누를 때 불러온다
 function wireItemStats() {
@@ -346,7 +398,7 @@ function csvCell(v) {
 
 function exportCsv() {
   const rows = filtered();
-  const head = ['검사자', '상담사', '상담사 이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
+  const head = ['검사자', '생년월일', '상담사', '상담사 이메일', '검사', '결과 요약', '핵심 유형', '날개', '트라이타입', '본능 순서', '유형 확신도',
     '1번', '2번', '3번', '4번', '5번', '6번', '7번', '8번', '9번', '장 중심', '가슴 중심', '머리 중심',
     '개방성', '성실성', '외향성', '친화성', '신경성', '애착 유형', '애착 불안', '애착 회피', '작동하는 도식', '주된 대처', '도식 점수(18)', '민감성', '민감성 수준', '깊이 생각하기', '쉽게 벅참', '감정의 울림', '미세한 감지', '요즘 부담', '요즘 회복', '요즘 상태', '대표 강점', '중심 덕목', '강점 순위(24)', '핵심 가치', '앞선 방향', '변화-보존 축', '초월-향상 축', '가치 순위(10)', '흥미 코드', '일관도', '변별도', '흥미 수준', '흥미 점수(6)', '감정 다루는 힘', '알아차림', '감정 이해', '받아들임', '충동 다스리기', '목표 지키기', '조절 방법', '도움 전략', '지치는 전략', '조절 전략(6)', '대처 스타일', '문제 다루기', '마음 다루기', '물러서기', '상황 맞춤', '대처 점수(8)', '자존감 모양', '자기 가치감', '나를 대하는 방식', '나에게 친절하기', '누구나 그렇다고 알기', '균형 있게 바라보기', '조건 기댐', '기대는 곳(4)', '회복탄력성', '자기 조절력', '대인 관계력', '긍정성', '회복이 기대는 곳', '회복 요인(9)', '기질 유형', '자극 추구', '위험 회피', '사회적 민감성', '인내력', '성품 모양', '자율성', '연대감', '자기 초월', '의미 상태', '의미를 느끼는 정도', '의미를 찾는 정도', '이야기의 결(4)', '적어 낸 장면', '분화 지수', '내 입장 지키기', '감정 반응성', '감정적 단절', '타인과의 융합', '분화 관계 방식', '신앙 애착 유형', '신앙 애착 불안', '신앙 애착 회피', '신앙 애착 갈래(8)', '검사일시', '소요 시간(분)', '결과 코드', '공유 링크'];
   const COPE = { surrender: '굴복', avoid: '회피', over: '과잉보상' };
@@ -373,7 +425,7 @@ function exportCsv() {
     const ts = (s.likert && s.likert.typeScore) || {};
     const isE = r.testId === 'enneagram';
     lines.push([
-      r.name, ownerLabel(r), r.email, title(r.testId), r.summary,
+      r.name, r.birth || '', ownerLabel(r), r.email, title(r.testId), r.summary,
       isE ? s.core : '', isE ? `${s.core}w${s.wing}` : '', isE && s.tritype ? s.tritype.join('-') : '',
       isE && s.instinct ? s.instinct.stack.map((k) => k.toUpperCase()).join('/') : '', isE ? conf[s.confidence] || '' : '',
       ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => (isE ? ts[t] : '')),

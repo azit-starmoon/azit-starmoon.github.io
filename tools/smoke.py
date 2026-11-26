@@ -12,7 +12,8 @@
  3. 열린 검사를 하나씩 끝까지 무작위로 답해서 '검사 결과가 전송되었습니다'까지 확인
     - 첫 검사는 중간에 '저장하고 나가기' → 첫 화면 '이어서 할 검사' → 이어서 하기까지 확인
  4. 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
- 5. 관리 화면이 오류 없이 열리는지
+ 5. 관리 화면이 오류 없이 열리는지, 생년월일 없는 예전 결과(흉내 낸 1건)에 '생년월일 넣기'가 되는지,
+    CSV 열이 머리줄과 맞고 '생년월일' 열이 빈칸 없이 채워지는지
  6. 모든 화면의 자바스크립트 오류 수집
 
 필요한 것: python3, playwright (pip install playwright --break-system-packages; python3 -m playwright install chromium)
@@ -277,14 +278,45 @@ async def run(args):
                 ok(f'결과지 목차 표시 ({title})', len(actives) >= min(3, toc), f'{len(actives)}개 항목이 차례로 표시됨')
                 await shot(f'result-{title}')
 
-            # 관리 화면 + CSV 내려받기(열 수가 머리줄과 모두 같은지)
+            # 생년월일을 받기 전에 저장된 예전 결과 1건을 흉내 낸다(체험 저장소의 결과 하나를 복사하고 birth를 뺀다)
+            legacy = await pg.evaluate("""() => {
+              const u = JSON.parse(localStorage.getItem('azit:demo:user') || 'null');
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const rs = u && db.results && db.results[u.uid];
+              const src = rs && Object.values(rs)[0];
+              if (!src) return false;
+              const old = { ...src, createdAt: src.createdAt - 864e5 * 3 };
+              delete old.birth; delete old.shareToken;
+              rs['smoke-legacy'] = old;
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+              return true;
+            }""")
+
+            # 관리 화면 + 생년월일 넣기 + CSV 내려받기(열 수가 머리줄과 모두 같은지, 생년월일 열이 채워졌는지)
             await unlock('result')
             await pg.goto(base + 'admin.html')
             await pg.wait_for_timeout(1500)
             ok('관리 화면', await pg.locator('main').count() > 0)
             await shot('admin')
+            if legacy:
+                has_bar = await pg.locator('.birth-missing').count() > 0
+                saved = None
+                if has_bar:
+                    await pg.click('[data-fill-birth]')
+                    await pg.wait_for_selector('#fb-birth', timeout=5000)
+                    await pg.fill('#fb-birth', '19900101')
+                    await pg.click('.modal-actions [data-i="1"]')
+                    await pg.wait_for_timeout(800)
+                    saved = await pg.evaluate("""() => {
+                      const u = JSON.parse(localStorage.getItem('azit:demo:user'));
+                      const db = JSON.parse(localStorage.getItem('azit:demo:db'));
+                      return (db.results[u.uid]['smoke-legacy'] || {}).birth || null;
+                    }""")
+                bar_left = await pg.locator('.birth-missing').count()
+                ok('생년월일 넣기', has_bar and saved == '1990-01-01' and not bar_left,
+                   f'알림 {"있음" if has_bar else "없음"}, 저장된 값 {saved}, 넣은 뒤 알림 {"남음" if bar_left else "사라짐"}')
             if await pg.locator('[data-csv]').count():
-                import csv, io
+                import csv, io, re
                 async with pg.expect_download(timeout=10000) as dl:
                     await pg.click('[data-csv]')
                 path = await (await dl.value).path()
@@ -293,6 +325,10 @@ async def run(args):
                 head = rows[0] if rows else []
                 bad = [i for i, r in enumerate(rows[1:], 1) if len(r) != len(head)]
                 ok('관리 CSV 열 맞춤', rows and not bad, f'머리줄 {len(head)}열, 결과 {len(rows) - 1}줄' + (f', 어긋난 줄 {bad[:5]}' if bad else ''))
+                bcol = head.index('생년월일') if '생년월일' in head else -1
+                blank = [i for i, r in enumerate(rows[1:], 1) if bcol < 0 or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', r[bcol] if bcol < len(r) else '')]
+                ok('관리 CSV 생년월일 열', bcol == 1 and not blank,
+                   ('생년월일 열 없음' if bcol < 0 else f'{bcol + 1}번째 열') + (f', 비거나 형식이 다른 줄 {blank[:5]}' if blank else ', 모두 채워짐'))
             # 문항 분석: 모든 검사의 척도 정의가 불러와지고, 계산 결과가 그려지는지
             if await pg.locator('[data-ia-run]').count():
                 missing = await pg.evaluate("""async () => {

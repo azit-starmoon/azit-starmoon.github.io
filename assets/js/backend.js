@@ -316,6 +316,14 @@ export async function getResult(uid, rid) {
   return dbGet(`results/${uid}/${rid}`);
 }
 
+// 관리자: 생년월일 없이 저장된 예전 결과에 생년월일을 넣는다 (상담사는 저장된 결과를 고칠 수 없다)
+export async function setResultBirth(uid, rid, birth) {
+  requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birth || ''))) throw new Error('생년월일 형식이 아니에요.');
+  if (!(await isAdmin())) throw new Error('관리자만 할 수 있어요.');
+  await dbSet(`results/${uid}/${rid}/birth`, birth);
+}
+
 export async function listMyResults() {
   const u = requireUser();
   const tree = (await dbGet(`results/${u.uid}`)) || {};

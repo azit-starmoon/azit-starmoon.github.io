@@ -1941,3 +1941,8 @@ body.has-update .toast { bottom: 84px; }
 .pp-head .pp-others a { color: var(--brand-deep); }
 .field-hint--quiet { min-height: 1.2em; color: var(--ink-3); }
 .field-hint--quiet.is-error { color: var(--danger); }
+.birth-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 12px 16px; border-radius: var(--r-m); background: var(--star-soft); color: var(--star-ink); font-size: var(--fs-s); }
+.birth-pick { list-style: none; display: grid; gap: 6px; margin: 12px 0 14px; max-height: 240px; overflow: auto; }
+.birth-pick label { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-s); color: var(--ink-2); cursor: pointer; }
+.birth-pick input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand); flex-shrink: 0; }
+.birth-pick strong { color: var(--ink); }
