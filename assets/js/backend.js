@@ -324,6 +324,16 @@ export async function listMyResults() {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+// 한 상담사 계정의 결과 (내 계정이 아니면 관리자만 읽을 수 있다)
+export async function listResultsOf(uid) {
+  const u = requireUser();
+  if (!uid || uid === u.uid) return listMyResults();
+  const tree = (await dbGet(`results/${uid}`)) || {};
+  return Object.entries(tree)
+    .map(([rid, r]) => ({ uid, rid, ...r }))
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
 export async function listAllResults() {
   const tree = (await dbGet('results')) || {};
   const out = [];
@@ -394,4 +404,9 @@ export function shareUrl(token) {
 
 export function resultUrl(uid, rid) {
   return `result.html?u=${encodeURIComponent(uid)}&r=${encodeURIComponent(rid)}`;
+}
+
+// 종합 결과지: 그 검사자의 결과 한 건을 기준으로 연다 (주소에 이름을 넣지 않는다)
+export function personUrl(uid, rid) {
+  return `person.html?u=${encodeURIComponent(uid)}&r=${encodeURIComponent(rid)}`;
 }

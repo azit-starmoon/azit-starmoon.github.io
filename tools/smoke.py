@@ -32,6 +32,9 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
+PAIR_IDS = ('attachment', 'godattach')  # 같은 이름으로 해서 종합 결과지의 짝 읽기를 확인한다
+
+
 def free_port():
     with contextlib.closing(socket.socket()) as s:
         s.bind(('127.0.0.1', 0))
@@ -176,7 +179,8 @@ async def run(args):
                 await pg.goto(base + f'test.html?t={t["id"]}')
                 await pg.wait_for_selector('[data-act="start"]', timeout=10000)
                 await pg.click('[data-act="start"]')
-                await pg.fill('#pf-name', f'점검{i + 1}')
+                # 짝 검사(성인 애착, 하나님 애착)는 같은 이름으로 해서 종합 결과지의 '함께 읽기'까지 본다
+                await pg.fill('#pf-name', '점검짝' if i > 0 and t['id'] in PAIR_IDS else f'점검{i + 1}')
                 await pg.check('#pf-consent')
                 await pg.click('[data-act="begin"]')
                 await pg.wait_for_timeout(250)
@@ -214,6 +218,30 @@ async def run(args):
             links = await pg.eval_on_selector_all('a[href*="result.html"]', 'els => [...new Set(els.map(e => e.getAttribute("href")))]')
             ok('검사 결과 목록', len(links) >= len(tests), f'{len(links)}개')
             await shot('me')
+
+            # 검사자별 보기와 종합 결과지
+            paired = [t for i, t in enumerate(tests) if i > 0 and t['id'] in PAIR_IDS]
+            await pg.click('[data-by="person"]')
+            await pg.wait_for_timeout(300)
+            people = await pg.locator('.record--person').count()
+            want = len(tests) - max(0, len(paired) - 1)
+            ok('검사자별 보기', people == want, f'{people}명 (기대 {want}명)')
+            await shot('me-person')
+            ph = await pg.evaluate("""() => { const li = [...document.querySelectorAll('.record--person')].find((x) => x.querySelector('strong').textContent === '점검짝') || document.querySelector('.record--person');
+              return li ? li.querySelector('a[href*="person.html"]').getAttribute('href') : ''; }""")
+            if ph:
+                await unlock('result')
+                await pg.goto(base + ph)
+                try:
+                    await pg.wait_for_selector('.pp-head', timeout=8000)
+                    cards = await pg.locator('.pp-card').count()
+                    pairs = await pg.locator('.pp-pair').count()
+                    ok('종합 결과지', cards >= 1 and (len(paired) < 2 or pairs >= 1), f'카드 {cards}개, 함께 읽기 {pairs}개')
+                    await shot('person')
+                except Exception:
+                    ok('종합 결과지', False, '열리지 않음')
+            else:
+                ok('종합 결과지', False, '검사자별 목록에 링크가 없음')
             for href in links[: len(tests)]:
                 await unlock('result')
                 await pg.goto(base + href)

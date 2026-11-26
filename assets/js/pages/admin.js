@@ -1,6 +1,6 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, shortDate, copyText, resultCode, setRequestBadge } from '../ui.js';
 import {
-  claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, shareUrl, isDemo, currentUser,
+  claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser,
   isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
 import { TESTS, groupIds } from '../registry.js';
@@ -182,7 +182,7 @@ function drawRows() {
   }
   tb.innerHTML = rows
     .map((r) => `<tr data-key="${esc(r.uid)}/${esc(r.rid)}">
-      <td><strong>${esc(r.name || '이름 없음')}</strong></td>
+      <td><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a></td>
       <td><div class="who"><strong>${esc(ownerLabel(r))}</strong><span>${esc(r.email || '')}</span></div></td>
       <td>${esc(title(r.testId))}</td>
       <td>${esc(r.summary || '')}</td>

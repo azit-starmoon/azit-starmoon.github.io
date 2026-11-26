@@ -1,5 +1,5 @@
 import { mountHeader, mountFooter, esc, toast, modal, copyText } from '../ui.js';
-import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl } from '../backend.js';
+import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl, personUrl } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { loadTest, codeOf } from '../registry.js';
@@ -60,6 +60,7 @@ async function renderOwned() {
   box.innerHTML = `<div class="report-actions no-print">
       <button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>
       <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
+      <a class="btn btn--ghost btn--small" href="${personUrl(uid, rid)}">종합 결과지</a>
       ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">검사 결과 목록</a>`}
       <button type="button" class="btn btn--ghost btn--small" data-act="delete">결과 지우기</button>
     </div>
