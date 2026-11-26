@@ -5,6 +5,7 @@ import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDr
 import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
 import { codeOf, bundleOf, getTestMeta } from './registry.js';
+import { parseBirth, fmtBirth, longBirth } from './examinee.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -28,6 +29,8 @@ export async function runTest(def, mount, opts = {}) {
     items: [],
     answers: {},
     name: '',
+    birth: '', // 'YYYY-MM-DD' (이름이 같은 검사자를 구분하는 데만 쓴다)
+    birthText: '',
     startedAt: 0,
     busy: false,
     sid: '',
@@ -128,7 +131,7 @@ export async function runTest(def, mount, opts = {}) {
   let pushTimer = 0;
   const snapshot = () => ({
     sid: S.sid, testId: def.id, version: def.version, title: def.title, total: totalCount,
-    answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, startedAt: S.startedAt, savedAt: Date.now(),
+    answers: S.answers, pi: S.pi, ii: S.ii, name: S.name, birth: S.birth || '', startedAt: S.startedAt, savedAt: Date.now(),
   });
   // 답하지 않은 세션(이름만 넣은 상태)은 저장하지 않는다
   const persist = () => {
@@ -229,9 +232,10 @@ export async function runTest(def, mount, opts = {}) {
         const total = v.total || totalCount;
         const pct = Math.min(100, Math.round((n / total) * 100));
         const who = esc(v.name || '이름 없음');
+        const born = v.birth ? `<span class="born">${esc(fmtBirth(v.birth))}</span>` : '';
         return `<li>
           <button type="button" class="resume-row" data-act="resume" data-sid="${esc(v.sid)}" aria-label="${who} 님, ${total}문항 중 ${n}문항까지 답함. 이어서 하기">
-            <span class="who"><strong>${who} 님</strong><span class="when">${esc(when(v.savedAt))}에 멈춤</span></span>
+            <span class="who"><strong>${who} 님${born}</strong><span class="when">${esc(when(v.savedAt))}에 멈춤</span></span>
             <span class="go">이어서 하기</span>
             <span class="bar"><span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="cnt">${n}/${total}</span></span>
           </button>
@@ -277,37 +281,53 @@ export async function runTest(def, mount, opts = {}) {
 
   function renderProfile() {
     const name = S.name || '';
+    const birthText = S.birthText || fmtBirth(S.birth);
+    const carriedNow = () => !!S.carried && sameName(S.name, S.carried.name) && (S.birth || '') === (S.carried.birth || '');
     stage.innerHTML = `<section class="intro-card" aria-labelledby="pf-title">
       <p class="intro-kicker">${esc(def.title)}</p>
-      <h1 class="intro-title" id="pf-title" tabindex="-1" data-focus>검사자 이름을 적어 주세요</h1>
-      <p class="intro-lead">결과지 맨 앞에 이 이름이 들어가요. 한 계정으로 여러 분을 검사할 수 있도록, 검사할 때마다 이름을 새로 적어요.</p>
+      <h1 class="intro-title" id="pf-title" tabindex="-1" data-focus>검사자 이름과 생년월일을 적어 주세요</h1>
+      <p class="intro-lead">결과지 맨 앞에 이 이름이 들어가요. 한 계정으로 여러 분을 검사할 수 있도록, 검사할 때마다 새로 적어요. 생년월일은 이름이 같은 분을 구분하는 데만 쓰고, 결과지와 공유 링크에는 나오지 않아요.</p>
       <div class="field">
         <label for="pf-name">검사자 이름</label>
         <input class="input" id="pf-name" maxlength="20" autocomplete="off" value="${esc(name)}" placeholder="예: 홍길동" required>
-        ${S.carried && sameName(name, S.carried) ? '<p class="field-hint" data-carried>묶음의 앞 검사에서 적은 이름이에요. 다른 분이면 고쳐 주세요.</p>' : ''}
+      </div>
+      <div class="field">
+        <label for="pf-birth">생년월일</label>
+        <input class="input" id="pf-birth" inputmode="numeric" maxlength="10" autocomplete="off" value="${esc(birthText)}" placeholder="예: 19950312" aria-describedby="pf-birth-hint" required>
+        <p class="field-hint field-hint--quiet" id="pf-birth-hint" data-birth-hint aria-live="polite"></p>
+        ${S.carried ? `<p class="field-hint" data-carried ${carriedNow() ? '' : 'hidden'}>묶음의 앞 검사에서 적은 이름과 생년월일이에요. 다른 분이면 고쳐 주세요.</p>` : ''}
       </div>
       <label class="consent">
         <input type="checkbox" id="pf-consent" ${S.consent ? 'checked' : ''}>
         <div><strong>결과 전송에 동의해요</strong>
-        <span>응답과 결과는 검사를 진행하는 상담사${opts.ownerName ? `(${esc(opts.ownerName)})` : ''}에게 전송되고, AZIT 관리자도 볼 수 있어요. 결과는 상담사를 통해 안내받아요.</span></div>
+        <span>이름과 생년월일, 응답과 결과는 검사를 진행하는 상담사${opts.ownerName ? `(${esc(opts.ownerName)})` : ''}에게 전송되고, AZIT 관리자도 볼 수 있어요. 결과는 상담사를 통해 안내받아요.</span></div>
       </label>
       <div class="intro-actions">
-        <button type="button" class="btn btn--block" data-act="begin" ${S.consent && name ? '' : 'disabled'}>시작하기</button>
+        <button type="button" class="btn btn--block" data-act="begin" ${S.consent && name && S.birth ? '' : 'disabled'}>시작하기</button>
         <button type="button" class="btn btn--text" data-act="to-intro">뒤로</button>
       </div>
     </section>`;
     const nameEl = stage.querySelector('#pf-name');
+    const birthEl = stage.querySelector('#pf-birth');
+    const birthHint = stage.querySelector('[data-birth-hint]');
     const consentEl = stage.querySelector('#pf-consent');
     const beginEl = stage.querySelector('[data-act="begin"]');
     const hint = stage.querySelector('[data-carried]');
     const sync = () => {
       S.name = nameEl.value.trim();
+      S.birthText = birthEl.value;
+      S.birth = parseBirth(birthEl.value);
       S.consent = consentEl.checked;
-      beginEl.disabled = !(S.name && S.consent);
-      if (hint) hint.hidden = !sameName(S.name, S.carried);
+      beginEl.disabled = !(S.name && S.birth && S.consent);
+      const typed = birthEl.value.replace(/\D/g, '');
+      birthHint.textContent = S.birth ? longBirth(S.birth) : typed.length >= 6 ? '날짜를 다시 확인해 주세요. 8자리(19950312)나 6자리(950312)로 적어요.' : '';
+      birthHint.classList.toggle('is-error', !S.birth && typed.length >= 6);
+      if (hint) hint.hidden = !carriedNow();
     };
     nameEl.addEventListener('input', sync);
+    birthEl.addEventListener('input', sync);
     consentEl.addEventListener('change', sync);
+    sync();
   }
 
   const isSkipped = (pi) => def.parts[pi].skippable && itemsFor(pi).every((it) => S.answers[it.id] === null);
@@ -581,6 +601,7 @@ export async function runTest(def, mount, opts = {}) {
       testId: def.id,
       version: def.version,
       name: S.name || '이름 없음',
+      ...(S.birth ? { birth: S.birth } : {}),
       ownerName: opts.ownerName || (currentUser() && currentUser().name) || '',
       answers: used,
       scores,
@@ -592,10 +613,11 @@ export async function runTest(def, mount, opts = {}) {
       await Promise.all([saveResult(record), delay(1500)]);
       if (bundle) {
         const prev = bundleState();
-        const done = [...new Set([...(prev && sameName(prev.name, record.name) ? prev.done || [] : []), def.id])];
+        const same = prev && sameName(prev.name, record.name) && (prev.birth || '') === (record.birth || '');
+        const done = [...new Set([...(same ? prev.done || [] : []), def.id])];
         S.bundleDone = done;
         if (bundle.tests.every((id) => done.includes(id))) clearBundle();
-        else writeBundle({ b: bundle.id, name: record.name, at: Date.now(), done });
+        else writeBundle({ b: bundle.id, name: record.name, birth: record.birth || '', at: Date.now(), done });
       }
       clearProgress();
       S.sid = '';
@@ -604,6 +626,8 @@ export async function runTest(def, mount, opts = {}) {
       S.doneAt = Date.now();
       S.answers = {};
       S.name = '';
+      S.birth = '';
+      S.birthText = '';
       S.consent = false;
       S.startedAt = 0;
       S.pi = 0;
@@ -626,6 +650,8 @@ export async function runTest(def, mount, opts = {}) {
       S.sid = sid || newSid(); // 예전 한 칸짜리 저장은 새 칸으로 옮긴다
       S.answers = prog.answers || {};
       S.name = prog.name || S.name;
+      S.birth = prog.birth || S.birth || ''; // 생년월일 없이 저장된 예전 진행이면 지금 적은 생년월일을 쓴다
+      S.birthText = '';
       S.startedAt = prog.startedAt || Date.now();
       S.savedAt = prog.savedAt || Date.now();
       S.localOK = true;
@@ -640,8 +666,11 @@ export async function runTest(def, mount, opts = {}) {
     } else {
       S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
       S.answers = {};
-      S.carried = (bundleState() || {}).name || '';
-      S.name = S.carried;
+      const bs = bundleState();
+      S.carried = bs && bs.name ? { name: bs.name, birth: bs.birth || '' } : null;
+      S.name = S.carried ? S.carried.name : '';
+      S.birth = S.carried ? S.carried.birth : '';
+      S.birthText = '';
       S.consent = false;
       S.startedAt = 0;
       S.savedAt = 0;
@@ -684,8 +713,8 @@ export async function runTest(def, mount, opts = {}) {
     }
     else if (act === 'to-intro') { S.step = 'intro'; render(); }
     else if (act === 'begin') {
-      // 같은 이름으로 하다 멈춘 검사가 있으면 먼저 물어본다 (같은 사람 기록이 여러 개 쌓이지 않게)
-      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && sameName(v.name, S.name));
+      // 같은 이름(과 생년월일)으로 하다 멈춘 검사가 있으면 먼저 물어본다. 생년월일 없이 저장된 예전 진행도 같은 이름이면 묻는다
+      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && sameName(v.name, S.name) && (!v.birth || v.birth === S.birth));
       if (same) {
         const pick = await modal({
           title: `${S.name} 님이 하다 멈춘 검사가 있어요`,

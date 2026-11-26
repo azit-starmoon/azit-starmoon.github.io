@@ -184,6 +184,7 @@ async def run(args):
                 await pg.click('[data-act="start"]')
                 # 짝 검사(성인 애착, 신앙 애착)는 같은 이름으로 해서 종합 결과지의 '함께 읽기'까지 본다
                 await pg.fill('#pf-name', '점검짝' if i > 0 and t['id'] in PAIR_IDS else f'점검{i + 1}')
+                await pg.fill('#pf-birth', '19900101')
                 await pg.check('#pf-consent')
                 await pg.click('[data-act="begin"]')
                 await pg.wait_for_timeout(250)

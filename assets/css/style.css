@@ -1932,3 +1932,12 @@ body.has-update .toast { bottom: 84px; }
   .ia-marked { text-align: right; }
   .toolbar select.input[data-ia-test], .toolbar select.input[data-ia-level] { max-width: none; flex: 1 1 100%; }
 }
+
+/* ── 검사자 생년월일 ─────────────────────── */
+.born { margin-left: 6px; font-weight: 500; font-size: .82em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.record .meta strong .born { display: inline; }
+.pp-head .pp-birth { margin: -4px 0 6px; font-size: var(--fs-s); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pp-head .pp-others { margin-top: 8px; font-size: var(--fs-s); color: var(--ink-3); }
+.pp-head .pp-others a { color: var(--brand-deep); }
+.field-hint--quiet { min-height: 1.2em; color: var(--ink-3); }
+.field-hint--quiet.is-error { color: var(--danger); }

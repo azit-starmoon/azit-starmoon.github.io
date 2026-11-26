@@ -4,6 +4,7 @@ import {
   isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
 import { TESTS, groupIds, loadTest } from '../registry.js';
+import { fmtBirth } from '../examinee.js';
 import { requireLogin } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { TEMP_TYPES as TC_TYPES, CHAR_SHAPES as TC_SHAPES } from '../../../tests/temperament/content.js';
@@ -70,7 +71,9 @@ function ownerLabel(r) {
 
 function filtered() {
   const q = view.q.trim().toLowerCase();
-  return all.filter((r) => (!view.test || r.testId === view.test) && (!q || `${r.name || ''} ${ownerLabel(r)} ${r.email || ''}`.toLowerCase().includes(q)));
+  const digits = q.replace(/\D/g, ''); // 숫자 네 자리 이상이면 생년월일로도 찾는다
+  return all.filter((r) => (!view.test || r.testId === view.test) && (!q || `${r.name || ''} ${ownerLabel(r)} ${r.email || ''}`.toLowerCase().includes(q)
+    || (digits.length >= 4 && String(r.birth || '').replace(/-/g, '').includes(digits))));
 }
 
 function draw() {
@@ -120,7 +123,7 @@ function draw() {
           .join('')}</div>
       </section>
       <div class="toolbar">
-        <input class="input" type="search" placeholder="검사자나 상담사 이름으로 찾기" value="${esc(view.q)}" data-q aria-label="검사자나 상담사 이름으로 찾기">
+        <input class="input" type="search" placeholder="이름이나 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자·상담사 이름이나 검사자 생년월일로 찾기">
         <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
           .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${view.test === id ? 'selected' : ''}>${esc(title(id))}</option>`).join('')}</optgroup>`)
           .join('')}</select>
@@ -200,7 +203,7 @@ function drawRows() {
   }
   tb.innerHTML = rows
     .map((r) => `<tr data-key="${esc(r.uid)}/${esc(r.rid)}">
-      <td><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a></td>
+      <td><div class="who"><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a><span>${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></div></td>
       <td><div class="who"><strong>${esc(ownerLabel(r))}</strong><span>${esc(r.email || '')}</span></div></td>
       <td>${esc(title(r.testId))}</td>
       <td>${esc(r.summary || '')}</td>

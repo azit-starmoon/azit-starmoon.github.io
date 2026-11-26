@@ -1,18 +1,19 @@
 // AZIT : Star&Moon — 검사자별 종합 결과지
-// 결과 한 건(u, r)을 기준으로, 같은 상담사 계정 안에서 같은 이름(띄어쓰기·대소문자 무시)으로 한 검사들을 한 장에 모은다.
-// 주소에는 이름을 넣지 않는다(방문 기록에 남지 않게). 짝이 되는 검사를 함께 했으면 나란히 읽어 준다. 공유 링크로는 열리지 않는다.
+// 결과 한 건(u, r)을 기준으로, 같은 상담사 계정 안에서 이름(띄어쓰기·대소문자 무시)과 생년월일이 같은 검사들을 한 장에 모은다.
+// 생년월일 없이 저장된 예전 결과는 이름끼리 따로 묶이고, 이름만 같은 다른 기록은 머리말 아래에 링크로 알려 준다.
+// 주소에는 이름을 넣지 않는다(방문 기록에 남지 않게). 생년월일은 화면에만 보이고 인쇄(PDF)에는 넣지 않는다. 짝이 되는 검사를 함께 했으면 나란히 읽어 준다. 공유 링크로는 열리지 않는다.
 import { mountHeader, mountFooter, esc, fmtDate } from '../ui.js';
-import { listResultsOf, resultUrl } from '../backend.js';
+import { listResultsOf, resultUrl, personUrl } from '../backend.js';
 import { TESTS, groupIds, codeOf } from '../registry.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { PAIRS } from '../pairs.js';
+import { normName, personKey, fmtBirth } from '../examinee.js';
 
 const box = document.querySelector('[data-person]');
 const params = new URLSearchParams(location.search);
 const UID = params.get('u') || '';
 const RID = params.get('r') || '';
-const normName = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
 const meta = (id) => TESTS.find((t) => t.id === id) || { title: id };
 const ATT = { secure: '안', anxious: '불', fearful: '두', avoidant: '회' };
 const glyph = (r) => {
@@ -46,16 +47,24 @@ const glyph = (r) => {
   const anchor = all.find((r) => r.rid === RID);
   if (!anchor) { gate('결과를 찾지 못했어요', '결과가 지워졌거나, 이 계정으로는 볼 수 없는 결과예요.'); return; }
   const name = anchor.name || '이름 없음';
-  const list = all.filter((r) => normName(r.name) === normName(anchor.name));
+  const key = personKey(anchor);
+  const list = all.filter((r) => personKey(r) === key);
+  // 이름은 같지만 생년월일이 다른(또는 없는) 기록: 다른 분일 수 있어 따로 두고 링크만 건다
+  const others = new Map();
+  all.filter((r) => normName(r.name) === normName(anchor.name) && personKey(r) !== key).forEach((r) => {
+    const k = personKey(r);
+    if (!others.has(k)) others.set(k, { birth: r.birth || '', n: 0, uid: r.uid, rid: r.rid });
+    others.get(k).n++;
+  });
   document.title = `${name} 님의 종합 결과지 | AZIT : Star&Moon`;
-  render(name, list, { mine, owner: anchor.ownerName || anchor.email || '' });
+  render(name, list, { mine, owner: anchor.ownerName || anchor.email || '', birth: anchor.birth || '', others: [...others.values()] });
 })();
 
 function gate(t, d) {
   box.innerHTML = `<div class="gate"><h1>${esc(t)}</h1><p>${esc(d)}</p><a class="btn" href="me.html">검사 결과 목록으로</a></div>`;
 }
 
-function render(name, list, { mine, owner }) {
+function render(name, list, { mine, owner, birth, others }) {
   // 검사마다 가장 최근 결과를 쓰고, 이전 결과는 날짜로만 남긴다
   const byTest = new Map();
   list.forEach((r) => { if (!byTest.has(r.testId)) byTest.set(r.testId, []); byTest.get(r.testId).push(r); });
@@ -93,7 +102,9 @@ function render(name, list, { mine, owner }) {
   box.innerHTML = `<header class="pp-head">
       <p class="pp-kicker">종합 결과지</p>
       <h1>${esc(name)} 님</h1>
+      <p class="pp-birth no-print">${birth ? `생년월일 ${esc(fmtBirth(birth))}` : '생년월일 없이 저장된 결과예요'}</p>
       <p>${count} 한 장에 모았어요. ${esc(period)}.</p>
+      ${others.length ? `<p class="pp-others no-print">이름이 같은 다른 기록: ${others.map((o) => `<a href="${personUrl(o.uid, o.rid)}">${o.birth ? esc(fmtBirth(o.birth)) : '생년월일 없음'} (${o.n}건)</a>`).join(', ')}</p>` : ''}
       ${!mine && owner ? `<p class="pp-owner">${esc(owner)} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요.</p>` : ''}
       <div class="pp-acts no-print">
         <button type="button" class="btn btn--ghost btn--small" data-print>PDF로 저장</button>

@@ -1,6 +1,7 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, copyText } from '../ui.js';
 import { listMyResults, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl } from '../backend.js';
 import { TESTS, groupIds, codeOf } from '../registry.js';
+import { personKey, fmtBirth, matchPerson } from '../examinee.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 
@@ -16,7 +17,6 @@ const glyph = (r) => {
   return r.glyph || '·'; // 새 검사는 검사 정의의 glyph(scores)가 결과와 함께 저장된다
 };
 const view = { q: '', test: '', by: 'result' };
-const normName = (s) => String(s || '').replace(/\s+/g, '').toLowerCase(); // 종합 결과지와 같은 기준으로 검사자를 묶는다
 let list = [];
 
 (async () => {
@@ -45,7 +45,7 @@ async function load() {
   const tests = [...new Set(list.map((r) => r.testId))];
   box.innerHTML = `<div class="toolbar">
       <div class="seg" role="group" aria-label="보기 방식"><button type="button" data-by="result" aria-pressed="${view.by === 'result'}">결과별</button><button type="button" data-by="person" aria-pressed="${view.by === 'person'}">검사자별</button></div>
-      <input class="input" type="search" placeholder="검사자 이름으로 찾기" value="${esc(view.q)}" data-q aria-label="검사자 이름으로 찾기">
+      <input class="input" type="search" placeholder="이름이나 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자 이름이나 생년월일로 찾기">
       <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(tests).map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((t) => `<option value="${esc(t)}" ${view.test === t ? 'selected' : ''}>${esc(title(t))}</option>`).join('')}</optgroup>`).join('')}</select>
       <span class="spacer"></span><span class="tag" data-count></span>
     </div>
@@ -65,8 +65,7 @@ async function load() {
 
 function drawRows() {
   if (view.by === 'person') { drawPeople(); return; }
-  const q = view.q.trim().toLowerCase();
-  const rows = list.filter((r) => (!view.test || r.testId === view.test) && (!q || String(r.name || '').toLowerCase().includes(q)));
+  const rows = list.filter((r) => (!view.test || r.testId === view.test) && matchPerson(r, view.q));
   box.querySelector('[data-count]').textContent = `${rows.length}건`;
   const ul = box.querySelector('[data-rows]');
   if (!rows.length) {
@@ -76,7 +75,7 @@ function drawRows() {
   ul.innerHTML = rows
     .map((r) => `<li class="record" data-rid="${esc(r.rid)}">
       <div class="glyph" aria-hidden="true">${esc(glyph(r))}</div>
-      <div class="meta"><strong>${esc(r.name || '이름 없음')}</strong><span>${esc(title(r.testId))}, ${esc(r.summary || '')}</span><br><span>${esc(fmtDate(r.createdAt, true))}${r.shareToken ? ', 공유 중' : ''}</span></div>
+      <div class="meta"><strong>${esc(r.name || '이름 없음')}${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span>${esc(title(r.testId))}, ${esc(r.summary || '')}</span><br><span>${esc(fmtDate(r.createdAt, true))}${r.shareToken ? ', 공유 중' : ''}</span></div>
       <div class="acts">
         <a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">결과지 보기</a>
         <button type="button" class="btn btn--ghost btn--small" data-act="share">${r.shareToken ? '공유 링크' : '공유하기'}</button>
@@ -86,13 +85,13 @@ function drawRows() {
     .join('');
 }
 
-// 검사자별: 같은 이름(띄어쓰기·대소문자 무시)으로 한 결과를 한 줄로 묶고, 종합 결과지로 보낸다
+// 검사자별: 이름과 생년월일이 같은 결과를 한 줄로 묶고, 종합 결과지로 보낸다
+// (생년월일을 받기 전에 저장된 결과는 '생년월일 없음'으로 이름끼리 묶인다)
 function drawPeople() {
   const ul = box.querySelector('[data-rows]');
-  const q = normName(view.q);
   const people = new Map();
-  list.forEach((r) => { const k = normName(r.name); if (!people.has(k)) people.set(k, []); people.get(k).push(r); }); // 최신 결과부터 들어 있다
-  const rows = [...people.values()].filter((rs) => (!view.test || rs.some((r) => r.testId === view.test)) && (!q || normName(rs[0].name).includes(q)));
+  list.forEach((r) => { const k = personKey(r); if (!people.has(k)) people.set(k, []); people.get(k).push(r); }); // 최신 결과부터 들어 있다
+  const rows = [...people.values()].filter((rs) => (!view.test || rs.some((r) => r.testId === view.test)) && matchPerson(rs[0], view.q));
   box.querySelector('[data-count]').textContent = `${rows.length}명`;
   if (!rows.length) {
     ul.innerHTML = '<li class="muted-box">조건에 맞는 검사자가 없어요.</li>';
@@ -105,7 +104,7 @@ function drawPeople() {
       const ids = groupIds([...new Set(rs.map((x) => x.testId))]).flatMap((g) => g.tests);
       return `<li class="record record--person">
       <div class="glyph" aria-hidden="true">${esc([...nm.trim()][0] || '·')}</div>
-      <div class="meta"><strong>${esc(nm)}</strong><span>검사 ${ids.length}개${rs.length > ids.length ? `, 결과 ${rs.length}건` : ''}, <span class="nowrap">최근 ${esc(fmtDate(r.createdAt))}</span></span>
+      <div class="meta"><strong>${esc(nm)}<span class="born">${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></strong><span>검사 ${ids.length}개${rs.length > ids.length ? `, 결과 ${rs.length}건` : ''}, <span class="nowrap">최근 ${esc(fmtDate(r.createdAt))}</span></span>
         <span class="person-codes">${ids.map((id) => `<span class="tcard-code" title="${esc(title(id))}">${esc(codeOf(id) || title(id))}</span>`).join('')}</span></div>
       <div class="acts"><a class="btn btn--small" href="${personUrl(r.uid, r.rid)}">종합 결과지</a></div>
     </li>`;

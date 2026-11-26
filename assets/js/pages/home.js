@@ -4,6 +4,7 @@ import { TESTS, groupIds, BUNDLES } from '../registry.js';
 import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
+import { fmtBirth } from '../examinee.js';
 import { attachMap } from '../../../tests/attachment/chart.js';
 import { schemaRose } from '../../../tests/schema/chart.js';
 import { sensFlower } from '../../../tests/hsp/chart.js';
@@ -223,7 +224,7 @@ function paint(rowsMap, open, cloud) {
     const pct = Math.min(100, Math.round((r.n / total) * 100));
     const isFresh = fresh && fresh === `${r.testId}:${r.sid}`;
     return `<li><a class="resume-card${isFresh ? ' is-fresh' : ''}" href="test.html?t=${encodeURIComponent(r.testId)}&resume=${encodeURIComponent(r.sid)}">
-      <span class="who"><strong>${esc(r.name || '이름 없음')} 님</strong><span>${esc(open.get(r.testId).title)}</span></span>
+      <span class="who"><strong>${esc(r.name || '이름 없음')} 님${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span>${esc(open.get(r.testId).title)}</span></span>
       <span class="go">이어서 하기</span>
       <span class="bar"><span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="cnt">${r.n}/${total}</span></span>
       <span class="when">${isFresh ? '방금 저장했어요' : `${esc(when(r.savedAt))}에 멈춤`}</span>
