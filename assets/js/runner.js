@@ -365,6 +365,31 @@ export async function runTest(def, mount, opts = {}) {
         .join('')}</div>`;
   }
 
+  // 글로 답하기: 질문을 읽고 몇 줄 적는다. 적는 동안에도 저장해 두고, 쓰기 어려우면 건너뛸 수 있다
+  let typeTimer = 0;
+  function renderText(it, p) {
+    const cur = typeof S.answers[it.id] === 'string' ? S.answers[it.id] : '';
+    const max = it.max || p.max || 800;
+    stage.innerHTML = `${metaRow()}
+      <h1 class="q-text q-text--write" tabindex="-1" data-focus id="q-${esc(it.id)}">${esc(it.prompt)}</h1>
+      ${it.help ? `<p class="write-help" id="wh-${esc(it.id)}">${esc(it.help)}</p>` : ''}
+      <div class="write">
+        <textarea class="write-input" id="wa-${esc(it.id)}" rows="${it.rows || 6}" maxlength="${max}" aria-labelledby="q-${esc(it.id)}"${it.help ? ` aria-describedby="wh-${esc(it.id)}"` : ''} placeholder="${esc(it.placeholder || '떠오르는 대로 편하게 적어 주세요.')}">${esc(cur)}</textarea>
+        <div class="write-foot">
+          <span class="write-count"><span data-count>${cur.length}</span>/${max}자</span>
+          <span class="write-acts">${it.required ? '' : '<button type="button" class="btn btn--ghost btn--small" data-act="text-skip">건너뛰기</button>'}<button type="button" class="btn btn--small" data-act="text-next">다음</button></span>
+        </div>
+      </div>`;
+    const ta = stage.querySelector('.write-input');
+    const cnt = stage.querySelector('[data-count]');
+    ta.addEventListener('input', () => {
+      cnt.textContent = String(ta.value.length);
+      S.answers[it.id] = ta.value;
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(persist, 600);
+    });
+  }
+
   function renderItem() {
     const p = def.parts[S.pi];
     const it = S.items[S.ii];
@@ -372,6 +397,7 @@ export async function runTest(def, mount, opts = {}) {
     if (p.kind === 'likert') renderLikert(it, p);
     else if (p.kind === 'pair') renderPair(it);
     else if (p.kind === 'rank') renderRank(it);
+    else if (p.kind === 'text') renderText(it, p);
   }
 
   function renderWorking(msg = '응답을 분석해서 결과지를 만들고 있어요') {
@@ -627,6 +653,17 @@ export async function runTest(def, mount, opts = {}) {
       enterPart(S.pi);
     } else if (act === 'skip-part') skipPart();
     else if (act === 'back') back();
+    else if (act === 'text-next' || act === 'text-skip') {
+      const it = S.items[S.ii];
+      const ta = stage.querySelector('.write-input');
+      const v = act === 'text-skip' ? '' : (ta ? ta.value : '').trim();
+      if (act === 'text-next' && !v) {
+        if (it.required) { toast('한두 줄이라도 적어 주세요.'); if (ta) ta.focus(); return; }
+        toast('비워 두고 넘어가요. 나중에 이전으로 돌아와 적어도 돼요.');
+      }
+      clearTimeout(typeTimer);
+      answer(it.id, v);
+    }
     else if (act === 'retry') { S.step = 'working'; render(); save(); }
     else if (act === 'again') { S.step = 'intro'; render(); }
     else if (t.dataset.likert) {

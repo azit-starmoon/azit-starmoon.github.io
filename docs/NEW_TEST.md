@@ -19,8 +19,9 @@
 | `resilience` | 회복탄력성 | 회복탄력성의 세 영역(자기 조절력, 대인 관계력, 긍정성)과 아홉 하위 요인(감정 조절, 충동 통제, 원인 분석 / 소통, 공감, 연결 / 낙관, 감사, 삶의 만족) | 9요인 × 5 = 45문항(5점). 전체와 세 영역, 아홉 요인 지도, 다시 일어나는 힘이 기대는 곳, 키우는 연습(감사 기록 등), 상담 메모. 한국에서 널리 쓰이는 척도(KRQ-53 등)의 문항은 쓰지 않는다 |
 | `esteem` | 자아존중감 | (열림) 전반적 자기 가치감(Rosenberg 구성 개념), 나를 대하는 방식(Neff의 자기 자비: 친절 대 비난, 보편성 대 고립, 마음챙김 대 휩쓸림), 자존감이 기대는 곳(Crocker: 인정, 성취, 외모, 관계) | 1부 자기 가치감 10, 2부 나를 대하는 방식 3쌍 × 4 = 24, 3부 기대는 곳 4 × 3 = 12, 모두 5점(약 46문항). 자기 가치감 수준과 흔들림, 친절과 비난의 균형, 기대는 곳 지도, 연습, 상담 메모. 원 척도(RSES, SCS) 문항은 쓰지 않는다 |
 | `temperament` | 기질과 성품 | (열림) Cloninger의 기질 4(자극 추구, 위험 회피, 사회적 민감성, 인내력)와 성격 3(자율성, 연대감, 자기 초월). 이름에 TCI를 쓰지 않는다 | 기질 4 × 8, 성품 3 × 8 = 56문항(5점, 차원마다 역문항 2). 기질 유형 8, 성품 모양 4, 기질과 성품의 만남, 연습, 상담 메모 |
+| `lifestory` | 생애 이야기 | (열림) McAdams의 삶의 이야기(서사 정체성), 생애 이야기 면담의 핵심 장면, 삶의 의미(Steger: 느끼는 정도와 찾는 정도), 이야기의 결(주도성, 연결, 회복, 의미 엮기) | 1부 의미 10, 2부 글로 답하기 6(`kind: 'text'`, 건너뛰기 가능), 3부 돌아보기 12. 글은 점수에 넣지 않고 공유 링크에서 빠진다 |
 
-- 문항은 **직접 쓴 한국어 문항**이어야 한다. 저작권이 있는 척도(HSPS, VIA-IS, PVQ, DERS, Brief COPE, KRQ-53, RSES, SCS, TCI 등)의 문항을 옮기거나 번역해 넣지 않는다. 이론의 구성 개념만 빌린다.
+- 문항은 **직접 쓴 한국어 문항**이어야 한다. 저작권이 있는 척도(HSPS, VIA-IS, PVQ, DERS, Brief COPE, KRQ-53, RSES, SCS, TCI, MLQ 등)의 문항을 옮기거나 번역해 넣지 않는다. 이론의 구성 개념만 빌린다.
 - 결과지는 약점 진단처럼 읽히지 않게, 지금의 힘과 키울 방향으로 쓴다. 점수가 낮을 때도 탓하지 않는 말투로 쓴다.
 - 요인마다 역문항을 섞는다(대략 4개 중 1개). 같은 요인 문항이 몰리지 않게 섞어 배치한다.
 - 문장은 쉬운 일상어, 한 문항에 한 가지 내용. 검사자에게 반말 금지, 존댓말 '~해요' 체.
@@ -37,7 +38,8 @@
 | `index.js` | 검사 정의(`export default { id, version: '1.0', title, intro, parts, score, summary, glyph, render }`) |
 
 ### 검사 정의 규칙 (`index.js`)
-- `parts[]`: `{ id, kind: 'likert'|'pair'|'rank', title, short, summary, desc, how, count, scale, items }`.
+- `parts[]`: `{ id, kind: 'likert'|'pair'|'rank'|'text', title, short, summary, desc, how, count, scale, items }`.
+  `text`(글로 답하기)는 문항마다 `{ id, prompt, help, placeholder, rows, max, required }`를 쓰고, 답은 문자열(건너뛰면 빈 문자열)로 남는다.
   건너뛸 수 있는 부는 `skippable: true` (`tests/attachment/index.js` 참고).
 - `intro`: `{ kicker: 'AZIT : Star&Moon 검사', lead, facts: [{dt, dd}] (문항, 소요 시간, 구성), gets: [...] }`
 - `summary(scores)`: 결과 목록에 보일 한 줄. `glyph(scores)`: 결과 목록 동그라미에 들어갈 1~2글자.

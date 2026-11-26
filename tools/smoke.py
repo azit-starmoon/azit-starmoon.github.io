@@ -150,6 +150,16 @@ async def run(args):
                         answered += 1
                         await pg.wait_for_timeout(240)
                         continue
+                    if await pg.locator('.write-input').count():
+                        # 글로 답하기: 대부분은 짧게 적고, 가끔은 건너뛴다
+                        if rnd.random() < 0.8:
+                            await pg.fill('.write-input', f'점검용 글 {answered + 1}\n둘째 줄')
+                            await pg.click('[data-act="text-next"]')
+                        else:
+                            await pg.click('[data-act="text-skip"]')
+                        answered += 1
+                        await pg.wait_for_timeout(400)
+                        continue
                     if await pg.locator('[data-rank-key]').count():
                         await pg.keyboard.press('1')
                         await pg.wait_for_timeout(120)

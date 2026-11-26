@@ -248,6 +248,16 @@ ul, ol { margin: 0; padding: 0; }
 
 .q-text { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.32rem, 4.6vw, 1.6rem); line-height: 1.5; margin: 6px 0 28px; min-height: 3em; letter-spacing: -0.01em; }
 
+.q-text--write { min-height: 0; margin-bottom: 10px; }
+.write-help { color: var(--ink-2); font-size: var(--fs-s); line-height: 1.7; margin-bottom: 16px; }
+.write { display: grid; gap: 10px; }
+.write-input { width: 100%; min-height: 168px; padding: 14px 16px; border-radius: var(--r-m); border: 1px solid var(--line); background: var(--card); font-size: var(--fs-b); line-height: 1.75; resize: vertical; }
+.write-input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.write-input::placeholder { color: var(--ink-3); }
+.write-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.write-count { font-size: var(--fs-xs); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.write-acts { display: inline-flex; gap: 8px; margin-left: auto; }
+
 .likert { list-style: none; display: grid; gap: 8px; }
 .opt {
   width: 100%; display: flex; align-items: center; gap: 14px; text-align: left;
@@ -1659,6 +1669,30 @@ body.has-update .toast { bottom: 84px; }
 .tc-meet h3 { font-size: var(--fs-b); font-weight: 700; margin-bottom: 4px; }
 @media print {
   .tcr-legend i, .tc-meet-k i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ── 생애 이야기 검사 ───────────────────────── */
+.ls { display: block; width: 100%; height: auto; font-family: var(--font-sans); overflow: visible; }
+.ls-book { stroke: #fff; stroke-width: 2; }
+.ls-band { fill: rgba(255, 255, 255, .55); }
+.ls-shelf { fill: #c9cfe0; }
+.ls-guide { stroke: #d8ddeb; stroke-dasharray: 2 4; }
+.ls-lab { font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+.ls-val { font-size: 12px; font-weight: 600; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ls-cover-fig { max-width: 340px; justify-self: center; }
+.ls-fig-cap { text-align: center; margin-top: 4px; font-size: var(--fs-xs); color: var(--ink-3); }
+.ls-chapters { list-style: none; display: grid; gap: 8px; }
+.ls-chapters li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-m); padding: 12px 16px; font-weight: 600; }
+.ls-chapters .n { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-deep); font-family: var(--font-display); font-weight: 700; }
+.ls-quote { border-left: 3px solid var(--brand-soft-2); padding: 2px 0 2px 14px; margin: 4px 0 10px; color: var(--ink); line-height: 1.8; white-space: normal; overflow-wrap: anywhere; }
+.ls-quote p + p { margin-top: 8px; }
+.ls-quote--theme { font-family: var(--font-display); font-size: var(--fs-m); font-weight: 600; }
+.ls-empty { color: var(--ink-3); font-size: var(--fs-s); line-height: 1.7; }
+.ls-guide-t { margin-top: 10px; background: var(--tint); border-radius: var(--r-m); padding: 10px 14px; font-size: var(--fs-s); line-height: 1.65; color: var(--ink-2); }
+.ls-guide-t strong { color: var(--brand-deep); margin-right: 4px; }
+@media print {
+  .ls-book, .ls-shelf { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ls-scene, .ls-chapters li { break-inside: avoid; }
 }
 
 /* ── 첫 화면 검사 분류 ───────────────────────── */
