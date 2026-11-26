@@ -292,6 +292,19 @@ async def run(args):
                 head = rows[0] if rows else []
                 bad = [i for i, r in enumerate(rows[1:], 1) if len(r) != len(head)]
                 ok('관리 CSV 열 맞춤', rows and not bad, f'머리줄 {len(head)}열, 결과 {len(rows) - 1}줄' + (f', 어긋난 줄 {bad[:5]}' if bad else ''))
+            # 문항 분석: 모든 검사의 척도 정의가 불러와지고, 계산 결과가 그려지는지
+            if await pg.locator('[data-ia-run]').count():
+                missing = await pg.evaluate("""async () => {
+                  const S = await import('./assets/js/itemstats.js');
+                  const R = await import('./assets/js/registry.js');
+                  return R.TESTS.filter((t) => t.status === 'open' && !S.SCALE_DEFS[t.id]).map((t) => t.id);
+                }""")
+                await pg.click('[data-ia-run]')
+                try:
+                    await pg.wait_for_selector('[data-ia-out] .ia-sum, [data-ia-out] .muted-box', timeout=8000)
+                    ok('문항 분석', not missing, f'척도 정의가 없는 검사 {missing}' if missing else (await pg.inner_text('[data-ia-out]'))[:60])
+                except Exception:
+                    ok('문항 분석', False, '결과가 그려지지 않음')
             await browser.close()
     finally:
         srv.terminate()

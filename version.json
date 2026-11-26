@@ -1,5 +1,5 @@
 {
- "v": "20261126-051312",
+ "v": "20261126-061853",
  "files": [
   "./",
   "admin.html",
@@ -9,6 +9,7 @@
   "assets/js/config.js",
   "assets/js/guard.js",
   "assets/js/inapp.js",
+  "assets/js/itemstats.js",
   "assets/js/lock.js",
   "assets/js/pages/admin.js",
   "assets/js/pages/home.js",

@@ -3,7 +3,7 @@ import {
   claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser,
   isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
-import { TESTS, groupIds } from '../registry.js';
+import { TESTS, groupIds, loadTest } from '../registry.js';
 import { requireLogin } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { TEMP_TYPES as TC_TYPES, CHAR_SHAPES as TC_SHAPES } from '../../../tests/temperament/content.js';
@@ -19,6 +19,7 @@ let users = {};
 let requests = {};
 let members = {};
 const view = { q: '', test: '' };
+const ia = { test: '', level: 0, flat: true, ran: false }; // 문항 분석 화면 상태
 
 (async () => {
   const st = await requireLogin();
@@ -128,6 +129,22 @@ function draw() {
         <button type="button" class="btn btn--ghost btn--small" data-admins>관리자 지정</button>
       </div>
       <div class="table-wrap"><table class="list"><thead><tr><th>검사자</th><th>상담사</th><th>검사</th><th>결과</th><th>검사일</th><th>공유</th><th></th></tr></thead><tbody data-rows></tbody></table></div>
+    </section>
+
+    <section class="admin-block" aria-labelledby="ia-t">
+      <h2 id="ia-t">문항 분석</h2>
+      <p class="ia-lead">쌓인 응답으로 척도마다 문항들이 같은 마음을 일관되게 재는지(신뢰도, Cronbach α), 척도와 따로 노는 문항은 없는지 살펴봐요. 계산은 이 브라우저 안에서만 하고, 응답은 어디로도 보내지 않아요.</p>
+      <div class="toolbar">
+        <select class="input" data-ia-test aria-label="분석할 검사">${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
+          .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${ia.test === id ? 'selected' : ''}>${esc(title(id))} (${all.filter((r) => r.testId === id).length}건)</option>`).join('')}</optgroup>`)
+          .join('')}</select>
+        <select class="input" data-ia-level aria-label="척도로 묶는 기준" hidden></select>
+        <label class="ia-check"><input type="checkbox" data-ia-flat ${ia.flat ? 'checked' : ''}> 모두 같은 답만 고른 응답 빼기</label>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn--small" data-ia-run>분석하기</button>
+        <button type="button" class="btn btn--ghost btn--small" data-ia-csv hidden>문항 응답 CSV (이름 없이)</button>
+      </div>
+      <div data-ia-out></div>
     </section>`;
   drawRows();
 
@@ -135,6 +152,7 @@ function draw() {
   box.querySelector('[data-test]').addEventListener('change', (e) => { view.test = e.target.value; drawRows(); });
   box.querySelector('[data-csv]').addEventListener('click', exportCsv);
   box.querySelector('[data-admins]').addEventListener('click', manageAdmins);
+  wireItemStats();
   box.querySelectorAll('[data-req]').forEach((b) => b.addEventListener('click', onRequest));
   box.querySelectorAll('[data-mem]').forEach((b) => b.addEventListener('click', onMember));
 }
@@ -230,6 +248,92 @@ function drawRows() {
       } catch (err) { console.error(err); toast('지우지 못했어요.'); }
     }
   };
+}
+
+// ── 문항 분석 ─────────────────────────────────
+// 분석 모듈(검사 16개의 문항 정의)은 처음 '분석하기'를 누를 때 불러온다
+function wireItemStats() {
+  const testEl = box.querySelector('[data-ia-test]');
+  const levelEl = box.querySelector('[data-ia-level]');
+  const flatEl = box.querySelector('[data-ia-flat]');
+  if (!ia.test) ia.test = testEl.value;
+  const rerun = () => { if (ia.ran) runItemStats(); };
+  testEl.addEventListener('change', () => { ia.test = testEl.value; ia.level = 0; rerun(); });
+  levelEl.addEventListener('change', () => { ia.level = Number(levelEl.value) || 0; rerun(); });
+  flatEl.addEventListener('change', () => { ia.flat = flatEl.checked; rerun(); });
+  box.querySelector('[data-ia-run]').addEventListener('click', runItemStats);
+  box.querySelector('[data-ia-csv]').addEventListener('click', itemCsv);
+  if (ia.ran) runItemStats();
+}
+
+const f2 = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '–' : v.toFixed(2).replace('-', '−'));
+
+async function runItemStats() {
+  const out = box.querySelector('[data-ia-out]');
+  const levelEl = box.querySelector('[data-ia-level]');
+  out.innerHTML = '<p class="loading">계산하고 있어요</p>';
+  let S;
+  let def;
+  try {
+    [S, def] = await Promise.all([import('../itemstats.js'), loadTest(ia.test)]);
+  } catch (e) {
+    console.error(e);
+    out.innerHTML = '<p class="muted-box">분석 도구를 불러오지 못했어요. 새로 고침한 뒤 다시 시도해 주세요.</p>';
+    return;
+  }
+  ia.ran = true;
+  const a = S.analyze(def, all, { level: ia.level, dropFlat: ia.flat });
+  levelEl.innerHTML = a.levels.map((l, i) => `<option value="${i}" ${i === ia.level ? 'selected' : ''}>${esc(l.label)}별로 묶기</option>`).join('');
+  levelEl.hidden = a.levels.length < 2;
+  box.querySelector('[data-ia-csv]').hidden = !a.n;
+  if (!a.total) { out.innerHTML = '<p class="muted-box">아직 이 검사의 응답이 없어요.</p>'; return; }
+  const left = [a.older ? `이전 버전 응답 ${a.older}건` : '', a.flat ? `모두 같은 답만 고른 응답 ${a.flat}건` : ''].filter(Boolean);
+  const head = `<p class="ia-sum">${esc(def.title)} 현재 버전(${esc(def.version || '')}) 응답 <strong>${a.n}건</strong>으로 계산했어요.${left.length ? ` ${left.join(', ')}은 뺐어요.` : ''}</p>`;
+  const warn = a.n < S.MIN_N
+    ? `<p class="ia-warn">응답이 ${S.MIN_N}건보다 적어서 계산하지 않았어요.</p>`
+    : a.n < S.STABLE_N ? `<p class="ia-warn">응답이 ${S.STABLE_N}건이 안 돼서 숫자가 크게 흔들릴 수 있어요. 흐름을 보는 참고로만 써 주세요.</p>` : '';
+  const scales = a.n < S.MIN_N ? '' : a.scales.map((sc) => {
+    const [bk, bl] = S.alphaBand(sc.alpha);
+    const marked = sc.items.filter((it) => it.flags.length).length;
+    const rows = sc.items.map((it) => `<tr class="${it.flags.length ? 'is-flag' : ''}">
+        <td class="ia-q"><span class="ia-id">${esc(it.id)}</span>${it.rev ? '<span class="ia-rev" title="거꾸로 채점하는 문항">역</span>' : ''}<span class="ia-text">${esc(it.text)}</span></td>
+        <td>${f2(it.mean)}</td><td>${f2(it.sd)}</td><td>${f2(it.r)}</td><td>${f2(it.alphaDel)}</td>
+        <td class="ia-flags">${it.flags.map(([k, t]) => `<span class="ia-tag ia-tag--${k}">${esc(t)}</span>`).join('')}</td>
+      </tr>`).join('');
+    return `<details class="ia-scale">
+      <summary>
+        <span class="ia-name">${esc(sc.name)}</span>
+        <span class="ia-meta">문항 ${sc.k}개${sc.n !== a.n ? `, 응답 ${sc.n}건` : ''}</span>
+        <span class="ia-alpha"><span class="ia-a">α ${f2(sc.alpha)}</span><span class="ia-pill ia-pill--${bk}">${esc(bl)}</span></span>
+        <span class="ia-marked ${marked ? 'is-on' : ''}">${marked ? `살펴볼 문항 ${marked}개` : '살펴볼 문항 없음'}</span>
+      </summary>
+      <div class="table-wrap"><table class="list ia-items">
+        <thead><tr><th>문항</th><th>평균</th><th>표준편차</th><th>문항-나머지 r</th><th>뺐을 때 α</th><th>살펴볼 점</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+  }).join('');
+  out.innerHTML = `${head}${warn}${scales ? `<div class="ia-list">${scales}</div>` : ''}
+    <ul class="ia-help">
+      <li><strong>α(알파)</strong>: 같은 척도 문항들이 얼마나 함께 움직이는지예요. 흔히 0.80 이상을 좋음, 0.70 이상을 쓸 만함, 0.60 이상을 낮은 편으로 봐요. 문항이 3~4개뿐인 척도는 α가 낮게 나오기 쉬워요.</li>
+      <li><strong>문항-나머지 r</strong>: 이 문항과 같은 척도 나머지 문항 합의 상관이에요. 0.20보다 낮으면 '척도와 따로 놂', 0보다 낮으면 '방향이 반대'로 표시해요. 방향이 반대면 거꾸로 채점하는 문항인지 먼저 확인해 주세요.</li>
+      <li><strong>뺐을 때 α</strong>: 이 문항을 빼고 계산한 α예요. 지금보다 0.02 넘게 오르면 '빼면 α가 오름'으로 표시해요.</li>
+      <li><strong>응답이 한쪽에 몰림</strong>: 표준편차가 작거나 평균이 양 끝에 가까워, 사람마다의 차이를 잘 가르지 못하는 문항이에요.</li>
+      <li><span class="ia-rev">역</span> 표시는 거꾸로 채점하는 문항이에요. 평균과 표준편차는 응답 그대로, 상관과 α는 거꾸로 바꾼 값으로 계산했어요. 문항을 고칠 때는 검사 버전을 올려서, 이전 응답과 섞이지 않게 해 주세요.</li>
+    </ul>`;
+}
+
+async function itemCsv() {
+  const [S, def] = await Promise.all([import('../itemstats.js'), loadTest(ia.test)]);
+  const { text, count } = S.responsesCsv(def, all, { dropFlat: ia.flat });
+  const blob = new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `azit-items-${def.id}-v${def.version || ''}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(`${count}건의 문항 응답을 이름 없이 내려받았어요.`);
 }
 
 function csvCell(v) {
