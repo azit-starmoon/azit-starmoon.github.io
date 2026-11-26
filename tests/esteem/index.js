@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 자존감 검사 정의
+// AZIT : Star&Moon — 자아존중감 검사 정의
 import { WORTH_ITEMS, SELF_ITEMS, BASE_ITEMS, LIKERT_SCALE } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { TYPES } from './content.js';
@@ -9,7 +9,7 @@ const how = '되고 싶은 모습이 아니라 요즘의 솔직한 내 마음을
 export default {
   id: 'esteem',
   version: '1.0',
-  title: '자존감 검사',
+  title: '자아존중감 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '나를 얼마나 가치 있게 여기는지, 힘들 때 나를 어떻게 대하는지, 그리고 그 믿음이 인정이나 성과 같은 조건에 얼마나 기대는지 살펴보는 검사예요. 점수의 높낮이보다 자존감의 모양을 함께 봐요.',

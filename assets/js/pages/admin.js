@@ -109,7 +109,7 @@ function draw() {
         <div class="stat"><dt>최근 7일</dt><dd>${recent}건</dd></div>
       </dl>
       <section class="dist" aria-labelledby="dist-t">
-        <h2 id="dist-t">한국형 성향검사 핵심 유형 분포</h2>
+        <h2 id="dist-t">한국형 성향 유형 검사의 핵심 유형 분포</h2>
         <div class="dist-cols">${Object.keys(dist)
           .map((t) => `<div class="dist-col" title="${t}번 ${dist[t]}건"><span class="v">${dist[t]}</span><span class="b" style="height:${((dist[t] / maxD) * 80).toFixed(0)}px"></span><span class="t">${t}</span></div>`)
           .join('')}</div>

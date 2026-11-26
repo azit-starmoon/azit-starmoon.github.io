@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 가치관 검사 정의
+// AZIT : Star&Moon — 가치 지향 검사 정의
 import { ITEMS, LIKERT_SCALE, VALUES } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { GROUP_TEXT } from './content.js';
@@ -7,7 +7,7 @@ import { renderReport } from './report.js';
 export default {
   id: 'values',
   version: '1.0',
-  title: '가치관 검사',
+  title: '가치 지향 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '삶에서 무엇을 먼저 두는지 살펴보는 검사예요. 자율, 안전, 성취, 배려 같은 열 가지 가치를 내 안에서 앞서는 차례대로 세우고, 그 가치들이 어느 방향으로 모여 있는지, 서로 당기는 가치는 없는지 함께 봐요.',

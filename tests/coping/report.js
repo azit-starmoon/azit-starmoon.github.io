@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 스트레스 대처 검사 결과지
+// AZIT : Star&Moon — 스트레스 대처 방식 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -37,7 +37,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">스트레스 대처 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">스트레스 대처 방식 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -138,7 +138,7 @@ export function renderReport(el, rec, ctx = {}) {
     '키우는 연습',
     `지금은 <strong>${esc(GROUPS[growGroup].name)}</strong>${growGroup === 'away' ? '를 줄이고 다가가는 쪽으로 한 걸음 옮기는' : '를 늘리는'} 연습이 가장 도움이 돼요. 하나씩 골라 일주일만 해 보세요.`,
     `<ol class="practice-list">${PRACTICE[growGroup].map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 스트레스 대처 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 스트레스 대처 방식 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

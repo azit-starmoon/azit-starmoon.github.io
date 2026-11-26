@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 자존감 검사 결과지
+// AZIT : Star&Moon — 자아존중감 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -43,7 +43,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">자존감 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">자아존중감 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -161,7 +161,7 @@ export function renderReport(el, rec, ctx = {}) {
     '자존감을 돌보는 연습',
     '자존감은 생각만으로 바뀌지 않고, 나를 대하는 작은 행동이 쌓이면서 자라요. 하나를 골라 일주일만 해 보세요.',
     `<ol class="practice-list">${practices.slice(0, 3).map((x) => `<li><span><strong>${esc(x.t)}</strong> ${esc(x.d)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 자존감 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 자아존중감 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

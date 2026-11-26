@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 초민감성 검사 채점
+// AZIT : Star&Moon — 감각처리 민감성 검사 채점
 import { TRAIT_ITEMS, STATE_ITEMS, FACET_ORDER } from './items.js';
 
 // 수준(0~100). 집단 규준이 아니라 문항 평균에 묶은 기준점이다.

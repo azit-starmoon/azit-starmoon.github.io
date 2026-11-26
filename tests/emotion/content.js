@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 감정 조절 검사 해석 글
+// AZIT : Star&Moon — 정서 조절 역량 검사 해석 글
 
 export const LEVEL_LABEL = { low: '키우는 중', mid: '보통', high: '든든함', vhigh: '강점' };
 

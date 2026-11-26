@@ -5,7 +5,7 @@ export const TESTS = [
   {
     id: 'enneagram',
     status: 'open',
-    title: '한국형 성향검사',
+    title: '한국형 성향 유형 검사',
     desc: '나를 움직이는 핵심 동기와 두려움, 성장 방향을 아홉 가지 유형으로 읽어요.',
     items: 117,
     minutes: 15,
@@ -15,7 +15,7 @@ export const TESTS = [
   {
     id: 'bigfive',
     status: 'open',
-    title: '빅파이브 성격검사',
+    title: '성격 5요인 검사',
     desc: '성격을 이루는 다섯 영역과 하위 요인 30개로, 나라는 별의 모양을 그려요.',
     items: 120,
     minutes: 12,
@@ -25,7 +25,7 @@ export const TESTS = [
   {
     id: 'attachment',
     status: 'open',
-    title: '애착 유형 검사',
+    title: '성인 애착 유형 검사',
     desc: '가까운 사람 앞에서 나는 어떻게 되는지, 불안과 회피 두 축으로 읽고 관계마다 따로 지도를 그려요.',
     items: 60,
     minutes: 10,
@@ -35,7 +35,7 @@ export const TESTS = [
   {
     id: 'schema',
     status: 'open',
-    title: '삶의 규칙 검사',
+    title: '심리도식 검사',
     desc: '어린 시절 마음을 지키려고 만들어진 18가지 규칙이 지금 얼마나 작동하는지, 건드려질 때 어떻게 대처하는지 살펴요.',
     items: 96,
     minutes: 15,
@@ -45,7 +45,7 @@ export const TESTS = [
   {
     id: 'hsp',
     status: 'open',
-    title: '초민감성 검사',
+    title: '감각처리 민감성 검사',
     desc: '소리, 빛, 사람의 감정 같은 자극을 얼마나 섬세하게 받아들이는지 네 갈래로 보고, 요즘 그 섬세함이 지쳐 있는지도 살펴요.',
     items: 52,
     minutes: 8,
@@ -65,7 +65,7 @@ export const TESTS = [
   {
     id: 'values',
     status: 'open',
-    title: '가치관 검사',
+    title: '가치 지향 검사',
     desc: '삶에서 무엇을 먼저 두는지 열 가지 가치의 순위로 보고, 가치들이 모인 방향과 서로 당기는 가치를 살펴요.',
     items: 40,
     minutes: 7,
@@ -75,7 +75,7 @@ export const TESTS = [
   {
     id: 'career',
     status: 'open',
-    title: '진로 흥미 검사',
+    title: '직업 흥미 유형 검사',
     desc: '어떤 종류의 일에 마음이 끌리는지 여섯 흥미로 보고, 세 글자 흥미 코드와 어울리는 직업을 찾아요.',
     items: 60,
     minutes: 9,
@@ -85,7 +85,7 @@ export const TESTS = [
   {
     id: 'emotion',
     status: 'open',
-    title: '감정 조절 검사',
+    title: '정서 조절 역량 검사',
     desc: '감정을 알아차리고, 이해하고, 받아들이고, 다스리는 힘을 여섯 갈래로 보고, 힘들 때 자주 쓰는 조절 전략도 살펴요.',
     items: 54,
     minutes: 8,
@@ -95,7 +95,7 @@ export const TESTS = [
   {
     id: 'coping',
     status: 'open',
-    title: '스트레스 대처 검사',
+    title: '스트레스 대처 방식 검사',
     desc: '힘든 일이 생겼을 때 주로 쓰는 여덟 가지 대처와 그 균형, 그리고 상황에 맞게 대처를 바꾸는 힘을 살펴요.',
     items: 46,
     minutes: 8,
@@ -115,7 +115,7 @@ export const TESTS = [
   {
     id: 'esteem',
     status: 'open',
-    title: '자존감 검사',
+    title: '자아존중감 검사',
     desc: '나를 얼마나 가치 있게 여기는지, 힘들 때 나를 어떻게 대하는지, 그 믿음이 어떤 조건에 기대는지 살펴요.',
     items: 46,
     minutes: 8,

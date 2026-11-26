@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 진로 흥미 검사 결과지
+// AZIT : Star&Moon — 직업 흥미 유형 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -40,7 +40,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">진로 흥미 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">직업 흥미 유형 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -172,7 +172,7 @@ export function renderReport(el, rec, ctx = {}) {
     <ul class="check-list">${code.map((t) => `<li><strong>${esc(nm(t))}</strong> ${esc(TYPE_TEXT[t].try)}</li>`).join('')}</ul>
     <h3 class="rsub">차근차근 밟을 다섯 단계</h3>
     <ol class="practice-list">${STEPS.map((x) => `<li><span><strong>${esc(x.t)}</strong> ${esc(x.d)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 진로 흥미 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 직업 흥미 유형 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

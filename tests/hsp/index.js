@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 초민감성 검사 정의
+// AZIT : Star&Moon — 감각처리 민감성 검사 정의
 import { TRAIT_ITEMS, STATE_ITEMS, LIKERT_SCALE } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { OVERALL, STATES } from './content.js';
@@ -9,7 +9,7 @@ const how = '되고 싶은 모습이 아니라 평소의 내 모습을 기준으
 export default {
   id: 'hsp',
   version: '1.0',
-  title: '초민감성 검사',
+  title: '감각처리 민감성 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '소리, 빛, 사람의 감정 같은 자극을 얼마나 깊고 섬세하게 받아들이는지 살펴보는 검사예요. 타고난 민감성을 네 갈래로 나눠 보고, 요즘 그 섬세함이 지쳐 있는지 잘 피어나고 있는지도 함께 봐요.',

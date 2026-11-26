@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 감정 조절 검사 정의
+// AZIT : Star&Moon — 정서 조절 역량 검사 정의
 import { SKILL_ITEMS, STRATEGY_ITEMS, LIKERT_SCALE, FREQ_SCALE, SKILLS } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { OVERALL } from './content.js';
@@ -7,7 +7,7 @@ import { renderReport } from './report.js';
 export default {
   id: 'emotion',
   version: '1.0',
-  title: '감정 조절 검사',
+  title: '정서 조절 역량 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '감정이 생겨서 행동으로 이어지기까지, 감정을 다루는 힘을 여섯 갈래로 살펴보는 검사예요. 알아차리고, 이해하고, 받아들이고, 다스리는 힘과 함께 힘들 때 자주 쓰는 조절 전략도 봐요.',

@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 애착 유형 검사 정의
+// AZIT : Star&Moon — 성인 애착 유형 검사 정의
 import { GENERAL_ITEMS, TARGETS, LIKERT_SCALE, targetItems } from './items.js';
 import { score as scoreAll, STYLE_NAMES } from './scoring.js';
 import { renderReport } from './report.js';
@@ -9,7 +9,7 @@ const targetHow = '떠올리기 어렵거나 해당하는 사람이 없다면 �
 export default {
   id: 'attachment',
   version: '1.0',
-  title: '애착 유형 검사',
+  title: '성인 애착 유형 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '가까운 사람 앞에서 나는 어떻게 되는지, 불안과 회피 두 축으로 읽는 검사예요. 관계 전반의 모습과 함께 어머니, 아버지, 연인, 친구와의 관계를 하나씩 따로 살펴봐요.',

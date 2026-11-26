@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 삶의 규칙 검사(심리도식) 정의
+// AZIT : Star&Moon — 심리도식 검사(심리도식) 정의
 import { ITEMS, COPING_ITEMS, LIKERT_SCALE, SCHEMAS } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { renderReport } from './report.js';
@@ -10,7 +10,7 @@ const how = '지난 1년 동안의 나를 떠올리며, 문장이 나를 얼마�
 export default {
   id: 'schema',
   version: '1.0',
-  title: '삶의 규칙 검사',
+  title: '심리도식 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '어린 시절 마음을 지키려고 만들어진 규칙들이 지금도 나를 움직이고 있어요. 심리도식 이론의 18가지 규칙이 얼마나 작동하는지, 그리고 규칙이 건드려질 때 어떻게 대처하는지 살펴봐요.',

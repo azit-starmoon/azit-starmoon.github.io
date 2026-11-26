@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 빅파이브 성격검사 결과지
+// AZIT : Star&Moon — 성격 5요인 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { b5Star, quadrant, starGlyph } from '../../assets/js/charts.js';
@@ -37,7 +37,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">빅파이브 성격검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">성격 5요인 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -140,7 +140,7 @@ export function renderReport(el, rec, ctx = {}) {
     '성장을 위한 제안',
     '영역마다 지금의 모습에 맞춘 작은 연습이에요. 가장 두드러진 영역부터 적었어요. 하나만 골라 일주일 동안 해 보세요.',
     `<ol class="practice-list">${ordered.map((d) => `<li><span><strong>${esc(DOMAINS[d].name)}</strong> ${esc(DOMAINS[d].levels[D[d].level].tip)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>다섯 개의 결이 모여 ${esc(name)} 님이라는 별 하나가 돼요. 높고 낮음은 좋고 나쁨이 아니라, 별마다 다른 모양일 뿐이에요.</p><small>${esc(name)} 님의 빅파이브 성격검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>다섯 개의 결이 모여 ${esc(name)} 님이라는 별 하나가 돼요. 높고 낮음은 좋고 나쁨이 아니라, 별마다 다른 모양일 뿐이에요.</p><small>${esc(name)} 님의 성격 5요인 검사 결과지</small></div>`
   );
 
   // ── 응답 점검 ────────────────────────────────

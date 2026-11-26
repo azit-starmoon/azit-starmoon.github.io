@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 진로 흥미 검사 정의
+// AZIT : Star&Moon — 직업 흥미 유형 검사 정의
 import { PART1_ITEMS, PART2_ITEMS, LIKERT_SCALE, TYPES } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { TYPE_TEXT } from './content.js';
@@ -9,7 +9,7 @@ const how = '잘할 수 있는지보다 마음이 끌리는지를 기준으로 �
 export default {
   id: 'career',
   version: '1.0',
-  title: '진로 흥미 검사',
+  title: '직업 흥미 유형 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '어떤 종류의 일에 마음이 끌리는지 살펴보는 검사예요. 만들기, 탐구하기, 표현하기, 돕기, 이끌기, 정리하기의 여섯 흥미 가운데 가장 끌리는 세 가지로 흥미 코드를 만들고, 흥미가 모인 모양과 어울리는 직업을 함께 봐요.',

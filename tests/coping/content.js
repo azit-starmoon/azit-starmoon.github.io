@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 스트레스 대처 검사 해석 글
+// AZIT : Star&Moon — 스트레스 대처 방식 검사 해석 글
 
 export const LEVEL_LABEL = { low: '드묾', mid: '가끔', high: '자주', vhigh: '아주 자주' };
 

@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 스트레스 대처 검사 정의
+// AZIT : Star&Moon — 스트레스 대처 방식 검사 정의
 import { COPE_ITEMS, SITUATIONS, FREQ_SCALE, STRATEGIES } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { STYLES } from './content.js';
@@ -7,7 +7,7 @@ import { renderReport } from './report.js';
 export default {
   id: 'coping',
   version: '1.0',
-  title: '스트레스 대처 검사',
+  title: '스트레스 대처 방식 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '힘든 일이 생겼을 때 내가 주로 어떻게 대처하는지 살펴보는 검사예요. 여덟 가지 대처를 얼마나 자주 쓰는지와 함께, 바꿀 수 있는 일과 바꿀 수 없는 일 앞에서 대처를 바꿀 줄 아는지도 봐요.',

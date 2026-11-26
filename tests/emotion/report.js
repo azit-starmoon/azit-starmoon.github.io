@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 감정 조절 검사 결과지
+// AZIT : Star&Moon — 정서 조절 역량 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -40,7 +40,7 @@ export function renderReport(el, rec, ctx = {}) {
     : `${isHigh(K[top].level) ? '가장 든든한 갈래는' : '상대적으로 앞선 갈래는'} <strong>${esc(SKILLS[top].name)}</strong>, 키워 갈 갈래는 <strong>${esc(jo(SKILLS[grow].name, '이에요', '예요'))}</strong>`;
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">감정 조절 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">정서 조절 역량 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -157,7 +157,7 @@ export function renderReport(el, rec, ctx = {}) {
     '감정이 몰려올 때',
     '감정이 크게 밀려오는 순간에 차례로 해 볼 여섯 단계예요. 표시한 단계는 지금 가장 연습이 필요한 단계예요.',
     `<ol class="practice-list emo-steps">${STEPS.map((x) => `<li class="${!flat && x.skill === grow ? 'is-focus' : ''}"><span><strong>${esc(x.t)}</strong> ${esc(x.d)}${!flat && x.skill === grow ? ' <em>특히 연습할 단계</em>' : ''}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 감정 조절 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 정서 조절 역량 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

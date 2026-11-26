@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 한국형 성향검사 아홉 유형 해설
+// AZIT : Star&Moon — 한국형 성향 유형 검사 아홉 유형 해설
 
 export const TYPES = {
   1: {

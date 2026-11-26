@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 자존감 검사 해석 글
+// AZIT : Star&Moon — 자아존중감 검사 해석 글
 
 export const LEVEL_LABEL = { low: '낮음', mid: '보통', high: '높음', vhigh: '매우 높음' };
 export const LEAN_LABEL = { low: '적게 기댐', mid: '조금 기댐', high: '많이 기댐', vhigh: '크게 기댐' };

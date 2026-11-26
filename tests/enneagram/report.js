@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 한국형 성향검사 결과지
+// AZIT : Star&Moon — 한국형 성향 유형 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { constellation, barList, legend, starGlyph, arrowGlyph, centerColor } from '../../assets/js/charts.js';
@@ -54,7 +54,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">한국형 성향검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">한국형 성향 유형 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님의 핵심 유형</p>
       <div class="cover-hero">
         <div>
@@ -365,7 +365,7 @@ export function renderReport(el, rec, ctx = {}) {
     '성장을 위한 제안',
     `${core}번이 ${eul(T.virtue.name)} 향해 가는 데 도움이 되는 작은 연습들이에요. 하나만 골라 일주일 동안 해 보세요.`,
     `<ol class="practice-list">${T.practices.map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(T.message)}</p><small>${esc(name)} 님의 한국형 성향검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(T.message)}</p><small>${esc(name)} 님의 한국형 성향 유형 검사 결과지</small></div>`
   );
 
   el.innerHTML = `${cover}${toc}<div class="report col">${summary}${scores}${motive}${compare}${coreSec}${wing}${arrows}${love}${work}${tritype}${centersSec}${instSec}${groups}${style}${growth}</div>`;

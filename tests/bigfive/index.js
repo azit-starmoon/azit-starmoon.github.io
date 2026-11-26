@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 빅파이브 성격검사 정의
+// AZIT : Star&Moon — 성격 5요인 검사 정의
 import { ITEMS, LIKERT_SCALE, DOMAIN_ORDER } from './items.js';
 import { score as scoreAll } from './scoring.js';
 import { renderReport, headlineOf } from './report.js';
@@ -10,7 +10,7 @@ const how = '되고 싶은 모습이 아니라, 지금까지 살아온 대부분
 export default {
   id: 'bigfive',
   version: '1.0',
-  title: '빅파이브 성격검사',
+  title: '성격 5요인 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '성격을 이루는 다섯 영역(개방성, 성실성, 외향성, 친화성, 신경성)과 그 안의 하위 요인 30개를 재요. 유형으로 가르기보다, 나라는 별이 어떤 모양인지 그려 보는 검사예요.',

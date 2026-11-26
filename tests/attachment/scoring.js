@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 애착 유형 검사 채점
+// AZIT : Star&Moon — 성인 애착 유형 검사 채점
 // 불안과 회피를 0~100으로 환산하고(50 = '보통이다'), 두 축이 50 이상인지로 네 유형을 나눈다.
 import { GENERAL_ITEMS, FACETS, TARGETS, targetItems } from './items.js';
 

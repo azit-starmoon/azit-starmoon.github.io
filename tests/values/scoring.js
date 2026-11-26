@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 가치관 검사 채점
+// AZIT : Star&Moon — 가치 지향 검사 채점
 import { ITEMS, VALUE_ORDER, GROUP_ORDER, GROUPS, CONFLICTS } from './items.js';
 
 // 가치 점수는 두 가지로 낸다.

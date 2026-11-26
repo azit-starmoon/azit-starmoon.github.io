@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 자존감 검사 채점
+// AZIT : Star&Moon — 자아존중감 검사 채점
 import { WORTH_ITEMS, SELF_ITEMS, SELF_ORDER, BASE_ITEMS, BASE_ORDER } from './items.js';
 
 // 수준(0~100). 집단 규준이 아니라 문항 평균에 묶은 기준점이다. 낮음 < 38, 보통 38~61, 높음 62~74, 매우 높음 75 이상

@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 스트레스 대처 검사 채점
+// AZIT : Star&Moon — 스트레스 대처 방식 검사 채점
 import { COPE_ITEMS, STRATEGY_ORDER, STRATEGIES, GROUP_ORDER, SITUATIONS } from './items.js';
 
 // 대처 점수(0~100)는 얼마나 자주 쓰는지다. 수준 기준점(문항 평균 기준): 드묾 < 38, 가끔 38~61, 자주 62~74, 아주 자주 75 이상

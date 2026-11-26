@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 감정 조절 검사 채점
+// AZIT : Star&Moon — 정서 조절 역량 검사 채점
 import { SKILL_ITEMS, SKILL_ORDER, STRATEGY_ITEMS, STRATEGY_ORDER, STRATEGIES } from './items.js';
 
 // 수준(0~100, 높을수록 감정을 다루는 힘이 큼). 집단 규준이 아니라 문항 평균에 묶은 기준점이다.

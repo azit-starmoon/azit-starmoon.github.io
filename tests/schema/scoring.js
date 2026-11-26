@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 삶의 규칙 검사 채점
+// AZIT : Star&Moon — 심리도식 검사 채점
 // 도식마다 5문항의 평균(1~6)을 0~100으로 환산하고, '그렇다' 이상(5~6) 응답 개수를 함께 본다.
 // 심리도식 검사에서는 평균이 낮아도 강하게 공감한 문항이 몇 개 있으면 그 도식을 살펴보는 경우가 많아서 둘 다 쓴다.
 import { ITEMS, SCHEMAS, SCHEMA_ORDER, DOMAINS, COPING_ITEMS } from './items.js';

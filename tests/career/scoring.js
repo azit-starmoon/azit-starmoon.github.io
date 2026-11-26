@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 진로 흥미 검사 채점
+// AZIT : Star&Moon — 직업 흥미 유형 검사 채점
 import { ITEMS, TYPE_ORDER, TYPES, hexDist } from './items.js';
 
 // 유형 점수: 열 문항 평균(1~5, 반대 방향 문항은 돌려서)을 0~100으로 옮긴 값.

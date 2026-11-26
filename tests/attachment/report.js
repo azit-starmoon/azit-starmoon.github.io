@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 애착 유형 검사 결과지
+// AZIT : Star&Moon — 성인 애착 유형 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -62,7 +62,7 @@ export function renderReport(el, rec, ctx = {}) {
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">애착 유형 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">성인 애착 유형 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack att-hero">
         <div>
@@ -198,7 +198,7 @@ export function renderReport(el, rec, ctx = {}) {
     `<ol class="practice-list">${st.growth.map((g) => `<li><span><strong>${esc(g.t)}</strong> ${esc(g.d)}</span></li>`).join('')}${topFacets
       .map((f) => `<li><span><strong>${esc(FACETS[f].name)}</strong> ${esc(FACET_TEXT[f].tip)}</span></li>`)
       .join('')}</ol>
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 애착 유형 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 성인 애착 유형 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

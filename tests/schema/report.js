@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 삶의 규칙 검사 결과지
+// AZIT : Star&Moon — 심리도식 검사 결과지
 import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
@@ -44,7 +44,7 @@ export function renderReport(el, rec, ctx = {}) {
     : { h: '두드러진 규칙이 없어요', t: '18가지 규칙이 모두 약하게 나타나요', sub: top.length ? '그중 상대적으로 높게 나온 규칙을 함께 살펴봐요.' : '지금은 크게 작동하는 규칙이 보이지 않아요.' };
   const cover = `<header class="sky cover">
     <div class="col">
-      <div class="cover-top"><span class="doc">삶의 규칙 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
+      <div class="cover-top"><span class="doc">심리도식 검사 결과지</span><span class="cover-when">${esc(fmtDate(rec.createdAt))}${ctx.rid ? `<br>결과 코드 ${esc(resultCode(ctx.rid))}` : ''}</span></div>
       <p class="cover-name"><strong>${esc(name)}</strong> 님의 마음속 규칙</p>
       <div class="cover-hero cover-hero--stack">
         <div>
@@ -179,7 +179,7 @@ export function renderReport(el, rec, ctx = {}) {
     '규칙은 한 번에 사라지지 않지만, 알아차리고 다르게 해 보는 경험이 쌓이면 힘이 약해져요. 아래 순서를 천천히 되풀이해 보세요.',
     `<ol class="practice-list">${STEPS.map((x) => `<li><span><strong>${esc(x.t)}</strong> ${esc(x.d)}</span></li>`).join('')}</ol>
     ${top.length ? `<blockquote class="quote sch-today"><small>오늘 나에게 들려줄 문장</small>${esc(SCHEMA_TEXT[top[0]].healthy)}</blockquote>` : ''}
-    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 삶의 규칙 검사 결과지</small></div>`
+    <div class="closing sky">${starGlyph()}<p>${esc(CLOSING)}</p><small>${esc(name)} 님의 심리도식 검사 결과지</small></div>`
   );
 
   // ── 상담 메모 (공유 링크에서는 빠짐) ──────────

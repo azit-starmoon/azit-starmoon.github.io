@@ -1,4 +1,4 @@
-// AZIT : Star&Moon — 한국형 성향검사(아홉 유형) 정의
+// AZIT : Star&Moon — 한국형 성향 유형 검사(아홉 유형) 정의
 import { LIKERT_ITEMS, LIKERT_SCALE, INSTINCT_SETS, INSTINCT_ORDER } from './items.js';
 import { buildMotiveItems, score as scoreAll } from './scoring.js';
 import { TYPES } from './content-types.js';
@@ -13,7 +13,7 @@ const rankItems = INSTINCT_SETS.map((set, i) => ({
 export default {
   id: 'enneagram',
   version: '1.0',
-  title: '한국형 성향검사',
+  title: '한국형 성향 유형 검사',
   intro: {
     kicker: 'AZIT : Star&Moon 검사',
     lead: '아홉 가지 유형 가운데 나를 움직이는 핵심 동기를 찾아요. 1부에서 성향을 넓게 살피고, 2부에서 가장 가까운 유형들의 동기를 서로 맞대어 핵심 유형을 가려내요.',
