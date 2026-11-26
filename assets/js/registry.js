@@ -103,7 +103,16 @@ export const TESTS = [
     gets: ['여덟 가지 대처', '대처 꽃잎', '대처 스타일', '상황에 맞추기', '키우는 연습', '상담 메모'],
   },
   { id: 'resilience', status: 'soon', title: '회복탄력성 검사', desc: '어려움에서 다시 일어나는 힘을 자기 조절, 관계, 긍정성으로 살펴요.' },
-  { id: 'esteem', status: 'soon', title: '자존감 검사', desc: '나를 얼마나 가치 있게 여기는지, 힘들 때 나를 어떻게 대하는지 살펴요.' },
+  {
+    id: 'esteem',
+    status: 'open',
+    title: '자존감 검사',
+    desc: '나를 얼마나 가치 있게 여기는지, 힘들 때 나를 어떻게 대하는지, 그 믿음이 어떤 조건에 기대는지 살펴요.',
+    items: 46,
+    minutes: 8,
+    parts: 3,
+    gets: ['자기 가치감', '자존감 지도', '나를 대하는 방식', '자존감이 기대는 곳', '돌보는 연습', '상담 메모'],
+  },
 ];
 
 export function getTestMeta(id) {

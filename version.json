@@ -1,5 +1,5 @@
 {
- "v": "20261125-235030",
+ "v": "20261126-000355",
  "files": [
   "./",
   "admin.html",
@@ -61,6 +61,12 @@
   "tests/enneagram/items.js",
   "tests/enneagram/report.js",
   "tests/enneagram/scoring.js",
+  "tests/esteem/chart.js",
+  "tests/esteem/content.js",
+  "tests/esteem/index.js",
+  "tests/esteem/items.js",
+  "tests/esteem/report.js",
+  "tests/esteem/scoring.js",
   "tests/hsp/chart.js",
   "tests/hsp/content.js",
   "tests/hsp/index.js",
