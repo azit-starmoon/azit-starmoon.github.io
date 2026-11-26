@@ -1,6 +1,6 @@
 import { mountHeader, mountFooter, esc, toast } from '../ui.js';
 import { constellation, b5Star } from '../charts.js';
-import { TESTS } from '../registry.js';
+import { TESTS, groupIds } from '../registry.js';
 import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
@@ -57,17 +57,33 @@ const GLYPH = {
   );
 
   const open = TESTS.filter((t) => t.status === 'open');
-  document.querySelector('[data-open-tests]').innerHTML = open
-    .map((t) => `<article class="feature" aria-labelledby="ft-${t.id}">
-      <div class="feature-glyph">${GLYPH[t.id] ? GLYPH[t.id]() : ''}</div>
-      <div>
-        <h3 id="ft-${t.id}">${esc(t.title)}</h3>
-        <p class="feature-desc">${esc(t.desc)}</p>
-        <div class="feature-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span>${t.parts}부 구성</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>
-        <ul class="feature-gets" aria-label="결과지에 담기는 것">${t.gets.map((g) => `<li class="tag">${esc(g)}</li>`).join('')}</ul>
-        <div class="feature-actions"><a class="btn" href="test.html?t=${t.id}">검사 시작하기</a></div>
+  const meta = new Map(open.map((t) => [t.id, t]));
+  const groups = groupIds(open.map((t) => t.id));
+  document.querySelector('[data-group-nav]').innerHTML = groups
+    .map((g) => `<a class="tg-chip" href="#g-${g.id}"><span>${esc(g.name)}</span><span class="n">${g.tests.length}</span></a>`)
+    .join('');
+  document.querySelector('[data-open-tests]').innerHTML = groups
+    .map((g) => `<section class="tg" id="g-${g.id}" aria-labelledby="g-${g.id}-t">
+      <div class="tg-head">
+        <h3 id="g-${g.id}-t">${esc(g.name)}</h3>
+        ${g.question ? `<p class="tg-q">${esc(g.question)}</p>` : ''}
+        ${g.desc ? `<p class="tg-desc">${esc(g.desc)}</p>` : ''}
       </div>
-    </article>`)
+      <div class="tg-grid">${g.tests.map((id) => {
+        const t = meta.get(id);
+        return `<article class="tcard" aria-labelledby="ft-${t.id}">
+          <div class="tcard-glyph" aria-hidden="true">${GLYPH[t.id] ? GLYPH[t.id]() : ''}</div>
+          <div class="tcard-body">
+            <h4 id="ft-${t.id}">${esc(t.title)}</h4>
+            <p class="tcard-desc">${esc(t.desc)}</p>
+            <div class="tcard-foot">
+              <div class="tcard-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>
+              <a class="btn btn--small tcard-go" href="test.html?t=${t.id}" aria-label="${esc(t.title)} 시작하기">시작하기</a>
+            </div>
+          </div>
+        </article>`;
+      }).join('')}</div>
+    </section>`)
     .join('');
 
   drawResume();

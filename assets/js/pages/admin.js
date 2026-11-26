@@ -3,7 +3,7 @@ import {
   claimAdmin, listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, shareUrl, isDemo, currentUser,
   isUserAdmin, setUserAdmin, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
 } from '../backend.js';
-import { TESTS } from '../registry.js';
+import { TESTS, groupIds } from '../registry.js';
 import { requireLogin } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 
@@ -116,8 +116,8 @@ function draw() {
       </section>
       <div class="toolbar">
         <input class="input" type="search" placeholder="검사자나 상담사 이름으로 찾기" value="${esc(view.q)}" data-q aria-label="검사자나 상담사 이름으로 찾기">
-        <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${TESTS.filter((t) => t.status === 'open')
-          .map((t) => `<option value="${t.id}" ${view.test === t.id ? 'selected' : ''}>${esc(t.title)}</option>`)
+        <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
+          .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${view.test === id ? 'selected' : ''}>${esc(title(id))}</option>`).join('')}</optgroup>`)
           .join('')}</select>
         <span class="spacer"></span>
         <button type="button" class="btn btn--ghost btn--small" data-csv>CSV 내려받기</button>
