@@ -184,7 +184,7 @@ function drawBundles(meta) {
       </a></li>`;
     }).join('');
     return `<p class="bd-desc">${esc(b.desc)}</p>
-      <ol class="bd-steps">${steps}</ol>
+      <ol class="bd-steps" data-n="${b.tests.length}">${steps}</ol>
       <div class="bd-foot"><span class="bd-total">검사 ${b.tests.length}개, 모두 약 ${total}분</span><a class="btn" href="test.html?t=${esc(b.tests[0])}&amp;b=${esc(b.id)}">묶음으로 시작하기</a></div>`;
   };
   box.innerHTML = `<div class="bd-tabs" role="tablist" aria-label="고민별 추천 묶음">${list.map((b, i) => `<button type="button" role="tab" id="bd-tab-${b.id}" aria-controls="bd-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-bundle="${b.id}">${esc(b.name)}</button>`).join('')}</div>

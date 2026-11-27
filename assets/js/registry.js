@@ -223,12 +223,12 @@ export const GROUPS = [
 ];
 const OTHER = { id: 'other', name: '그 밖의 검사', question: '', desc: '', tests: [] };
 
-// 고민별 추천 묶음: 상담 주제에 맞춰 함께 하면 좋은 검사를 하는 순서대로 묶는다.
+// 고민별 추천 묶음: 상담 주제에 맞춰 함께 하면 좋은 검사를 하는 순서대로 묶는다(검사 3~4개, 합쳐 40분 안쪽).
 // 첫 화면에서 고르고, 한 검사가 끝나면 묶음의 다음 검사로 이어진다(검사자 이름은 이 탭 안에서만 넘겨 준다).
 export const BUNDLES = [
   { id: 'first', name: '처음 만나는 분', desc: '타고난 성향과 나를 보는 마음, 가까운 관계에서의 모습을 함께 살펴 상담의 첫 그림을 그려요.', tests: ['enneagram', 'esteem', 'attachment'] },
   { id: 'tired', name: '마음이 지칠 때', desc: '감정을 다루는 힘과 스트레스를 대하는 방식, 다시 일어서는 힘을 함께 봐요.', tests: ['emotion', 'coping', 'resilience'] },
-  { id: 'relation', name: '관계가 힘들 때', desc: '가까운 관계에서의 불안과 거리, 가족 안에서 이어진 모습, 마음 깊이 자리 잡은 규칙을 함께 봐요.', tests: ['attachment', 'differentiation', 'schema'] },
+  { id: 'relation', name: '관계가 힘들 때', desc: '가까운 관계에서의 불안과 거리, 관계에서 되풀이되는 모습, 가족 안에서 이어진 모습, 마음 깊이 자리 잡은 규칙을 함께 봐요.', tests: ['attachment', 'interpersonal', 'differentiation', 'schema'] },
   { id: 'path', name: '진로와 방향', desc: '잘하는 것과 소중히 여기는 것, 끌리는 일을 겹쳐 보며 나아갈 방향을 찾아요.', tests: ['strengths', 'values', 'career'] },
   { id: 'faith', name: '신앙 상담', desc: '하나님과의 관계를 사람과의 관계, 나를 보는 마음과 나란히 놓고 살펴요.', tests: ['godattach', 'attachment', 'esteem'] },
 ];
