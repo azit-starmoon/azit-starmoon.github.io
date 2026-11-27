@@ -12,6 +12,8 @@ import { TEMP_TYPES as TC_TYPES, CHAR_SHAPES as TC_SHAPES } from '../../../tests
 import { STATES as LS_STATES } from '../../../tests/lifestory/content.js';
 import { STYLES as DF_STYLES } from '../../../tests/differentiation/content.js';
 import { STYLES as GA_STYLES } from '../../../tests/godattach/content.js';
+import { styleOf as ipStyleOf } from '../../../tests/interpersonal/scoring.js';
+import { summaryOf } from '../summaries.js';
 
 const box = document.querySelector('[data-admin]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
@@ -369,7 +371,7 @@ function drawRows() {
     .map((r) => `<tr data-key="${esc(r.uid)}/${esc(r.rid)}">
       <td class="r-who"><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a><span>${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></td>
       <td class="r-test">${codeOf(r.testId) ? `<span class="tcard-code">${esc(codeOf(r.testId))}</span>` : ''}<span class="r-test-name">${esc(title(r.testId))}</span></td>
-      <td class="r-sum"><span class="clamp">${esc(r.summary || '')}</span></td>
+      <td class="r-sum"><span class="clamp">${esc(summaryOf(r))}</span></td>
       <td class="r-owner" title="${esc(r.email || '')}"><strong>${esc(ownerLabel(r))}</strong><span>${esc(ownerTeam(r) || r.email || '')}</span></td>
       <td class="r-date">${esc(shortDate(r.createdAt))}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</td>
       <td class="acts"><a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">열기</a>${canEditResult(r) ? `<button type="button" class="btn btn--ghost btn--small" data-act="share">공유</button><button type="button" class="btn btn--text btn--small" data-act="delete">지우기</button>` : ''}</td>
@@ -589,7 +591,7 @@ function exportCsv() {
     const ts = (s.likert && s.likert.typeScore) || {};
     const isE = r.testId === 'enneagram';
     lines.push([
-      r.name, r.birth || '', ownerLabel(r), r.email, title(r.testId), r.summary,
+      r.name, r.birth || '', ownerLabel(r), r.email, title(r.testId), summaryOf(r),
       isE ? s.core : '', isE ? `${s.core}w${s.wing}` : '', isE && s.tritype ? s.tritype.join('-') : '',
       isE && s.instinct ? s.instinct.stack.map((k) => k.toUpperCase()).join('/') : '', isE ? conf[s.confidence] || '' : '',
       ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => (isE ? ts[t] : '')),
@@ -644,7 +646,7 @@ function exportCsv() {
           [['aban', '떠나실까 걱정'], ['assure', '확인하고 싶음'], ['cond', '조건'], ['hurt', '서운함'], ['dist', '거리'], ['self', '혼자 해결'], ['closed', '마음 닫기'], ['duty', '의무']].map(([k, n]) => `${n} ${s.facets[k] ? s.facets[k].score : ''}`).join('; ')]
         : ['', '', '', '']),
       ...(r.testId === 'interpersonal' && s.octants
-        ? [IP_STYLE[s.style] || '', s.elev, s.amp, s.dom, s.lov,
+        ? [IP_STYLE[ipStyleOf(s)] || '', s.elev, s.amp, s.dom, s.lov,
           IP_OCT.map(([k, n]) => `${n} ${s.octants[k] ? s.octants[k].score : ''}`).join('; ')]
         : ['', '', '', '', '', '']),
       ...(r.testId === 'rumination' && s.scales

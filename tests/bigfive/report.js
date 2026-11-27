@@ -3,8 +3,8 @@ import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { b5Star, quadrant, starGlyph } from '../../assets/js/charts.js';
 import { DOMAINS, FACET_TEXT, STYLES, LEVEL_LABEL } from './content.js';
-import { FACETS, DOMAIN_ORDER } from './items.js';
-import { STYLE_PAIRS } from './scoring.js';
+import { FACETS, DOMAIN_ORDER, ITEMS } from './items.js';
+import { STYLE_PAIRS, pairCheck, CLASH_LIMIT } from './scoring.js';
 
 const pill = (lv) => `<span class="lv-pill lv-pill--${lv}">${LEVEL_LABEL[lv]}</span>`;
 
@@ -126,7 +126,7 @@ export function renderReport(el, rec, ctx = {}) {
   const facetsSec = section(
     'facets',
     '두드러진 특징',
-    '하위 요인 30개 가운데 가장 높게 나온 셋과 가장 낮게 나온 셋이에요. 낮게 나온 요인은 부족한 점이 아니라 덜 쓰는 모습이에요.',
+    '하위 요인 30개 가운데 가장 높게 나온 셋과 가장 낮게 나온 셋이에요. 낮게 나온 요인은 부족한 점이 아니라 덜 쓰는 모습이에요. 하위 요인은 4문항씩이라 그날 기분에 따라 크게 움직일 수 있어요. 영역 점수를 먼저 보고, 하위 요인은 함께 이야기 나눌 거리로 봐 주세요.',
     `<div class="two-lists">
       <div><h4>가장 높게 나온 하위 요인</h4><ul class="check-list">${(s.top || []).map(facetItem).join('')}</ul></div>
       <div><h4>가장 낮게 나온 하위 요인</h4><ul class="check-list check-list--soft">${(s.bottom || []).map(facetItem).join('')}</ul></div>
@@ -144,10 +144,18 @@ export function renderReport(el, rec, ctx = {}) {
   );
 
   // ── 응답 점검 ────────────────────────────────
-  const C = s.check || {};
+  // 반대말 쌍은 2026.11.28에 고쳤다(scoring.js CHECK_PAIRS). 저장된 응답이 있으면 지금 기준으로 다시 세고,
+  // 응답 없이 점수만 있는 예전 결과(공유 링크)는 예전 방식 숫자라서 보여 주지 않는다.
+  const C0 = s.check || {};
+  const P = rec.answers ? pairCheck(rec.answers) : C0.pairN ? { pairN: C0.pairN, clashN: C0.clashN, clashRatio: C0.clashRatio, clashes: [] } : null;
+  const C = { ...C0, ...(P ? { clashRatio: P.clashRatio } : {}) };
+  const ITEM = Object.fromEntries(ITEMS.map((it) => [it.id, it]));
+  const side = (v) => (v >= 4 ? "'그렇다'" : "'아니다'");
   const notes = [];
-  if (C.clashRatio >= 0.25) notes.push(`서로 반대되는 문장에 같은 쪽으로 답한 경우가 꽤 있어요. 문항을 빠르게 넘겼거나, 상황에 따라 모습이 많이 달라지는 편일 수 있어요. 점수를 볼 때 함께 참고해 주세요.`);
-  else notes.push('서로 반대되는 문장에 대한 응답이 일관돼요.');
+  if (P && P.clashRatio >= CLASH_LIMIT) {
+    notes.push(`서로 반대말인 문장 ${P.pairN}쌍 가운데 ${P.clashN}쌍에 같은 쪽으로 답했어요. 문항을 빠르게 넘겼거나, 상황에 따라 모습이 많이 달라지는 편일 수 있어요. 점수를 볼 때 함께 참고해 주세요.`);
+    if (!ctx.shared) P.clashes.slice(0, 2).forEach(([a, b, va]) => notes.push(`예: '${ITEM[a].text.replace(/\.$/, '')}'와 '${ITEM[b].text.replace(/\.$/, '')}'에 둘 다 ${side(va)} 쪽으로 답했어요.`));
+  } else if (P) notes.push(`서로 반대말인 문장 ${P.pairN}쌍에 대한 응답이 일관돼요.`);
   if (C.rawMean >= 3.6) notes.push("전반적으로 '그렇다' 쪽으로 답하는 경향이 있어요. 반대로 채점하는 문항이 섞여 있어서 점수에 미치는 영향은 줄어들어요.");
   else if (C.rawMean <= 2.4) notes.push("전반적으로 '아니다' 쪽으로 답하는 경향이 있어요. 반대로 채점하는 문항이 섞여 있어서 점수에 미치는 영향은 줄어들어요.");
   if (C.midRatio >= 0.35) notes.push("'보통이다' 응답이 많은 편이에요. 그래서 점수가 50 근처로 모였을 수 있어요.");
@@ -161,7 +169,7 @@ export function renderReport(el, rec, ctx = {}) {
       <div class="metric"><dt>평균 응답</dt><dd>${Number(C.rawMean || 0).toFixed(2)}</dd></div>
       <div class="metric"><dt>분명한 응답</dt><dd>${Math.round((C.extremeRatio || 0) * 100)}%</dd></div>
       <div class="metric"><dt>'보통이다' 응답</dt><dd>${Math.round((C.midRatio || 0) * 100)}%</dd></div>
-      <div class="metric"><dt>어긋난 응답</dt><dd>${Math.round((C.clashRatio || 0) * 100)}%</dd></div>
+      ${P ? `<div class="metric"><dt>어긋난 응답</dt><dd>${P.clashN}/${P.pairN}쌍</dd></div>` : ''}
     </dl>
     <ul class="check-list">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
     ${minutes ? `<p class="final-note">검사에 걸린 시간은 약 ${minutes}분이에요.</p>` : ''}`

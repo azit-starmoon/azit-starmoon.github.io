@@ -1,7 +1,7 @@
 // AZIT : Star&Moon — 대인관계 패턴 검사 정의
-import { ITEMS, LIKERT_SCALE, OCTANTS } from './items.js';
-import { score as scoreAll } from './scoring.js';
-import { OCTANT_TEXT, EVEN } from './content.js';
+import { ITEMS, LIKERT_SCALE } from './items.js';
+import { score as scoreAll, styleOf } from './scoring.js';
+import { summaryLine } from './summary.js';
 import { renderReport } from './report.js';
 
 const GLYPH = { pa: '주도', bc: '맞섬', de: '거리', fg: '조심', hi: '참음', jk: '맞춤', lm: '돌봄', no: '곁에', even: '고름' };
@@ -35,7 +35,7 @@ export default {
     },
   ],
   score: (answers, meta) => scoreAll(answers, meta),
-  summary: (s) => `${OCTANTS[s.style] ? OCTANT_TEXT[s.style].title : EVEN.title} (관계의 어려움 ${s.elev}, 기우는 방향 ${OCTANTS[s.style] ? OCTANTS[s.style].short : '고름'})`,
-  glyph: (s) => GLYPH[s.style] || '·',
+  summary: summaryLine,
+  glyph: (s) => GLYPH[styleOf(s)] || '·',
   render: renderReport,
 };

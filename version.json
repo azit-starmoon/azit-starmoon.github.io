@@ -1,5 +1,5 @@
 {
- "v": "20261127-123049",
+ "v": "20261127-152202",
  "files": [
   "./",
   "admin.html",
@@ -23,6 +23,7 @@
   "assets/js/pairs.js",
   "assets/js/registry.js",
   "assets/js/runner.js",
+  "assets/js/summaries.js",
   "assets/js/toc.js",
   "assets/js/tracks.js",
   "assets/js/ui.js",
@@ -101,6 +102,7 @@
   "tests/interpersonal/items.js",
   "tests/interpersonal/report.js",
   "tests/interpersonal/scoring.js",
+  "tests/interpersonal/summary.js",
   "tests/lifestory/chart.js",
   "tests/lifestory/content.js",
   "tests/lifestory/index.js",

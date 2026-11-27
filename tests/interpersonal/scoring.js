@@ -39,6 +39,22 @@ export function octantAt(angle) {
   }, { k: OCTANT_ORDER[0], d: 999 }).k;
 }
 
+// 제목에 쓰는 '기우는 방향' (2026.11.28 고침)
+//  원형 분석에서는 여덟 점수가 원 모양에 잘 들어맞을 때(R² 0.7 이상)만 각도를 해석한다. 잘 맞지 않으면 화살표가
+//  실제 점수가 낮은 방향을 가리킬 수도 있다(예: 기울기 6, R² 0.5에서 점수 25인 '의심하고 맞섬'을 가리킴).
+//   - 기울기 6 미만: 고른 모양
+//   - 원 모양에 잘 맞지 않고(두 갈래 이상) 기울기도 12 미만: 고른 모양
+//   - 원 모양에 잘 맞지 않지만 기울기가 12 이상: 각도 대신 실제로 가장 높은 방향
+//   - 그 밖: 각도가 가리키는 방향
+//  저장된 결과도 이 함수로 다시 읽는다(예전 결과에 저장된 style은 쓰지 않는다).
+export function styleOf(s) {
+  const amp = Number(s && s.amp) || 0;
+  const fit = Number(s && s.fit);
+  if (amp < AMP_NONE) return 'even';
+  if (Number.isFinite(fit) && fit < FIT_MIN) return amp < AMP_CLEAR ? 'even' : (OCTANTS[s.top] ? s.top : octantAt(s.angle));
+  return octantAt(s.angle);
+}
+
 // 여덟 방향 점수 → 구조 요약
 export function summarize(scores) {
   const s = OCTANT_ORDER.map((k) => scores[k]);
@@ -74,7 +90,7 @@ export function score(answers, meta = {}) {
   const order = [...OCTANT_ORDER].sort((a, b) => plain[b] - plain[a] || OCTANT_ORDER.indexOf(a) - OCTANT_ORDER.indexOf(b));
   const sum = summarize(plain);
   const tilt = sum.amp < AMP_NONE ? 'none' : sum.amp < AMP_CLEAR ? 'mild' : 'clear';
-  const style = tilt === 'none' ? 'even' : octantAt(sum.angle);
+  const style = styleOf({ ...sum, top: order[0] });
 
   const rawAll = ITEMS.map(raw);
   const durationSec = Number(meta.durationSec || 0);

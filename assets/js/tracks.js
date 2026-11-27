@@ -9,11 +9,12 @@
 // 그보다 작은 차이는 '비슷함'으로 적는다(가장 좁아도 5점). 실제 사람의 재검사 자료가 아니라 모형으로 어림한 폭이다.
 // 새 검사를 열면 여기 한 줄을 더한다(점수 자리와 문항 수). 없으면 결과 요약 첫머리만 날짜순으로 보여 준다.
 import { esc, fmtDate } from './ui.js';
+import { summaryOf } from './summaries.js';
 
 export const bandOf = (n) => Math.max(5, Math.round(25 / Math.sqrt(n || 1)));
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 const sc = (o, k) => (o && o[k] && num(o[k].score) ? o[k].score : undefined);
-const head = (r) => String(r.summary || '').split(' (')[0].trim();
+const head = (r) => String(summaryOf(r)).split(' (')[0].trim();
 const hasBatchim = (w) => { const c = String(w).trim().slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
 const topic = (w) => `${w}${hasBatchim(w) ? '은' : '는'}`;
 const STATE_NAME = { overload: '과부하', holding: '버티는 중', bloom: '잘 피어나는 중', dry: '채움이 필요함' };

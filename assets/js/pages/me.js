@@ -4,6 +4,7 @@ import { TESTS, groupIds, codeOf } from '../registry.js';
 import { personKey, fmtBirth, matchPerson } from '../examinee.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
+import { summaryOf } from '../summaries.js';
 
 const box = document.querySelector('[data-list]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
@@ -71,7 +72,7 @@ function drawRows() {
       <div class="meta">
         <div class="rec-head"><strong>${esc(r.name || '이름 없음')}${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span class="rec-when">${esc(fmtDate(r.createdAt, true))}</span></div>
         <p class="rec-test">${testLine(r.testId)}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</p>
-        <p class="rec-sum">${esc(r.summary || '')}</p>
+        <p class="rec-sum">${esc(summaryOf(r))}</p>
       </div>
       <div class="acts">
         <a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">결과지 보기</a>

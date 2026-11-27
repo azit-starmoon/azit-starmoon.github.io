@@ -8,6 +8,7 @@ import { listResultsOf, getMember, resultUrl, personUrl } from '../backend.js';
 import { TESTS, groupIds, codeOf } from '../registry.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
+import { summaryOf } from '../summaries.js';
 import { PAIRS } from '../pairs.js';
 import { buildTracks, renderTrack } from '../tracks.js';
 import { normName, personKey, fmtBirth } from '../examinee.js';
@@ -151,7 +152,7 @@ function card(id, rs) {
     <div class="glyph" aria-hidden="true">${esc(glyph(r))}</div>
     <div class="pp-card-body">
       <p class="pp-card-t"><strong>${esc(meta(id).title)}</strong>${code ? `<span class="tcard-code">${esc(code)}</span>` : ''}</p>
-      <p class="pp-card-s">${esc(r.summary || '')}</p>
+      <p class="pp-card-s">${esc(summaryOf(r))}</p>
       <div class="pp-card-f">
         <p class="pp-card-m">${esc(fmtDate(r.createdAt))}${rs.length > 1 ? `<span class="pp-older">이전 결과 ${older}${more}</span>` : ''}</p>
         <a class="btn btn--ghost btn--small no-print" href="${resultUrl(r.uid, r.rid)}">결과지</a>

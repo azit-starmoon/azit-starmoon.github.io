@@ -4,7 +4,7 @@ import { esc, fmtDate, resultCode } from '../../assets/js/ui.js';
 import { wireToc } from '../../assets/js/toc.js';
 import { starGlyph } from '../../assets/js/charts.js';
 import { OCTANTS, OCTANT_ORDER } from './items.js';
-import { SPREAD_LIMIT, ACQ_LIMIT, octantAt } from './scoring.js';
+import { SPREAD_LIMIT, ACQ_LIMIT, octantAt, styleOf } from './scoring.js';
 import { LEVEL_LABEL, OCTANT_TEXT, OVERALL, EVEN, COMPLEX, AXES, axisWord, COUNSEL_GENERAL, CLOSING } from './content.js';
 import { circleMap } from './chart.js';
 
@@ -32,8 +32,11 @@ export function renderReport(el, rec, ctx = {}) {
   const sc = (k) => num((O8[k] || {}).score, 0);
   const lvOf = (k) => (O8[k] || {}).level || 'mid';
   const order = Array.isArray(s.order) && s.order.length === 8 ? s.order : [...OCTANT_ORDER].sort((a, b) => sc(b) - sc(a));
-  const style = OCTANTS[s.style] ? s.style : 'even';
+  // 제목 방향은 저장된 style 대신 지금 기준(styleOf)으로 다시 정한다. 예전 결과도 같은 기준으로 읽힌다
+  const style = styleOf({ ...s, top: order[0] });
   const even = style === 'even';
+  const loose = !!s.complex; // 원 모양에 잘 들어맞지 않음(두 갈래 이상)
+  const byTop = !even && loose; // 기울기는 뚜렷하지만 두 갈래: 각도 대신 가장 높은 방향으로 읽음
   const level = OVERALL[s.level] ? s.level : 'mid';
   const O = OVERALL[level];
   const amp = num(s.amp);
@@ -42,14 +45,17 @@ export function renderReport(el, rec, ctx = {}) {
   const focus = [...new Set([...(even ? [] : [style]), ...order])].slice(0, 2);
   // 기우는 방향이 두 방향의 경계 가까이(가운데서 15도 넘게 벗어남)면 이웃 방향도 함께 말한다: 다시 하면 이웃 방향으로 바뀌기 쉬운 자리
   let beside = '';
-  if (!even) {
+  if (!even && !byTop) {
     const d = ((num(s.angle) - OCTANTS[style].angle + 540) % 360) - 180;
     if (Math.abs(d) >= 15) beside = octantAt(OCTANTS[style].angle + 45 * Math.sign(d));
   }
   const head = even ? EVEN.title : OCTANT_TEXT[style].title;
   const C = s.check || {};
   const careful = num(C.spread) >= SPREAD_LIMIT || Math.abs(num(C.acq)) >= ACQ_LIMIT || num(C.sd, 1) < 0.5;
-  const fig = (size) => circleMap(O8, { size, angle: even ? null : num(s.angle), amp, top: focus[0], title: `대인관계 원형 지도: ${OCTANT_ORDER.map((k) => `${OCTANTS[k].name} ${sc(k)}`).join(', ')}${even ? '' : `. 기우는 방향 ${OCTANTS[style].name}, 기울기 ${amp}`}` });
+  const arrow = !even && !byTop; // 각도를 믿을 수 있을 때만 화살표를 그린다
+  const fig = (size) => circleMap(O8, { size, angle: arrow ? num(s.angle) : null, amp, top: focus[0], title: `대인관계 원형 지도: ${OCTANT_ORDER.map((k) => `${OCTANTS[k].name} ${sc(k)}`).join(', ')}${arrow ? `. 기우는 방향 ${OCTANTS[style].name}, 기울기 ${amp}` : ''}` });
+  const kicker = even ? (loose ? '기우는 방향이 한쪽으로 모이지 않았어요' : '여덟 방향이 고르게 나왔어요')
+    : byTop ? `가장 높은 '${esc(OCTANTS[style].name)}'${hasBatchim(OCTANTS[style].name) ? '을' : '를'} 중심으로, 두 갈래로 나뉘어요` : `원이 '${esc(OCTANTS[style].name)}' 쪽으로 기울어요`;
 
   // ── 표지 ─────────────────────────────────────
   const cover = `<header class="sky cover">
@@ -58,7 +64,7 @@ export function renderReport(el, rec, ctx = {}) {
       <p class="cover-name"><strong>${esc(name)}</strong> 님은</p>
       <div class="cover-hero cover-hero--stack">
         <div>
-          <p class="hsp-kicker">${even ? '여덟 방향이 고르게 나왔어요' : `원이 '${esc(OCTANTS[style].name)}' 쪽으로 기울어요`}</p>
+          <p class="hsp-kicker">${kicker}</p>
           <h1 class="cover-headline">${esc(head)}</h1>
           <p class="hsp-tag">관계의 어려움 <strong>${num(s.elev)}</strong>점, ${LEVEL_LABEL[level]}</p>
         </div>
@@ -66,7 +72,7 @@ export function renderReport(el, rec, ctx = {}) {
       </div>
       <dl class="cover-facts">
         <div><dt>관계의 어려움</dt><dd>${num(s.elev)}<small>${LEVEL_LABEL[level]}</small></dd></div>
-        <div><dt>기우는 방향</dt><dd>${even ? '고름' : esc(OCTANTS[style].short)}<small>기울기 ${tiltWord}</small></dd></div>
+        <div><dt>기우는 방향</dt><dd>${even ? '고름' : byTop ? '두 갈래' : esc(OCTANTS[style].short)}<small>기울기 ${tiltWord}</small></dd></div>
         <div><dt>가장 높은 방향</dt><dd>${esc(OCTANTS[order[0]].short)}<small>${sc(order[0])}점</small></dd></div>
         <div><dt>응답</dt><dd>${careful ? '확인 필요' : '일관됨'}<small>응답 점검 참고</small></dd></div>
       </dl>
@@ -86,8 +92,17 @@ export function renderReport(el, rec, ctx = {}) {
 
   // ── 요약 ─────────────────────────────────────
   const paras = [`${esc(name)} 님의 관계의 어려움은 ${num(s.elev)}점으로 ${jo(LEVEL_LABEL[level], '이에요', '예요')}. <strong>${esc(O.title)}</strong>. ${esc(O.text)}`];
-  if (even) paras.push(esc(EVEN.text));
-  else {
+  if (even) {
+    paras.push(esc(EVEN.text));
+    if (loose) {
+      const ak = octantAt(num(s.angle));
+      const low = !order.slice(0, 2).includes(ak);
+      paras.push(`계산으로는 원이 '${esc(OCTANTS[ak].name)}' 쪽을 살짝 가리키지만, 기울기가 작고(${amp}) 여덟 점수가 원 모양에 잘 들어맞지 않아서 한 방향으로 말하지 않았어요.${low ? ` 그 방향의 점수는 ${sc(ak)}점이라, 실제로 높게 나온 방향을 먼저 봐 주세요.` : ''}`);
+    }
+  } else if (byTop) {
+    paras.push(`여덟 점수가 원 모양에 잘 들어맞지 않아서(두 갈래 이상), 원이 기우는 방향 대신 가장 높게 나온 <strong>${esc(OCTANTS[style].name)}</strong>${hasBatchim(OCTANTS[style].name) ? '을' : '를'} 중심으로 읽었어요. ${esc(OCTANT_TEXT[style].what)}`);
+    paras.push(esc(COMPLEX));
+  } else {
     paras.push(`여덟 방향을 원 위에 놓으면 <strong>${esc(OCTANTS[style].name)}</strong> 쪽으로 ${s.tilt === 'clear' ? '뚜렷하게' : '조금'} 기울어요(기울기 ${amp}). ${esc(OCTANT_TEXT[style].what)}`);
     if (beside) paras.push(`기우는 방향이 이웃한 '${esc(OCTANTS[beside].name)}' 쪽에도 걸쳐 있어서, 두 방향의 모습이 함께 나올 수 있어요.`);
     if (s.complex) paras.push(esc(COMPLEX));
@@ -107,7 +122,7 @@ export function renderReport(el, rec, ctx = {}) {
     '여덟 방향은 누구에게나 조금씩 있어요. 점수는 그 방향의 행동이 지나치거나 자꾸 되풀이돼서 나를 힘들게 하는 정도예요. 위는 주도, 아래는 물러섬, 오른쪽은 다가감, 왼쪽은 거리 둠이에요.',
     `<div class="ip-map">
       <figure class="ip-fig">${fig(330)}
-        <figcaption>${even ? '여덟 방향이 고르게 나와 기우는 방향을 표시하지 않았어요.' : '가운데서 뻗은 화살표가 기우는 방향이에요. 길수록 그쪽으로 많이 기운 거예요.'}</figcaption></figure>
+        <figcaption>${arrow ? '가운데서 뻗은 화살표가 기우는 방향이에요. 길수록 그쪽으로 많이 기운 거예요.' : even && !loose ? '여덟 방향이 고르게 나와 기우는 방향을 표시하지 않았어요.' : '여덟 점수가 원 모양에 잘 들어맞지 않아 기우는 방향을 표시하지 않았어요.'}</figcaption></figure>
       <div>${bars}</div>
     </div>`
   );
@@ -125,7 +140,8 @@ export function renderReport(el, rec, ctx = {}) {
   const focusSec = section(
     'focus',
     '두드러진 방향',
-    even ? '기우는 방향이 거의 없어서, 점수가 높은 두 방향을 골랐어요.' : '기우는 방향과, 그다음으로 높은 방향을 골랐어요. 같은 방향에는 어려움과 힘이 함께 있어요.',
+    even ? (loose ? '기우는 방향이 한쪽으로 모이지 않아서, 점수가 높은 두 방향을 골랐어요.' : '기우는 방향이 거의 없어서, 점수가 높은 두 방향을 골랐어요.')
+      : byTop ? '두 갈래로 나뉜 모양이라, 점수가 높은 두 방향을 골랐어요. 같은 방향에는 어려움과 힘이 함께 있어요.' : '기우는 방향과, 그다음으로 높은 방향을 골랐어요. 같은 방향에는 어려움과 힘이 함께 있어요.',
     `<div class="ip-cards">${cards}</div>`
   );
 
