@@ -1,11 +1,12 @@
 // AZIT : Star&Moon — 검사 진행 엔진
 // 검사 정의(def)만 바꾸면 어떤 검사든 같은 흐름으로 진행된다.
 // 흐름: 소개 → 검사자 이름·동의 → [부 소개 → 문항들] × 부 → 저장 → '검사 결과가 전송되었습니다'
-import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDraft } from './backend.js';
+import { ready, onUser, currentUser, saveResult, saveDraft, listDrafts, deleteDraft, draftSavedAt } from './backend.js';
 import { esc, toast, googleButton, brandHTML, login, fmtDate, modal } from './ui.js';
 import { constellation, starGlyph } from './charts.js';
 import { codeOf, bundleOf, getTestMeta } from './registry.js';
 import { parseBirth, fmtBirth, longBirth } from './examinee.js';
+import { sameName, samePerson, startOf, draftIdOf, findFinished } from './drafts.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -73,7 +74,7 @@ export async function runTest(def, mount, opts = {}) {
   const two = (n) => String(n).padStart(2, '0');
   const hhmm = (ts) => { const d = new Date(ts || Date.now()); return `${two(d.getHours())}:${two(d.getMinutes())}`; };
   const when = (ts) => { const d = new Date(ts || Date.now()); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${hhmm(ts)}`; };
-  const sameName = (a, b2) => String(a || '').replace(/\s+/g, '').toLowerCase() === String(b2 || '').replace(/\s+/g, '').toLowerCase();
+  const within = (p, ms, fallback) => Promise.race([p.catch(() => fallback), delay(ms).then(() => fallback)]);
   // 고민별 묶음으로 왔으면(b=<묶음>) 끝 화면에서 묶음의 다음 검사로 잇는다
   const bundle = (() => { const b = bundleOf(opts.bundle); return b && b.tests.includes(def.id) ? b : null; })();
   const bundleState = () => { const v = bundle && readBundle(); return v && v.b === bundle.id ? v : null; };
@@ -125,6 +126,13 @@ export async function runTest(def, mount, opts = {}) {
     } catch (e) {
       cloud = 'off';
     }
+    // 같은 검사자가 이 검사를 그 진행을 시작한 뒤에 끝냈으면(다른 창·기기에서 처음부터 다시 해서 끝냈거나
+    // 끝낸 진행을 예전 창이 다시 저장한 경우) 남은 진행을 정리한다. 결과를 못 읽으면 다음에 정리한다.
+    try {
+      const list = listSessions().filter((v) => v.sid && v.sid !== S.sid).map((v) => ({ ...v, testId: def.id, version: def.version }));
+      const done = await findFinished(list, { timeout: 5000 });
+      list.forEach((v) => { if (done.has(draftIdOf(v))) clearProgress(v.sid); });
+    } catch (e) { /* 다음에 다시 */ }
   }
   let syncing = Promise.resolve();
 
@@ -145,22 +153,31 @@ export async function runTest(def, mount, opts = {}) {
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushRemote, 1200);
   };
+  let pushing = Promise.resolve(); // 계정에 올리는 중인 저장 (지울 때는 이것이 끝난 뒤에 지운다)
   async function pushRemote() {
     clearTimeout(pushTimer);
     pushTimer = 0;
     const sid = S.sid;
     if (!sid || gone.has(sid) || !doneCount(S)) return;
+    // 창을 비웠다가 돌아온 뒤 첫 저장: 그사이 다른 곳에서 끝냈거나 지운 진행이면 되살리지 않는다
+    if (S.stale && S.synced && (await checkStale())) return;
+    if (gone.has(sid) || S.sid !== sid) return;
     const v = snapshot();
-    try {
-      await saveDraft(draftId(sid), v);
-      if (gone.has(sid)) return;
-      remote.set(sid, v);
-      cloud = 'on';
-      const l = readLocal(sid);
-      if (l && (l.savedAt || 0) <= v.savedAt) writeLocal(sid, { ...l, syncedAt: Date.now() });
-    } catch (e) {
-      cloud = 'off';
-    }
+    const job = (async () => {
+      try {
+        await saveDraft(draftId(sid), v);
+        if (gone.has(sid)) return;
+        remote.set(sid, v);
+        if (S.sid === sid) S.synced = true;
+        cloud = 'on';
+        const l = readLocal(sid);
+        if (l && (l.savedAt || 0) <= v.savedAt) writeLocal(sid, { ...l, syncedAt: Date.now() });
+      } catch (e) {
+        cloud = 'off';
+      }
+    })();
+    pushing = job;
+    await job;
     updateChip();
   }
   const flush = () => (pushTimer ? pushRemote() : Promise.resolve());
@@ -169,8 +186,53 @@ export async function runTest(def, mount, opts = {}) {
     if (sid === S.sid) { clearTimeout(pushTimer); pushTimer = 0; }
     dropLocal(sid);
     remote.delete(sid);
-    if (sid) deleteDraft(draftId(sid)).catch(() => {});
+    if (sid) pushing.then(() => deleteDraft(draftId(sid))).catch(() => {});
   };
+
+  // ── 예전 창 지키기 ─────────────────────────────
+  // 다른 창이나 기기에서 이 진행을 끝냈거나 지운 뒤에, 열어 둔 예전 창이 그 진행을 이어 가거나 다시 저장하지 않게 한다.
+  // 창을 비웠다가 돌아오면(다른 탭·앱·창에 다녀옴, 뒤로 가기로 다시 열림) 한 번 확인한다. 연결이 없으면 그대로 이어 간다.
+  let staleCheck = null;
+  async function sessionEnded(sid) {
+    const v = { ...snapshot(), sid };
+    const [missing, finished] = await Promise.all([
+      S.synced ? within(draftSavedAt(draftId(sid)).then((t) => t === null), 5000, false) : false,
+      within(findFinished([v], { timeout: 5000 }).then((set) => set.size > 0), 6000, false),
+    ]);
+    return missing || finished;
+  }
+  function checkStale() {
+    if (!inSession()) return Promise.resolve(false);
+    if (staleCheck) return staleCheck;
+    const sid = S.sid;
+    staleCheck = sessionEnded(sid).then((ended) => {
+      staleCheck = null;
+      if (S.sid !== sid) return true;
+      if (ended) { endHere(); return true; }
+      S.stale = false;
+      return false;
+    });
+    return staleCheck;
+  }
+  function endHere() {
+    const who = S.name;
+    clearProgress(S.sid); // 예전 창이 다시 만든 사본이 있으면 그것도 지운다
+    Object.assign(S, { sid: '', synced: false, stale: false, savedAt: 0, answers: {}, name: '', birth: '', birthText: '', consent: false, startedAt: 0, pi: 0, ii: 0, items: [], rankTemp: [], step: 'intro' });
+    render();
+    toast(`${who ? `${who} 님의 ` : ''}이 검사는 다른 창이나 기기에서 이미 끝났거나 지워졌어요.`, 5600);
+  }
+
+  // 검사를 끝냈을 때: 같은 검사자가 이 검사를 하다 멈춘 다른 진행도 이제 필요 없다.
+  // (다른 창·기기에서 시작했다가 처음부터 다시 해서 끝낸 경우. 계정에 있는 것은 다시 읽어서 지운다)
+  function dropOthers(rec) {
+    const now = Date.now();
+    listSessions().forEach((v) => { if (v.sid && samePerson(v, rec) && startOf(v) < now) clearProgress(v.sid); });
+    within(listDrafts(), 6000, []).then((all) => all.forEach((d) => {
+      if (d.testId !== def.id || !d.sid || gone.has(d.sid) || !samePerson(d, rec) || startOf(d) >= now) return;
+      if (d.version === def.version) clearProgress(d.sid);
+      else deleteDraft(draftIdOf(d)).catch(() => {});
+    }));
+  }
 
   // 검사 중 화면의 '저장됨' 표시
   const CHECK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -620,7 +682,10 @@ export async function runTest(def, mount, opts = {}) {
         else writeBundle({ b: bundle.id, name: record.name, birth: record.birth || '', at: Date.now(), done });
       }
       clearProgress();
+      dropOthers(record);
       S.sid = '';
+      S.synced = false;
+      S.stale = false;
       S.savedAt = 0;
       S.doneName = record.name;
       S.doneAt = Date.now();
@@ -646,7 +711,9 @@ export async function runTest(def, mount, opts = {}) {
     await flush(); // 앞 검사자의 마지막 답을 먼저 올려 둔다
     if (!fresh) await syncing; // 다른 기기에서 더 진행했으면 그 기록으로 이어 간다
     const prog = fresh ? null : loadSession(sid);
+    S.stale = false;
     if (prog) {
+      S.synced = !!sid && (remote.has(sid) || !!(readLocal(sid) || {}).syncedAt); // 계정에 올라간 진행인지
       S.sid = sid || newSid(); // 예전 한 칸짜리 저장은 새 칸으로 옮긴다
       S.answers = prog.answers || {};
       S.name = prog.name || S.name;
@@ -665,6 +732,7 @@ export async function runTest(def, mount, opts = {}) {
       render();
     } else {
       S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
+      S.synced = false;
       S.answers = {};
       const bs = bundleState();
       S.carried = bs && bs.name ? { name: bs.name, birth: bs.birth || '' } : null;
@@ -713,8 +781,12 @@ export async function runTest(def, mount, opts = {}) {
     }
     else if (act === 'to-intro') { S.step = 'intro'; render(); }
     else if (act === 'begin') {
-      // 같은 이름(과 생년월일)으로 하다 멈춘 검사가 있으면 먼저 물어본다. 생년월일 없이 저장된 예전 진행도 같은 이름이면 묻는다
-      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && sameName(v.name, S.name) && (!v.birth || v.birth === S.birth));
+      // 같은 이름(과 생년월일)으로 하다 멈춘 검사가 있으면 먼저 물어본다. 생년월일 없이 저장된 예전 진행도 같은 이름이면 묻는다.
+      // 다른 기기에서 하다 멈춘 진행도 찾도록, 계정 기록을 다 읽고(끝난 진행은 정리하고) 나서 찾는다. 보통은 이미 끝나 있다
+      t.disabled = true;
+      await syncing;
+      t.disabled = false;
+      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && samePerson(v, S));
       if (same) {
         const pick = await modal({
           title: `${S.name} 님이 하다 멈춘 검사가 있어요`,
@@ -825,7 +897,15 @@ export async function runTest(def, mount, opts = {}) {
   }));
   const flushNow = () => { if (inSession()) { leaveNote(); flush(); } };
   window.addEventListener('pagehide', flushNow);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  // 창을 비울 때는 마지막 답을 먼저 올리고(확인 없이), 돌아오면 그사이 다른 곳에서 끝냈는지 한 번 확인한다
+  const markStale = () => { if (inSession()) S.stale = true; };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { flush(); markStale(); }
+    else if (S.stale) checkStale();
+  });
+  window.addEventListener('blur', markStale);
+  window.addEventListener('focus', () => { if (S.stale) checkStale(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) { markStale(); checkStale(); } });
   window.addEventListener('azit:before-update', () => { if (inSession()) persist(); flush(); });
 
   try { sessionStorage.removeItem('azit:saved-note'); } catch (e) { /* */ }
@@ -836,7 +916,7 @@ export async function runTest(def, mount, opts = {}) {
   if (typeof opts.resume === 'string' && opts.resume) {
     await syncing;
     if (loadSession(opts.resume)) await begin(false, opts.resume);
-    else render();
+    else { render(); toast('이 검사는 이미 끝났거나 지워졌어요.'); }
   }
   onUser((u) => {
     if (!u) {

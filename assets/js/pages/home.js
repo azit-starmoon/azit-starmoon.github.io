@@ -1,7 +1,8 @@
-import { mountHeader, mountFooter, esc, toast } from '../ui.js';
+import { mountHeader, mountFooter, esc, toast, modal } from '../ui.js';
 import { constellation, b5Star } from '../charts.js';
 import { TESTS, groupIds, BUNDLES } from '../registry.js';
 import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
+import { findFinished, draftIdOf } from '../drafts.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
 import { fmtBirth } from '../examinee.js';
@@ -106,6 +107,8 @@ const GLYPH = {
 
   drawBundles(meta);
   drawResume();
+  // 뒤로 가기로 다시 열리면(브라우저가 담아 둔 화면) 그사이 끝낸 검사가 남아 보이지 않게 다시 그린다
+  window.addEventListener('pageshow', (e) => { if (e.persisted) drawResume(); });
 
   const soon = TESTS.filter((t) => t.status !== 'open');
   const soonEl = document.querySelector('[data-soon]');
@@ -255,6 +258,38 @@ async function drawResume() {
     cloud = 'on';
   } catch (e) { /* 규칙이 아직 없거나 오프라인: 이 기기 기록만 보여 준다 */ }
   paint(rows, open, cloud);
+
+  // 이미 끝난 검사의 진행 정리: 같은 검사자가 그 진행을 시작한 뒤에 같은 검사를 끝낸 결과가 있으면 지운다
+  // (다른 창·기기에서 처음부터 다시 해서 끝냈거나, 끝낸 진행을 예전 창이 다시 저장한 경우). 결과를 못 읽으면 다음에
+  try {
+    const done = await findFinished([...rows.values()]);
+    if (!done.size) return;
+    rows.forEach((r, key) => {
+      if (!done.has(draftIdOf(r))) return;
+      if (cloud === 'on') deleteDraft(draftIdOf(r)).catch(() => {});
+      if (r.localKey) { try { localStorage.removeItem(r.localKey); } catch (e) { /* */ } }
+      rows.delete(key);
+    });
+    paint(rows, open, cloud);
+  } catch (e) { /* 다음에 다시 */ }
+}
+
+// 진행 기록 지우기 (검사 소개 화면의 '지우기'와 같다)
+const shown = new Map(); // 진행 id → 지금 보이는 줄
+async function dropRow(id) {
+  const r = shown.get(id);
+  if (!r) return;
+  const ok = await modal({
+    title: '진행 기록을 지울까요?',
+    body: `<p>${esc(r.name || '이름 없음')} 님의 ${esc(r.title)} 진행 기록이에요. 지운 기록은 되돌릴 수 없고, 이 검사는 처음부터 다시 해야 해요.</p>`,
+    actions: [{ label: '취소', value: false }, { label: '지우기', value: true, primary: true, danger: true }],
+  });
+  if (!ok) return;
+  let failed = false;
+  try { await deleteDraft(id); } catch (e) { failed = true; }
+  if (r.localKey) { try { localStorage.removeItem(r.localKey); } catch (e) { /* */ } }
+  await drawResume();
+  toast(failed && shown.has(id) ? '지우지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.' : '진행 기록을 지웠어요.');
 }
 
 function paint(rowsMap, open, cloud) {
@@ -269,6 +304,7 @@ function paint(rowsMap, open, cloud) {
     el.hidden = !n;
     el.textContent = n ? `진행 중 ${n}명` : '';
   });
+  shown.clear();
   if (!rows.length) { wrap.hidden = true; if (hero) hero.classList.remove('has-resume'); return; }
 
   let note = null;
@@ -276,17 +312,25 @@ function paint(rowsMap, open, cloud) {
   const fresh = note && Date.now() - (note.at || 0) < 120000 ? `${note.testId}:${note.sid}` : '';
 
   document.querySelector('[data-resume-count]').textContent = `${rows.length}명`;
-  document.querySelector('[data-resume]').innerHTML = rows.slice(0, 8).map((r) => {
+  const list = document.querySelector('[data-resume]');
+  list.innerHTML = rows.slice(0, 8).map((r) => {
     const total = r.total || open.get(r.testId).items;
     const pct = Math.min(100, Math.round((r.n / total) * 100));
     const isFresh = fresh && fresh === `${r.testId}:${r.sid}`;
+    const title = open.get(r.testId).title;
+    const id = draftIdOf(r);
+    shown.set(id, { ...r, title });
     return `<li><a class="resume-card${isFresh ? ' is-fresh' : ''}" href="test.html?t=${encodeURIComponent(r.testId)}&resume=${encodeURIComponent(r.sid)}">
-      <span class="who"><strong>${esc(r.name || '이름 없음')} 님${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span>${esc(open.get(r.testId).title)}</span></span>
+      <span class="who"><strong>${esc(r.name || '이름 없음')} 님${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span>${esc(title)}</span></span>
       <span class="go">이어서 하기</span>
       <span class="bar"><span class="meter" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="cnt">${r.n}/${total}</span></span>
       <span class="when">${isFresh ? '방금 저장했어요' : `${esc(when(r.savedAt))}에 멈춤`}</span>
-    </a></li>`;
+    </a><button type="button" class="resume-drop resume-drop--card" data-drop="${esc(id)}" aria-label="${esc(r.name || '이름 없음')} 님 ${esc(title)} 진행 기록 지우기">지우기</button></li>`;
   }).join('');
+  if (!list.dataset.wired) {
+    list.dataset.wired = '1';
+    list.addEventListener('click', (e) => { const b = e.target.closest('[data-drop]'); if (b) dropRow(b.dataset.drop); });
+  }
   document.querySelector('[data-resume-note]').textContent = cloud === 'on'
     ? '답할 때마다 상담사님 계정에 저장돼서, 다른 기기에서도 멈춘 곳부터 이어져요. 30일 동안 보관해요.'
     : cloud === 'off' ? '답할 때마다 이 기기에 저장돼요. 30일 동안 보관해요.' : '답할 때마다 자동으로 저장돼요. 30일 동안 보관해요.';

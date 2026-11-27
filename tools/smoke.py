@@ -12,6 +12,9 @@
     (잠금 화면은 코드를 쓰지 않고 '열린 상태'를 저장소에 직접 적어서 넘긴다. 코드는 저장소에 두지 않는다)
  3. 열린 검사를 하나씩 끝까지 무작위로 답해서 '검사 결과가 전송되었습니다'까지 확인
     - 첫 검사는 중간에 '저장하고 나가기' → 첫 화면 '이어서 할 검사' → 이어서 하기까지 확인
+    - 끝난 검사의 임시 저장: 같은 검사자가 진행을 시작한 뒤 같은 검사를 끝낸 결과가 있으면 첫 화면·검사 소개에서 정리되는지
+      (먼저 끝낸 결과, 다른 분, 생년월일 없는 예전 진행 구분), 첫 화면 카드 '지우기', 끝난 진행 링크 알림,
+      끝내면 같은 검사자의 다른 진행도 정리, 같은 진행을 다른 창에서 끝내면 예전 창이 멈추고 되살리지 않는지
  4. 첫 화면 검사 고르기 탭(추천 묶음 + 분류, 한 칸씩, 고른 탭 기억), 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
  5. 관리 화면이 오류 없이 열리는지, 생년월일 없는 예전 결과(흉내 낸 1건)에 '생년월일 넣기'가 되는지,
     CSV 열이 머리줄과 맞고 '생년월일' 열이 빈칸 없이 채워지는지
@@ -238,48 +241,49 @@ async def run(args):
                 tests = [t for t in tests if t['id'] in want]
             ok('열린 검사 목록', len(tests) > 0, ', '.join(t['id'] for t in tests))
 
-            async def answer_until_done(limit, stop_after=None):
+            async def answer_until_done(limit, stop_after=None, page=None):
+                pg_ = page or pg
                 answered = 0
                 for _ in range(limit):
-                    if await pg.locator('.done').count():
+                    if await pg_.locator('.done').count():
                         return True, answered
-                    if await pg.locator('[data-act="retry"]').count():
+                    if await pg_.locator('[data-act="retry"]').count():
                         return False, answered
-                    if stop_after is not None and answered >= stop_after and await pg.locator('.part-meta .where').count():
+                    if stop_after is not None and answered >= stop_after and await pg_.locator('.part-meta .where').count():
                         return None, answered
-                    if await pg.locator('[data-act="enter"]').count():
-                        await pg.click('[data-act="enter"]')
-                        await pg.wait_for_timeout(220)
+                    if await pg_.locator('[data-act="enter"]').count():
+                        await pg_.click('[data-act="enter"]')
+                        await pg_.wait_for_timeout(220)
                         continue
-                    n_likert = await pg.locator('[data-likert]').count()
+                    n_likert = await pg_.locator('[data-likert]').count()
                     if n_likert:
-                        await pg.keyboard.press(str(rnd.randint(1, n_likert)))
+                        await pg_.keyboard.press(str(rnd.randint(1, n_likert)))
                         answered += 1
-                        await pg.wait_for_timeout(240)
+                        await pg_.wait_for_timeout(240)
                         continue
-                    if await pg.locator('.pair-opt').count():
-                        await pg.keyboard.press(str(rnd.randint(1, 4)))
+                    if await pg_.locator('.pair-opt').count():
+                        await pg_.keyboard.press(str(rnd.randint(1, 4)))
                         answered += 1
-                        await pg.wait_for_timeout(240)
+                        await pg_.wait_for_timeout(240)
                         continue
-                    if await pg.locator('.write-input').count():
+                    if await pg_.locator('.write-input').count():
                         # 글로 답하기: 대부분은 짧게 적고, 가끔은 건너뛴다
                         if rnd.random() < 0.8:
-                            await pg.fill('.write-input', f'점검용 글 {answered + 1}\n둘째 줄')
-                            await pg.click('[data-act="text-next"]')
+                            await pg_.fill('.write-input', f'점검용 글 {answered + 1}\n둘째 줄')
+                            await pg_.click('[data-act="text-next"]')
                         else:
-                            await pg.click('[data-act="text-skip"]')
+                            await pg_.click('[data-act="text-skip"]')
                         answered += 1
-                        await pg.wait_for_timeout(400)
+                        await pg_.wait_for_timeout(400)
                         continue
-                    if await pg.locator('[data-rank-key]').count():
-                        await pg.keyboard.press('1')
-                        await pg.wait_for_timeout(120)
-                        await pg.keyboard.press('2')
+                    if await pg_.locator('[data-rank-key]').count():
+                        await pg_.keyboard.press('1')
+                        await pg_.wait_for_timeout(120)
+                        await pg_.keyboard.press('2')
                         answered += 1
-                        await pg.wait_for_timeout(650)
+                        await pg_.wait_for_timeout(650)
                         continue
-                    await pg.wait_for_timeout(300)
+                    await pg_.wait_for_timeout(300)
                 return False, answered
 
             # 검사마다 끝까지
@@ -498,6 +502,136 @@ async def run(args):
                     ok(f"결과지 그리기 ({t['title']})", not fails, detail)
                 ok('짝 읽기 그리기', not fz['pairFails'], '; '.join(f'{k} {v}번' for k, v in fz['pairFails'].items()) or '함께 고른 검사의 짝 모두')
                 ok('달라진 점 그리기', not fz['trackFails'] and fz['trackRenders'] > 0, '; '.join(f'{k} {v}번' for k, v in fz['trackFails'].items()) or f"{fz['trackRenders']}번 그림")
+
+            # 끝난 검사의 임시 저장 정리 (요즘의 나 체크: 12문항이라 빠르다)
+            DT = 'hspnow'
+            drafts_left = "() => { const u = JSON.parse(localStorage.getItem('azit:demo:user')); const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}'); return Object.values((db.drafts || {})[u.uid] || {}).map((d) => d.sid); }"
+            seed_drafts = """async ({ T, rows, result }) => {
+              const def = (await import(`./tests/${T}/index.js`)).default;
+              const ids = def.parts[0].items.map((it) => it.id);
+              const u = JSON.parse(localStorage.getItem('azit:demo:user'));
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const now = Date.now(), H = 3600e3;
+              const C = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+              const tkey = (ts) => { let n = Math.floor(ts), o = ''; for (let i = 0; i < 8; i++) { o = C[n % 64] + o; n = Math.floor(n / 64); } return o; };
+              if (result) {
+                db.results = db.results || {}; db.results[u.uid] = db.results[u.uid] || {};
+                db.results[u.uid][tkey(now + result.at * H) + 'smokeDraftRs'] = { testId: T, version: def.version, name: result.name, birth: result.birth,
+                  createdAt: now + result.at * H, scores: { load: 50, rest: 50, state: 'holding' }, answers: { [ids[0]]: 3 }, summary: '점검' };
+              }
+              db.drafts = db.drafts || {}; db.drafts[u.uid] = db.drafts[u.uid] || {};
+              rows.forEach(([sid, name, birth, at]) => {
+                const d = { sid, testId: T, version: def.version, title: def.title, total: ids.length, answers: { [ids[0]]: 3, [ids[1]]: 2 }, pi: 0, ii: 2,
+                  name, startedAt: now + at * H, savedAt: now + at * H + 5 * 60e3 };
+                if (birth) d.birth = birth;
+                db.drafts[u.uid][`${T}-${def.version}-${sid}`.replace(/[.#$[\\]/]/g, '-')] = d;
+              });
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+            }"""
+            toast_text = "() => { const t = document.querySelector('.toast[data-show=\"true\"]'); return t ? t.textContent : ''; }"
+            # 가) 첫 화면: 같은 검사자가 진행을 시작한 뒤에 같은 검사를 끝낸 결과가 있으면 그 진행은 정리되고, 아니면 남는다
+            await pg.evaluate(seed_drafts, {'T': DT, 'result': {'name': '정리하나', 'birth': '1990-01-01', 'at': -1}, 'rows': [
+                ['smkD1', '정리하나', '1990-01-01', -2],    # 결과보다 먼저 시작 → 정리
+                ['smkD2', '정리하나', '1990-01-01', -0.5],  # 결과 뒤에 다시 시작 → 남김
+                ['smkD3', '정리둘', '1990-01-01', -2],      # 다른 분 → 남김
+                ['smkD4', '정리하나', '', -3],              # 생년월일 없는 예전 진행, 이름이 같음 → 정리
+                ['smkD5', '정리하나', '1991-02-02', -2],    # 이름만 같은 다른 분 → 남김
+            ]})
+            await unlock('test')
+            await pg.goto(base + 'index.html')
+            await pg.wait_for_timeout(2500)
+            left = await pg.evaluate(drafts_left)
+            cards = await pg.eval_on_selector_all('.resume-card .who strong', 'els => els.map((e) => e.textContent.replace(/\\s+/g, " ").trim())')
+            ok('임시 저장 정리: 끝낸 검사', not {'smkD1', 'smkD4'} & set(left) and {'smkD2', 'smkD3', 'smkD5'} <= set(left) and len(cards) == 3,
+               f"남은 진행 {sorted(x for x in left if x.startswith('smk'))}, 첫 화면 {cards}")
+            # 나) 첫 화면 카드의 '지우기': 카드 안 오른쪽 아래에 있고 멈춘 시각 글자와 겹치지 않으며, 누르면 확인 뒤 지워진다
+            lay = await pg.evaluate("""() => {
+              const li = document.querySelector('.resume-list li'); if (!li) return null;
+              const L = li.getBoundingClientRect(), b = li.querySelector('[data-drop]').getBoundingClientRect(), go = li.querySelector('.go').getBoundingClientRect();
+              const r = document.createRange(); r.selectNodeContents(li.querySelector('.when')); const w = r.getBoundingClientRect();
+              return { inside: b.left >= L.left && b.right <= L.right && b.top >= L.top && b.bottom <= L.bottom, clearOfText: w.right <= b.left, clearOfGo: b.top >= go.bottom };
+            }""")
+            await shot('home-resume-drop')
+            row = pg.locator('.resume-list li', has_text='정리둘')
+            if await row.count():
+                await row.locator('[data-drop]').click()
+                await pg.wait_for_selector('.modal-actions [data-i="1"]', timeout=4000)
+                await pg.click('.modal-actions [data-i="1"]')
+                await pg.wait_for_timeout(1200)
+            left = await pg.evaluate(drafts_left)
+            ok('첫 화면 카드 지우기', lay and all(lay.values()) and 'smkD3' not in left and not await pg.locator('.resume-list li', has_text='정리둘').count(),
+               f"배치 {lay}, 남은 진행 {sorted(x for x in left if x.startswith('smk'))}, 알림 '{await pg.evaluate(toast_text)}'")
+            # 다) 끝난 진행으로 들어오는 링크(예: 남아 있던 카드)는 검사 소개로 가고 알려 준다
+            await unlock('test')
+            await pg.goto(base + f'test.html?t={DT}&resume=smkD1')
+            await pg.wait_for_timeout(2000)
+            msg = await pg.evaluate(toast_text)
+            ok('끝난 진행 링크', await pg.locator('[data-act="start"]').count() > 0 and '이미 끝났거나' in msg, msg or '알림 없음')
+            # 라) 검사 소개에서도 정리: 첫 화면을 거치지 않고 검사 화면을 바로 열어도 끝난 진행은 목록에 없고 지워진다
+            await pg.evaluate(seed_drafts, {'T': DT, 'result': None, 'rows': [['smkD6', '정리하나', '1990-01-01', -2]]})
+            await pg.goto(base + f'test.html?t={DT}')
+            await pg.wait_for_timeout(2500)
+            left = await pg.evaluate(drafts_left)
+            sids = await pg.eval_on_selector_all('.resume-row', 'els => els.map((e) => e.dataset.sid)')
+            ok('검사 소개에서 정리', 'smkD6' not in left and 'smkD6' not in sids and {'smkD2', 'smkD5'} <= set(sids), f'목록 {sids}, 남은 진행 {sorted(x for x in left if x.startswith("smk"))}')
+            # 마) 끝내면 같은 검사자의 다른 진행(다른 기기에서 그사이 생긴 것 흉내)도 지우고, 이름만 같은 다른 분 것은 남긴다
+            await pg.click('[data-act="start"]')
+            await pg.fill('#pf-name', '정리셋')
+            await pg.fill('#pf-birth', '19900101')
+            await pg.check('#pf-consent')
+            await pg.click('[data-act="begin"]')
+            await pg.wait_for_timeout(300)
+            await answer_until_done(20, stop_after=3)
+            await pg.wait_for_timeout(1600)
+            cur = await pg.evaluate("new URL(location.href).searchParams.get('resume') || ''")
+            await pg.evaluate(seed_drafts, {'T': DT, 'result': None, 'rows': [['smkD7', '정리셋', '1990-01-01', -0.1], ['smkD8', '정리셋', '1985-05-05', -0.1]]})
+            done_, _ = await answer_until_done(80)
+            await pg.wait_for_timeout(1500)
+            left = await pg.evaluate(drafts_left)
+            ok('끝내면 같은 검사자의 다른 진행 정리', done_ and cur and cur not in left and 'smkD7' not in left and 'smkD8' in left,
+               f"끝냄 {done_}, 이번 진행 {'남음' if cur in left else '지워짐'}, 남은 진행 {sorted(x for x in left if x.startswith('smk'))}")
+            # 바) 예전 창: 같은 진행을 다른 창에서 이어서 끝내면, 예전 창은 돌아왔을 때 멈추고 진행을 되살리지 않는다
+            await pg.goto(base + f'test.html?t={DT}')
+            await pg.wait_for_selector('[data-act="start"]', timeout=10000)
+            await pg.click('[data-act="start"]')
+            await pg.fill('#pf-name', '정리넷')
+            await pg.fill('#pf-birth', '19900101')
+            await pg.check('#pf-consent')
+            await pg.click('[data-act="begin"]')
+            await pg.wait_for_timeout(300)
+            await answer_until_done(20, stop_after=3)
+            await pg.wait_for_timeout(1700)
+            sid = await pg.evaluate("new URL(location.href).searchParams.get('resume') || ''")
+            pg2 = await ctx.new_page()
+            pg2.on('pageerror', lambda e: report['errors'].append(f'pageerror (둘째 창) {pg2.url.split("/")[-1]}: {e}'))
+            await pg2.goto(base + 'index.html')
+            await pg2.evaluate("(() => { const n = Date.now(); sessionStorage.setItem('azit:lock:test', JSON.stringify({at: n, seen: n})); })()")
+            await pg2.goto(base + f'test.html?t={DT}&resume={sid}')
+            done2 = False
+            try:
+                await pg2.wait_for_selector('.part-meta .where', timeout=10000)
+                done2, _ = await answer_until_done(80, page=pg2)
+            except Exception:
+                pass
+            await pg2.wait_for_timeout(800)
+            await pg2.close()
+            await pg.evaluate("() => { window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); }")
+            await pg.wait_for_timeout(1500)
+            msg = await pg.evaluate(toast_text)
+            left = await pg.evaluate(drafts_left)
+            back = await pg.locator('[data-act="start"]').count()
+            await shot('stale-window')
+            ok('예전 창 멈춤', sid and done2 and back > 0 and '다른 창이나 기기에서' in msg and sid not in left,
+               f"다른 창에서 끝냄 {done2}, 예전 창 {'검사 소개로 돌아감' if back else '그대로'}, 알림 '{msg}', 진행 {'남음' if sid in left else '없음'}")
+            # 뒷정리: 이 점검에서 만든 결과와 진행을 지운다 (뒤의 관리 화면 점검에 섞이지 않게)
+            await pg.evaluate("""() => {
+              const u = JSON.parse(localStorage.getItem('azit:demo:user'));
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const names = ['정리하나', '정리둘', '정리셋', '정리넷'];
+              Object.entries((db.results || {})[u.uid] || {}).forEach(([k, r]) => { if (names.includes(r.name)) delete db.results[u.uid][k]; });
+              Object.entries((db.drafts || {})[u.uid] || {}).forEach(([k, d]) => { if (names.includes(d.name)) delete db.drafts[u.uid][k]; });
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+            }""")
 
             # 상담사 승인과 이름·소속 고치기: 별명으로 온 승인 요청을 흉내 내서, 승인 창에서 이름과 소속을 고쳐 승인하고 다시 고친다
             await unlock('result')

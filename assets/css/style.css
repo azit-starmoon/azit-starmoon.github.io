@@ -1043,6 +1043,10 @@ table.list .btn--small { min-height: 32px; padding: 0 12px; }
 .resume-row .when { font-size: var(--fs-xs); color: var(--ink-3); }
 .resume-card.is-fresh { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft-2); }
 .resume-card.is-fresh .when { color: var(--brand-deep); font-weight: 600; }
+/* 첫 화면 카드의 '지우기': 카드 오른쪽 아래, 멈춘 시각과 같은 줄 */
+.resume-list li { position: relative; }
+.resume-list .resume-card .when { padding-right: 4.5em; }
+.resume-list .resume-drop--card { position: absolute; right: 8px; bottom: 5px; padding: 6px 8px; }
 
 /* 검사 소개: 제목 바로 아래 */
 .resume-box { margin: 18px 0 24px; background: var(--bg); border: 1px solid var(--brand-soft-2); border-radius: var(--r-l); padding: 14px; text-align: left; }

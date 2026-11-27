@@ -403,6 +403,39 @@ export async function deleteDraft(id) {
   await dbRemove(`drafts/${user.uid}/${draftKey(id)}`);
 }
 
+// 이 진행이 아직 계정에 있는지: 마지막으로 저장한 시각, 없으면 null (다른 창·기기에서 끝냈거나 지웠다)
+export async function draftSavedAt(id) {
+  await ready();
+  if (!user) return null;
+  const v = await dbGet(`drafts/${user.uid}/${draftKey(id)}/savedAt`);
+  return typeof v === 'number' ? v : null;
+}
+
+// 결과 키는 저장한 시각 순서로 늘어서는 push 키다(앞 8자가 시각). 그래서 색인 없이 키만으로
+// '어느 시각 이후에 저장한 결과'를 잘라 읽을 수 있다. timeKey는 그 시각에 해당하는 8자 키.
+const KEY_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+export function timeKey(ts) {
+  let n = Math.max(0, Math.floor(Number(ts) || 0));
+  let out = '';
+  for (let i = 0; i < 8; i++) { out = KEY_CHARS.charAt(n % 64) + out; n = Math.floor(n / 64); }
+  return out;
+}
+
+// 내 계정의 결과 가운데 키가 from 이상인 것 (from: timeKey로 만든 시각 키, 또는 앞서 읽은 결과 키)
+export async function listMyResultsFrom(from) {
+  const u = requireUser();
+  await ready();
+  if (MODE === 'demo') {
+    const tree = demoGet(`results/${u.uid}`) || {};
+    return Object.entries(tree).filter(([rid]) => rid >= from).map(([rid, r]) => ({ uid: u.uid, rid, ...r }));
+  }
+  const { D, db } = fb;
+  const snap = await D.get(D.query(D.ref(db, `results/${u.uid}`), D.orderByKey(), D.startAt(from)));
+  const out = [];
+  snap.forEach((c) => { out.push({ uid: u.uid, rid: c.key, ...c.val() }); }); // 참을 돌려주면 forEach가 멈추니 값을 돌려주지 않는다
+  return out;
+}
+
 export async function saveResult(record) {
   const u = requireUser();
   await ready();
