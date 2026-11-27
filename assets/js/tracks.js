@@ -64,6 +64,12 @@ export const TRACKS = [
     ].map(([k, name]) => m(k, name, 4, (s) => sc(s.facets, k))),
   },
   {
+    id: 'rumination',
+    title: '곱씹기와 돌아보기',
+    tests: ['rumination'],
+    metrics: [m('br', '곱씹기', 8, (s) => s.br), m('rf', '돌아보기', 8, (s) => s.rf)],
+  },
+  {
     id: 'interpersonal',
     title: '대인관계 패턴',
     tests: ['interpersonal'],

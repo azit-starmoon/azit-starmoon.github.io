@@ -102,6 +102,7 @@ const NEAR = {
   lifestory: { cat: 'state', cuts: [['pr', 55], ['se', 55]] },
   hsp: { cat: 'state', cuts: [['load', 50], ['rest', 50]] },
   hspnow: { cat: 'state', cuts: [['load', 50], ['rest', 50]] },
+  rumination: { cat: 'type', cuts: [['br', 50], ['rf', 50]] },
   temperament: { cat: 'ttype', cuts: [['dims.ns.score', 50], ['dims.ha.score', 50], ['dims.rd.score', 50]] },
 };
 
@@ -114,6 +115,7 @@ const CATS = {
   hsp: ['level', 'state'],
   hspnow: ['state'],
   interpersonal: ['style', 'level'],
+  rumination: ['type'],
   strengths: ['order[0]'],
   values: ['top', 'topGroup'],
   career: ['top', 'codeText'],

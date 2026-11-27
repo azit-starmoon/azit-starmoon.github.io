@@ -146,6 +146,17 @@ export const TESTS = [
     gets: ['회복탄력성 점수', '세 영역', '아홉 요인 지도', '기대는 곳', '키우는 연습', '상담 메모'],
   },
   {
+    id: 'rumination',
+    status: 'open',
+    title: '곱씹기와 돌아보기 검사',
+    code: 'AZ-RM',
+    desc: '같은 생각이 머릿속에 머물 때 그 생각이 나를 가라앉히는지, 길을 찾아 주는지 살펴보고, 맴도는 생각을 옮기는 연습을 찾아요.',
+    items: 16,
+    minutes: 3,
+    parts: 1,
+    gets: ['곱씹기와 돌아보기 점수', '생각 지도', '두 생각의 균형', '맴도는 생각을 옮기는 연습', '상담 메모'],
+  },
+  {
     id: 'esteem',
     status: 'open',
     title: '자아존중감 검사',
@@ -206,7 +217,7 @@ export const TESTS = [
 // 어느 묶음에도 없는 열린 검사는 '그 밖의 검사'로 따로 보인다.
 export const GROUPS = [
   { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'temperament', 'hsp'] },
-  { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['hspnow', 'esteem', 'emotion', 'coping', 'resilience'] },
+  { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['hspnow', 'esteem', 'emotion', 'coping', 'resilience', 'rumination'] },
   { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가족과 가까운 사람, 하나님과의 관계에서의 내 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'interpersonal', 'godattach', 'differentiation', 'schema'] },
   { id: 'growth', name: '강점과 삶의 방향', question: '무엇을 향해 나아갈까', desc: '내가 가진 힘과 중요하게 여기는 것, 마음이 끌리는 일, 그리고 내 삶의 이야기를 살펴요.', tests: ['strengths', 'values', 'career', 'lifestory'] },
 ];

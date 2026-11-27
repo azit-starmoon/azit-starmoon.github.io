@@ -89,6 +89,27 @@ export const PAIRS = [
     },
   },
   {
+    a: 'rumination',
+    b: 'emotion',
+    title: '생각 습관과 정서 조절',
+    why: '같은 생각이 맴도는 정도를 감정을 다루는 힘, 자주 쓰는 조절 전략과 함께 볼 수 있어요',
+    render: (R, E) => {
+      const st = E.strategies || {};
+      const list = [
+        ['곱씹기', R.br, '곱씹기 전략을 쓰는 정도', st.ru, agree(R.br, st.ru)],
+        ['곱씹기', R.br, '감정을 다루는 힘', E.total, agree(R.br, E.total, false)],
+      ];
+      const [a, b] = list.map((r) => r[4].k);
+      let text;
+      if (a === 'same' && b === 'same') text = '두 검사가 같은 그림을 보여 줘요. 생각이 맴도는 정도와 감정을 다루는 힘이 서로 맞물려 있어요.';
+      else if (a === 'diff') text = '곱씹기 점수와 곱씹기 전략 점수가 엇갈려요. 생각 습관으로는 곱씹는 편인데 힘들 때 그 방법을 쓴다고는 느끼지 않거나, 그 반대일 수 있어요. 실제로 힘든 날 머릿속에서 무슨 일이 일어나는지 들어 보면 좋아요.';
+      else text = '두 검사가 대체로 같은 쪽을 가리키지만 정도가 조금 달라요. 곱씹기가 감정을 다루는 힘을 얼마나 깎아 먹는지 이야기해 보면 좋아요.';
+      return `<div class="pp-read"><p>곱씹기와 돌아보기 검사는 생각이 흘러가는 습관을, 정서 조절 검사는 힘들 때 곱씹기라는 방법을 얼마나 자주 쓰는지와 감정을 다루는 힘을 물어요. 곱씹기는 감정을 다루기 어렵게 만드는 대표적인 방식으로 연구에서 꾸준히 보고돼요.</p>
+        ${legend('곱씹기와 돌아보기 검사', '정서 조절 역량 검사')}${rows(list)}
+        <p class="pp-note">곱씹기는 낮을수록, 감정을 다루는 힘은 높을수록 편안한 쪽이라 둘째 줄은 두 막대를 반대로 읽어요.</p><p>${esc(text)}</p></div>`;
+    },
+  },
+  {
     a: 'attachment',
     b: 'differentiation',
     title: '애착과 자아분화',

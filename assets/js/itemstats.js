@@ -7,6 +7,7 @@ import * as attachment from '../../tests/attachment/items.js';
 import * as schema from '../../tests/schema/items.js';
 import * as hsp from '../../tests/hsp/items.js';
 import * as ip from '../../tests/interpersonal/items.js';
+import * as rm from '../../tests/rumination/items.js';
 import * as strengths from '../../tests/strengths/items.js';
 import * as values from '../../tests/values/items.js';
 import * as career from '../../tests/career/items.js';
@@ -40,6 +41,7 @@ export const SCALE_DEFS = {
   ],
   hsp: [{ id: 'facet', label: '요인', key: (it) => it.facet || it.scale, name: (k) => nm(hsp.FACETS, k) || ({ load: '부담 신호', rest: '회복 자원' })[k], order: [...hsp.FACET_ORDER, 'load', 'rest'] }],
   hspnow: [{ id: 'facet', label: '요인', key: (it) => it.scale, name: (k) => ({ load: '부담 신호', rest: '회복 자원' })[k], order: ['load', 'rest'] }],
+  rumination: [{ id: 'scale', label: '갈래', key: (it) => it.scale, name: (k) => nm(rm.SCALES, k), order: rm.SCALE_ORDER }],
   interpersonal: [{ id: 'octant', label: '방향', key: (it) => it.octant, name: (k) => nm(ip.OCTANTS, k), order: ip.OCTANT_ORDER }],
   strengths: [
     { id: 'strength', label: '강점', key: (it) => it.strength, name: (k) => nm(strengths.STRENGTHS, k), order: strengths.STRENGTH_ORDER },
