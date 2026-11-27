@@ -11,7 +11,7 @@ document.querySelector('[data-figure]').innerHTML = constellation(
 if (isDemo) {
   const bar = document.createElement('div');
   bar.className = 'demo-bar';
-  bar.textContent = '체험 모드예요. 로그인과 결과가 이 기기 안에만 저장돼요.';
+  bar.innerHTML = '체험 모드예요. 로그인과 결과가 이 기기 안에만 저장돼요. <a href="login.html?demo=0">체험 끝내기</a>';
   document.body.prepend(bar);
 }
 
@@ -24,6 +24,12 @@ let busy = false;
 let again = false;
 
 function renderLoggedOut() {
+  if (isDemo) {
+    // 체험 모드: 구글 계정 없이 '체험 사용자'로 들어간다(이 기기 안에만 저장)
+    box.innerHTML = `<p class="login-note">구글 계정 없이 바로 둘러볼 수 있어요.<br>검사와 결과는 이 기기 안에만 저장돼요.</p>
+      <button type="button" class="btn btn--block" data-login>체험 시작하기</button>`;
+    return;
+  }
   box.innerHTML = `<p class="login-note">승인된 상담사만 이용할 수 있어요.<br>구글 계정으로 로그인해 주세요.</p>
     ${googleButton('구글로 로그인', 'btn btn--block')}`;
 }

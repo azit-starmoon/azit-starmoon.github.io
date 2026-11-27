@@ -201,8 +201,9 @@ async def run(args):
                   if m.type == 'error' and 'Failed to load resource' not in m.text else None)
 
             async def unlock(kind):
+                # 점검은 체험 모드로 돈다: 체험 모드의 잠금 칸(azit:demo:lock:*)에 '열림'을 적는다
                 store = 'sessionStorage' if kind == 'test' else 'localStorage'
-                await pg.evaluate(f"(() => {{ const n = Date.now(); {store}.setItem('azit:lock:{kind}', JSON.stringify({{at: n, seen: n}})); }})()")
+                await pg.evaluate(f"(() => {{ const n = Date.now(); {store}.setItem('azit:demo:lock:{kind}', JSON.stringify({{at: n, seen: n}})); }})()")
 
             async def shot(name):
                 if shots:
@@ -213,6 +214,27 @@ async def run(args):
             await pg.wait_for_selector('[data-login]', timeout=8000)
             await pg.click('[data-login]')
             await pg.wait_for_timeout(1200)
+            # 체험 모드 잠금: 진짜 번호 대신 0000으로만 열리고, 열린 표시는 진짜 모드와 다른 칸에 적힌다
+            await pg.goto(base + 'index.html')
+            lock_ok, lock_detail = False, '잠금 화면이 뜨지 않음'
+            try:
+                await pg.wait_for_selector('.lock-card', timeout=8000)
+                hint = await pg.inner_text('#lock-sub')
+                for k in '1234':
+                    await pg.keyboard.press(k)
+                await pg.wait_for_timeout(800)
+                wrong = await pg.inner_text('[data-msg]')
+                for k in '0000':
+                    await pg.keyboard.press(k)
+                await pg.wait_for_timeout(1000)
+                opened = await pg.locator('.lock-card').count() == 0
+                marks = await pg.evaluate("() => ({ real: sessionStorage.getItem('azit:lock:test') || localStorage.getItem('azit:lock:test'), demo: !!sessionStorage.getItem('azit:demo:lock:test') })")
+                lock_ok = '0000' in hint and '맞지 않아요' in wrong and opened and marks['real'] is None and marks['demo']
+                lock_detail = f"안내 {'있음' if '0000' in hint else '없음'}, 1234 '{wrong[:14]}', 0000 {'열림' if opened else '안 열림'}, 진짜 모드 칸 {'비어 있음' if marks['real'] is None else '적힘'}"
+            except Exception as e:
+                lock_detail = f'오류: {str(e)[:60]}'
+            ok('체험 모드 잠금 0000', lock_ok, lock_detail)
+            await shot('demo-lock')
             await unlock('test')
             await pg.goto(base + 'index.html')
             await pg.wait_for_timeout(1200)
@@ -605,7 +627,7 @@ async def run(args):
             pg2 = await ctx.new_page()
             pg2.on('pageerror', lambda e: report['errors'].append(f'pageerror (둘째 창) {pg2.url.split("/")[-1]}: {e}'))
             await pg2.goto(base + 'index.html')
-            await pg2.evaluate("(() => { const n = Date.now(); sessionStorage.setItem('azit:lock:test', JSON.stringify({at: n, seen: n})); })()")
+            await pg2.evaluate("(() => { const n = Date.now(); sessionStorage.setItem('azit:demo:lock:test', JSON.stringify({at: n, seen: n})); })()")
             await pg2.goto(base + f'test.html?t={DT}&resume={sid}')
             done2 = False
             try:

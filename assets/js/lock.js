@@ -2,7 +2,7 @@
 // 데이터는 로그인과 승인(보안 규칙)이 서버에서 지키고, 이 잠금은 상담사 기기를 검사자에게 건넬 때를 위한 화면 잠금이다.
 // 번호는 원문이 아니라 해시로만 비교한다.
 import { LOCKS } from './config.js';
-import { signOut } from './backend.js';
+import { signOut, isDemo } from './backend.js';
 
 const KIND = {
   // 검사 목록: 이 탭을 닫거나 로그아웃할 때까지 (최대 12시간)
@@ -28,8 +28,14 @@ const LEN = 4;
 const MAX_FAILS = 5;
 const COOLDOWN = 30e3;
 
-const key = (kind) => `azit:lock:${kind}`;
-const failKey = (kind) => `azit:lock:fail:${kind}`;
+// 체험 모드(?demo=1)는 이 기기 안의 연습용 기록만 쓰고 진짜 데이터에는 닿지 않는다.
+//  - 체험 모드의 잠금은 진짜 번호와 비교하지 않고 0000으로만 열린다(잠금 화면에 적어 둔다).
+//  - 열린 표시는 진짜 모드와 다른 칸(azit:demo:lock:*)에 적는다. 같은 칸을 쓰면 체험 모드에서 0000으로 연 뒤
+//    진짜 모드로 돌아와도 열린 채로 남기 때문이다. 진짜 모드는 예전과 똑같다.
+const DEMO_CODE = '0000';
+const NS = isDemo ? 'azit:demo:lock' : 'azit:lock';
+const key = (kind) => `${NS}:${kind}`;
+const failKey = (kind) => `${NS}:fail:${kind}`;
 
 function read(store, k) {
   try { return JSON.parse(store.getItem(k) || 'null'); } catch (e) { return null; }
@@ -105,7 +111,7 @@ function showLock(kind, opts) {
   root.innerHTML = `<div class="lock-card">
       <div class="lock-mark">${LOCK_SVG}</div>
       <h1 class="lock-title" id="lock-title" tabindex="-1">${esc(copy.title(opts))}</h1>
-      <p class="lock-sub" id="lock-sub">${esc(copy.sub)}</p>
+      <p class="lock-sub" id="lock-sub">${esc(copy.sub)}${isDemo ? ` <strong class="lock-demo">체험 모드에서는 ${DEMO_CODE}을 누르면 열려요.</strong>` : ''}</p>
       <div class="lock-dots" data-dots aria-hidden="true">${'<i></i>'.repeat(LEN)}</div>
       <p class="lock-msg" data-msg role="status" aria-live="polite"></p>
       <span class="sr-only" data-count aria-live="polite"></span>
@@ -159,7 +165,7 @@ function showLock(kind, opts) {
     busy = true;
     let ok = false;
     try {
-      ok = (await digest(kind, code)) === LOCKS[kind];
+      ok = isDemo ? code === DEMO_CODE : (await digest(kind, code)) === LOCKS[kind];
     } catch (e) {
       console.error(e);
       msg.textContent = '이 브라우저에서는 잠금을 풀 수 없어요. 크롬이나 사파리에서 https 주소로 열어 주세요.';

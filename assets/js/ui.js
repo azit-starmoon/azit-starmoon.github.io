@@ -194,7 +194,7 @@ export function mountHeader(active = '') {
   if (isDemo) {
     const bar = document.createElement('div');
     bar.className = 'demo-bar';
-    bar.textContent = '체험 모드예요. 로그인과 결과가 이 기기 안에만 저장돼요.';
+    bar.innerHTML = '체험 모드예요. 로그인과 결과가 이 기기 안에만 저장돼요. <a href="login.html?demo=0">체험 끝내기</a>';
     header.after(bar);
   }
   const acc = header.querySelector('[data-account]');
