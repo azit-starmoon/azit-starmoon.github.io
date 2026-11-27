@@ -117,14 +117,38 @@ export const dueText = (ts) => { const d = new Date(ts); return `${d.getMonth() 
 export function inviteMinutes(tests) {
   return tests.reduce((s, id) => s + ((getTestMeta(id) || {}).minutes || 0), 0);
 }
-export function inviteMessage({ name, ownerName, tests, expiresAt, token }) {
-  const titles = tests.map((id) => (getTestMeta(id) || { title: id }).title);
-  const mins = inviteMinutes(tests);
+export const dueLong = (ts) => { const d = new Date(ts); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일(${DAY[d.getDay()]})`; };
+
+// 받는 분께 보내는 안내문(문자·카카오톡 공통). 기관 공지 형식: 머리말, 인사와 보낸 사람, 항목별 안내, 유의 사항
+//  org: 상담사의 소속(승인할 때 적은 소속, 예: AZIT 상담팀). 없으면 이름만 쓴다
+export function inviteMessage({ name, ownerName, org = '', tests, expiresAt, token }) {
+  const rows = tests.map((id, i) => {
+    const m = getTestMeta(id) || { title: id, items: 0, minutes: 0 };
+    return `${i + 1}. ${m.title} (${m.items}문항, 약 ${m.minutes}분)`;
+  });
+  const who = ownerName ? `${org ? `${org} ` : ''}${ownerName} 상담사입니다.` : `${org || 'AZIT : Star&Moon'}입니다.`;
   return [
-    `${name} 님, 안녕하세요. ${ownerName ? `${ownerName} 상담사예요.` : 'AZIT 상담팀이에요.'}`,
-    `상담에 앞서 아래 링크에서 검사를 부탁드려요.`,
-    `${titles.join(', ')} (${tests.length}개, 약 ${mins}분)`,
-    `${dueText(expiresAt)}까지 열려 있고, 중간에 나가도 이어서 할 수 있어요.`,
+    '[AZIT : Star&Moon] 심리검사 안내',
+    '',
+    `${name} 님, 안녕하세요.`,
+    who,
+    '상담에 앞서 아래 심리검사에 응해 주시기를 부탁드립니다.',
+    '',
+    `■ 검사 항목 (총 ${tests.length}종, 약 ${inviteMinutes(tests)}분)`,
+    ...rows,
+    '',
+    '■ 응시 기한',
+    `${dueLong(expiresAt)}까지`,
+    '',
+    '■ 응시 방법',
+    '아래 링크를 누르시면 바로 시작하실 수 있습니다.',
     inviteUrl(token),
+    '',
+    '※ 회원가입이나 로그인은 필요하지 않습니다.',
+    '※ 응답은 자동으로 저장되며, 같은 기기에서 링크를 다시 여시면 이어서 하실 수 있습니다.',
+    '※ 정답이 없는 검사이니, 평소의 모습에 가깝게 편안히 응답해 주세요.',
+    '※ 응답은 담당 상담사에게 전달되며, 결과는 상담 시간에 함께 살펴보겠습니다.',
+    '',
+    '감사합니다.',
   ].join('\n');
 }

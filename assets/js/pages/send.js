@@ -19,12 +19,14 @@ const openIds = new Set(open.map((t) => t.id));
 const bundles = BUNDLES.filter((b) => b.tests.every((id) => openIds.has(id)));
 const F = { name: '', birthText: '', birth: '', tests: [], bundle: '' };
 let ownerName = '';
+let ownerOrg = ''; // 승인할 때 적은 소속(예: AZIT 상담팀). 안내문의 보낸 사람 줄에 쓴다
 let sent = [];
 
 (async () => {
   const st = await requireApproved();
   if (!st) return;
   ownerName = greetingName(st);
+  ownerOrg = String((st.member && st.member.note) || '').trim();
   await requireUnlock('test', { name: ownerName });
   mountHeader('send');
   mountFooter();
@@ -156,13 +158,13 @@ async function make(e) {
 function openShare(inv) {
   const tests = inviteTests(inv);
   const url = inviteUrl(inv.token);
-  const msg = inviteMessage({ name: inv.name, ownerName, tests, expiresAt: inv.expiresAt, token: inv.token });
+  const msg = inviteMessage({ name: inv.name, ownerName, org: ownerOrg, tests, expiresAt: inv.expiresAt, token: inv.token });
   const canShare = typeof navigator.share === 'function';
   modal({
     title: `${inv.name} 님께 보낼 링크`,
     body: `<p class="modal-sub">${esc(dueText(inv.expiresAt))}까지 열려 있어요. 받는 분은 로그인 없이 열고, 결과는 보지 않아요.</p>
       <label class="share-k" for="sh-msg">보낼 글 <span>고쳐서 보내도 돼요</span></label>
-      <textarea class="input share-msg" id="sh-msg" rows="7">${esc(msg)}</textarea>
+      <textarea class="input share-msg" id="sh-msg" rows="12">${esc(msg)}</textarea>
       <div class="share-acts">
         ${canShare ? '<button type="button" class="btn" data-share>공유하기 (카카오톡 등)</button>' : ''}
         <button type="button" class="btn ${canShare ? 'btn--ghost' : ''}" data-copy-msg>글과 링크 복사</button>

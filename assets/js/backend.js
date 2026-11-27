@@ -578,7 +578,10 @@ export async function createInvite({ name, birth = '', tests = [], bundle = '', 
   if (!list.length) throw new Error('보낼 검사를 골라 주세요.');
   const token = newToken();
   const now = Date.now();
-  const expiresAt = now + INVITE_DAYS * 864e5;
+  // 7일 뒤 그날 밤 23시 59분까지 열어 둔다(안내문의 '○월 ○일까지'가 그날 하루 내내 맞게). 규칙은 8일 안쪽만 받는다
+  const end = new Date(now + INVITE_DAYS * 864e5);
+  end.setHours(23, 59, 59, 0);
+  const expiresAt = end.getTime();
   const owner = String(ownerName || u.name || '').trim().slice(0, 30) || '상담사';
   const order = list.join(',');
   await dbSet(`inviteIndex/${u.uid}/${token}`, {

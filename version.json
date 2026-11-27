@@ -1,5 +1,5 @@
 {
- "v": "20261127-161514",
+ "v": "20261127-170240",
  "files": [
   "./",
   "admin.html",
@@ -12,6 +12,7 @@
   "assets/js/guard.js",
   "assets/js/inapp.js",
   "assets/js/itemstats.js",
+  "assets/js/links.js",
   "assets/js/lock.js",
   "assets/js/pages/admin.js",
   "assets/js/pages/home.js",
@@ -19,6 +20,8 @@
   "assets/js/pages/me.js",
   "assets/js/pages/person.js",
   "assets/js/pages/result.js",
+  "assets/js/pages/send.js",
+  "assets/js/pages/take.js",
   "assets/js/pages/test.js",
   "assets/js/pairs.js",
   "assets/js/registry.js",
@@ -33,6 +36,8 @@
   "me.html",
   "person.html",
   "result.html",
+  "send.html",
+  "take.html",
   "test.html",
   "tests/attachment/chart.js",
   "tests/attachment/content.js",
