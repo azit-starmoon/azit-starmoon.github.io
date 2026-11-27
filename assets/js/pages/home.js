@@ -67,32 +67,37 @@ const GLYPH = {
   const open = TESTS.filter((t) => t.status === 'open');
   const meta = new Map(open.map((t) => [t.id, t]));
   const groups = groupIds(open.map((t) => t.id));
-  document.querySelector('[data-group-nav]').innerHTML = groups
-    .map((g) => `<a class="tg-chip" href="#g-${g.id}"><span>${esc(g.name)}</span><span class="n">${g.tests.length}</span></a>`)
-    .join('');
-  document.querySelector('[data-open-tests]').innerHTML = groups
-    .map((g) => `<section class="tg" id="g-${g.id}" aria-labelledby="g-${g.id}-t">
-      <div class="tg-head">
-        <h3 id="g-${g.id}-t">${esc(g.name)}</h3>
-        ${g.question ? `<p class="tg-q">${esc(g.question)}</p>` : ''}
-        ${g.desc ? `<p class="tg-desc">${esc(g.desc)}</p>` : ''}
+  const card = (t) => `<article class="tcard" aria-labelledby="ft-${t.id}">
+      <div class="tcard-glyph" aria-hidden="true">${GLYPH[t.id] ? GLYPH[t.id]() : ''}</div>
+      <div class="tcard-body">
+        <h4 id="ft-${t.id}">${esc(t.title)}${t.code ? ` <span class="tcard-code">${esc(t.code)}</span>` : ''}</h4>
+        <p class="tcard-desc">${esc(t.desc)}</p>
+        <div class="tcard-foot">
+          <div class="tcard-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>
+          <a class="btn btn--small tcard-go" href="test.html?t=${t.id}" aria-label="${esc(t.title)} 시작하기">시작하기</a>
+        </div>
       </div>
-      <div class="tg-grid">${g.tests.map((id) => {
-        const t = meta.get(id);
-        return `<article class="tcard" aria-labelledby="ft-${t.id}">
-          <div class="tcard-glyph" aria-hidden="true">${GLYPH[t.id] ? GLYPH[t.id]() : ''}</div>
-          <div class="tcard-body">
-            <h4 id="ft-${t.id}">${esc(t.title)}${t.code ? ` <span class="tcard-code">${esc(t.code)}</span>` : ''}</h4>
-            <p class="tcard-desc">${esc(t.desc)}</p>
-            <div class="tcard-foot">
-              <div class="tcard-meta"><span>${t.items}문항</span><span>약 ${t.minutes}분</span><span class="tag tag--brand" data-live="${t.id}" hidden></span></div>
-              <a class="btn btn--small tcard-go" href="test.html?t=${t.id}" aria-label="${esc(t.title)} 시작하기">시작하기</a>
-            </div>
-          </div>
-        </article>`;
-      }).join('')}</div>
-    </section>`)
+    </article>`;
+  // 검사 고르기: '추천 묶음'과 분류마다 탭 하나씩 (한 줄로 길게 이어지지 않게)
+  const hasBundles = BUNDLES.some((b) => b.tests.every((id) => meta.has(id)));
+  const tabs = [
+    ...(hasBundles ? [{ id: 'pick', name: '추천 묶음' }] : []),
+    ...groups.map((g) => ({ id: g.id, name: g.name, n: g.tests.length })),
+  ];
+  document.querySelector('[data-home-tabs]').innerHTML = tabs
+    .map((tb) => `<button type="button" role="tab" id="ht-${tb.id}" aria-controls="hp-${tb.id}" aria-selected="false" tabindex="-1" data-home-tab="${tb.id}">${esc(tb.name)}${tb.n ? `<span class="n">${tb.n}</span>` : ''}</button>`)
     .join('');
+  document.querySelector('[data-home-panels]').innerHTML = [
+    hasBundles ? `<div class="home-panel" role="tabpanel" id="hp-pick" aria-labelledby="ht-pick" data-home-panel="pick" hidden>
+        <p class="home-lead"><strong>고민별 추천 묶음</strong> 상담 주제에 맞춰 함께 하면 좋은 검사를 묶었어요. 묶음으로 시작하면 한 검사가 끝날 때 다음 검사로 바로 이어져요.</p>
+        <div class="bd-box" data-bundles></div>
+      </div>` : '',
+    ...groups.map((g) => `<div class="home-panel" role="tabpanel" id="hp-${g.id}" aria-labelledby="ht-${g.id}" data-home-panel="${g.id}" hidden>
+        ${g.question || g.desc ? `<p class="home-lead">${g.question ? `<strong>${esc(g.question)}</strong> ` : ''}${esc(g.desc || '')}</p>` : ''}
+        <div class="tg-grid">${g.tests.map((id) => card(meta.get(id))).join('')}</div>
+      </div>`),
+  ].join('');
+  wireHomeTabs(tabs.map((tb) => tb.id));
 
   drawBundles(meta);
   drawResume();
@@ -109,13 +114,60 @@ const GLYPH = {
   mountFooter();
 })();
 
+// 검사 고르기 탭: 고른 탭은 이 탭(세션) 안에서 기억해서, 검사를 하고 돌아와도 같은 탭이 열린다
+const TAB_KEY = 'azit:home:tab';
+function wireHomeTabs(ids) {
+  const bar = document.querySelector('[data-home-tabs]');
+  const wrap = document.querySelector('[data-tabs-wrap]');
+  if (!bar || !ids.length) return;
+  const btns = [...bar.querySelectorAll('[role="tab"]')];
+  // 휴대폰에서 탭 줄이 옆으로 넘치면, 더 있는 쪽 끝을 흐리게 해서 밀어 볼 수 있다는 걸 알린다
+  const fade = () => {
+    const over = bar.scrollWidth > bar.clientWidth + 2;
+    wrap.dataset.fadeL = String(over && bar.scrollLeft > 4);
+    wrap.dataset.fadeR = String(over && bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 4);
+  };
+  const show = (id, focus = false) => {
+    btns.forEach((b) => {
+      const on = b.dataset.homeTab === id;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on) {
+        if (focus) b.focus();
+        // 고른 탭이 탭 줄 밖이나 흐린 끝에 걸리면 탭 줄만 옆으로 민다 (화면 전체는 움직이지 않게)
+        const pad = 60;
+        const left = b.offsetLeft - bar.offsetLeft;
+        const right = left + b.offsetWidth;
+        if (right > bar.scrollLeft + bar.clientWidth - pad) bar.scrollLeft = right - bar.clientWidth + pad;
+        else if (left < bar.scrollLeft + pad) bar.scrollLeft = Math.max(0, left - pad);
+      }
+    });
+    document.querySelectorAll('[data-home-panel]').forEach((pn) => { pn.hidden = pn.dataset.homePanel !== id; });
+    try { sessionStorage.setItem(TAB_KEY, id); } catch (e) { /* 저장소를 못 쓰면 기억하지 않는다 */ }
+    fade();
+  };
+  let first = ids[0];
+  try { const saved = sessionStorage.getItem(TAB_KEY); if (ids.includes(saved)) first = saved; } catch (e) { /* 기본 탭 */ }
+  show(first);
+  bar.addEventListener('click', (e) => { const b = e.target.closest('[role="tab"]'); if (b) show(b.dataset.homeTab); });
+  bar.addEventListener('keydown', (e) => {
+    const i = btns.indexOf(document.activeElement);
+    if (i < 0) return;
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: btns.length - 1 }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    show(btns[(to + btns.length) % btns.length].dataset.homeTab, true);
+  });
+  bar.addEventListener('scroll', fade, { passive: true });
+  window.addEventListener('resize', fade);
+}
+
 // 고민별 추천 묶음: 묶음 이름을 탭으로 늘어놓고, 고른 묶음의 검사 순서와 시간을 보여 준다
 function drawBundles(meta) {
   const box = document.querySelector('[data-bundles]');
   if (!box) return;
   const list = BUNDLES.filter((b) => b.tests.every((id) => meta.has(id)));
   if (!list.length) return;
-  box.closest('section').hidden = false;
   const panel = (b) => {
     const total = b.tests.reduce((n, id) => n + (meta.get(id).minutes || 0), 0);
     const steps = b.tests.map((id, i) => {

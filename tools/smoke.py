@@ -12,7 +12,7 @@
     (잠금 화면은 코드를 쓰지 않고 '열린 상태'를 저장소에 직접 적어서 넘긴다. 코드는 저장소에 두지 않는다)
  3. 열린 검사를 하나씩 끝까지 무작위로 답해서 '검사 결과가 전송되었습니다'까지 확인
     - 첫 검사는 중간에 '저장하고 나가기' → 첫 화면 '이어서 할 검사' → 이어서 하기까지 확인
- 4. 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
+ 4. 첫 화면 검사 고르기 탭(추천 묶음 + 분류, 한 칸씩, 고른 탭 기억), 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
  5. 관리 화면이 오류 없이 열리는지, 생년월일 없는 예전 결과(흉내 낸 1건)에 '생년월일 넣기'가 되는지,
     CSV 열이 머리줄과 맞고 '생년월일' 열이 빈칸 없이 채워지는지
  6. 결과지 그리기: 검사마다 여러 모양의 모의 응답(고루, 극단, 무작위, 한쪽 끝, 같은 답)을 채점해서,
@@ -202,9 +202,22 @@ async def run(args):
             await pg.wait_for_timeout(1200)
             ok('첫 화면 인사', 'greet' in (await pg.get_attribute('[data-greet]', 'class') or ''), await pg.inner_text('[data-greet]'))
             await shot('home')
-            tabs = await pg.locator('#bundles [role="tab"]').count()
-            steps = await pg.eval_on_selector_all('#bundles .bd-step', 'els => els.map(e => e.getAttribute("href"))')
+            tabs = await pg.locator('[data-bundles] [role="tab"]').count()
+            steps = await pg.eval_on_selector_all('[data-bundles] .bd-step', 'els => els.map(e => e.getAttribute("href"))')
             ok('고민별 추천 묶음', tabs >= 1 and steps and all('&b=' in h for h in steps), f'묶음 {tabs}개, 첫 묶음 검사 {len(steps)}개')
+            # 검사 고르기 탭: '추천 묶음'과 분류마다 하나, 한 번에 한 칸만 보이고, 고른 탭은 다시 열어도 그대로
+            ht = await pg.eval_on_selector_all('[data-home-tab]', 'els => els.map(e => e.dataset.homeTab)')
+            vis = await pg.evaluate("() => [...document.querySelectorAll('[data-home-panel]')].filter((p) => !p.hidden).map((p) => p.dataset.homePanel)")
+            cards, kept = 0, None
+            if len(ht) >= 2:
+                await pg.click(f'[data-home-tab="{ht[-1]}"]')
+                cards = await pg.locator(f'[data-home-panel="{ht[-1]}"] .tcard').count()
+                await pg.reload()
+                await pg.wait_for_timeout(1200)
+                kept = await pg.get_attribute(f'[data-home-tab="{ht[-1]}"]', 'aria-selected')
+                await pg.click('[data-home-tab="pick"]')
+            ok('검사 고르기 탭', len(ht) >= 2 and ht[0] == 'pick' and vis == ['pick'] and cards >= 1 and kept == 'true',
+               f'탭 {len(ht)}개, 처음 보이는 칸 {vis}, 마지막 탭의 검사 {cards}개, 다시 열어도 그 탭 {kept}')
 
             tests = await pg.evaluate("import('./assets/js/registry.js').then(m => m.TESTS.filter(t => t.status === 'open').map(t => ({id: t.id, title: t.title, items: t.items})))")
             if args.only:

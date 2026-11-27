@@ -2054,3 +2054,37 @@ table.list--people td.acts { white-space: nowrap; }
   table.list--people .p-count .btn { padding: 0; min-height: 28px; }
   table.list--people td.acts { margin-top: 6px; white-space: normal; }
 }
+
+/* ── 검사 결과 목록: 그림 칸 없이 (검사 약칭과 결과 요약이 정보를 맡는다) ── */
+.record--plain { grid-template-columns: 1fr auto; }
+.record--plain .rec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; }
+.record--plain .meta .rec-head strong { display: inline; }
+.record--plain .meta .rec-when { color: var(--ink-3); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.record--plain .rec-test { margin-top: 6px; font-size: var(--fs-s); color: var(--ink-2); font-weight: 600; }
+.record--plain .rec-test .tcard-code { margin: 0 6px 0 0; vertical-align: 1px; color: var(--brand-deep); font-size: var(--fs-xs); }
+.record--plain .rec-test .tag { margin-left: 8px; padding: 1px 8px; vertical-align: 1px; color: var(--brand-deep); font-size: var(--fs-xs); }
+.record--plain .rec-sum { margin-top: 4px; color: var(--ink); font-size: var(--fs-s); line-height: 1.6; word-break: keep-all; }
+@media (max-width: 600px) {
+  .record--plain { grid-template-columns: 1fr; gap: 12px; }
+  .record--plain .acts { grid-column: 1; }
+}
+
+/* ── 첫 화면: 검사 고르기 탭 (추천 묶음 + 분류) ── */
+.home-tabs-wrap { position: relative; margin: 0 0 22px; border-bottom: 1px solid var(--line); }
+.home-tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.home-tabs::-webkit-scrollbar { display: none; }
+.home-tabs [role='tab'] { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; padding: 12px 16px 13px; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); cursor: pointer; white-space: nowrap; transition: color .12s, border-color .12s; }
+.home-tabs [role='tab']:hover { color: var(--ink-2); }
+.home-tabs [role='tab'][aria-selected='true'] { color: var(--ink); border-bottom-color: var(--brand); }
+.home-tabs [role='tab']:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; border-radius: 10px 10px 0 0; }
+.home-tabs .n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--tint); color: var(--ink-2); font-size: var(--fs-xs); font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.home-tabs [aria-selected='true'] .n { background: var(--brand-soft); color: var(--brand-deep); }
+.home-tabs-wrap::before, .home-tabs-wrap::after { content: ''; position: absolute; top: 0; bottom: 1px; width: 40px; pointer-events: none; opacity: 0; transition: opacity .15s; }
+.home-tabs-wrap::before { left: 0; background: linear-gradient(90deg, var(--bg), rgba(246, 248, 253, 0)); }
+.home-tabs-wrap::after { right: 0; width: 56px; background: linear-gradient(270deg, var(--bg) 40%, rgba(246, 248, 253, 0)); content: '›'; display: grid; place-items: center end; padding-right: 4px; color: var(--ink-3); font-size: 24px; font-weight: 300; }
+.home-tabs-wrap[data-fade-l='true']::before, .home-tabs-wrap[data-fade-r='true']::after { opacity: 1; }
+.home-lead { margin: 0 0 16px; color: var(--ink-2); font-size: var(--fs-s); max-width: 70ch; }
+.home-lead strong { color: var(--brand-deep); font-weight: 700; margin-right: 4px; }
+@media (max-width: 600px) {
+  .home-tabs [role='tab'] { padding: 10px 12px 11px; font-size: var(--fs-b); }
+}

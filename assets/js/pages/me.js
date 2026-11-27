@@ -7,15 +7,9 @@ import { requireUnlock, watchLock } from '../lock.js';
 
 const box = document.querySelector('[data-list]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
-const ATT = { secure: '안', anxious: '불', fearful: '두', avoidant: '회' };
-const glyph = (r) => {
-  const s = r.scores || {};
-  if (r.testId === 'enneagram') return s.core || '?';
-  if (r.testId === 'bigfive') return '★';
-  if (r.testId === 'attachment') return ATT[s.style] || '·';
-  if (r.testId === 'schema') return s.active && s.active.length ? (s.topNames && s.topNames[0] ? s.topNames[0].slice(0, 1) : '·') : '·';
-  return r.glyph || '·'; // 새 검사는 검사 정의의 glyph(scores)가 결과와 함께 저장된다
-};
+// 목록 카드에는 작은 그림 대신 검사 약칭과 결과 요약을 보여 준다
+// (한두 글자 그림은 어떤 검사인지도, 결과가 무엇인지도 알려 주지 못해서 뺐다)
+const testLine = (id) => `${codeOf(id) ? `<span class="tcard-code">${esc(codeOf(id))}</span>` : ''}${esc(title(id))}`;
 const view = { q: '', test: '', by: 'result' };
 let list = [];
 
@@ -73,9 +67,12 @@ function drawRows() {
     return;
   }
   ul.innerHTML = rows
-    .map((r) => `<li class="record" data-rid="${esc(r.rid)}">
-      <div class="glyph" aria-hidden="true">${esc(glyph(r))}</div>
-      <div class="meta"><strong>${esc(r.name || '이름 없음')}${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span>${esc(title(r.testId))}, ${esc(r.summary || '')}</span><br><span>${esc(fmtDate(r.createdAt, true))}${r.shareToken ? ', 공유 중' : ''}</span></div>
+    .map((r) => `<li class="record record--plain" data-rid="${esc(r.rid)}">
+      <div class="meta">
+        <div class="rec-head"><strong>${esc(r.name || '이름 없음')}${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span class="rec-when">${esc(fmtDate(r.createdAt, true))}</span></div>
+        <p class="rec-test">${testLine(r.testId)}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</p>
+        <p class="rec-sum">${esc(r.summary || '')}</p>
+      </div>
       <div class="acts">
         <a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">결과지 보기</a>
         <button type="button" class="btn btn--ghost btn--small" data-act="share">${r.shareToken ? '공유 링크' : '공유하기'}</button>
@@ -102,8 +99,7 @@ function drawPeople() {
       const r = rs[0];
       const nm = r.name || '이름 없음';
       const ids = groupIds([...new Set(rs.map((x) => x.testId))]).flatMap((g) => g.tests);
-      return `<li class="record record--person">
-      <div class="glyph" aria-hidden="true">${esc([...nm.trim()][0] || '·')}</div>
+      return `<li class="record record--plain record--person">
       <div class="meta"><strong>${esc(nm)}<span class="born">${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></strong><span>검사 ${ids.length}개${rs.length > ids.length ? `, 결과 ${rs.length}건` : ''}, <span class="nowrap">최근 ${esc(fmtDate(r.createdAt))}</span></span>
         <span class="person-codes">${ids.map((id) => `<span class="tcard-code" title="${esc(title(id))}">${esc(codeOf(id) || title(id))}</span>`).join('')}</span></div>
       <div class="acts"><a class="btn btn--small" href="${personUrl(r.uid, r.rid)}">종합 결과지</a></div>
