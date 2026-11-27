@@ -64,6 +64,14 @@ export const TRACKS = [
     ].map(([k, name]) => m(k, name, 4, (s) => sc(s.facets, k))),
   },
   {
+    id: 'interpersonal',
+    title: '대인관계 패턴',
+    tests: ['interpersonal'],
+    metrics: [m('elev', '관계의 어려움', 40, (s) => s.elev)],
+    moreLabel: '방향별 점수도 보기',
+    more: [['pa', '이끌고 정하려 함'], ['bc', '의심하고 맞섬'], ['de', '마음을 닫고 거리 둠'], ['fg', '다가가기 망설임'], ['hi', '내 뜻을 말하기 어려움'], ['jk', '쉽게 맞춰 주고 휘둘림'], ['lm', '남을 챙기느라 나를 잊음'], ['no', '가까워지려 지나치게 다가감']].map(([k, name]) => m(k, name, 5, (s) => sc(s.octants, k))),
+  },
+  {
     id: 'godattach',
     title: '신앙 애착',
     tests: ['godattach'],
@@ -236,7 +244,7 @@ export function renderTrack({ track: t, pts, mixed }, meta) {
     const read = t.read ? t.read(deltas) : '';
     body = `${rows(t.metrics, pts, testTitle)}
       <p class="pp-tread">${esc(sentence(t.metrics, pts))}${read ? ` ${esc(read)}` : ''}</p>
-      ${t.more && t.more.length ? `<details class="pp-tmore"><summary>갈래별 점수도 보기</summary>${rows(t.more, pts, testTitle)}</details>` : ''}`;
+      ${t.more && t.more.length ? `<details class="pp-tmore"><summary>${esc(t.moreLabel || '갈래별 점수도 보기')}</summary>${rows(t.more, pts, testTitle)}</details>` : ''}`;
   } else {
     body = '<p class="pp-tread">결과 요약의 첫머리를 날짜순으로 놓았어요. 점수는 각 결과지에서 비교해 보세요.</p>';
   }

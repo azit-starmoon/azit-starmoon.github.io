@@ -8,6 +8,7 @@ import { fmtBirth } from '../examinee.js';
 import { attachMap } from '../../../tests/attachment/chart.js';
 import { schemaRose } from '../../../tests/schema/chart.js';
 import { sensFlower, stateMap } from '../../../tests/hsp/chart.js';
+import { circleMap } from '../../../tests/interpersonal/chart.js';
 import { strengthWheel } from '../../../tests/strengths/chart.js';
 import { STRENGTH_ORDER } from '../../../tests/strengths/items.js';
 import { valueWheel } from '../../../tests/values/chart.js';
@@ -31,6 +32,7 @@ const GLYPH = {
     .map((k, i) => [k, { score: [40, 22, 58, 70, 30, 25, 35, 20, 45, 15, 28, 62, 80, 66, 38, 50, 88, 55][i], level: [0, 2, 6, 7, 11, 12, 13, 16].includes(i) ? 'active' : 'mild' }])), { size: 220, title: '18가지 규칙 지도' }),
   hsp: () => sensFlower({ d: { score: 72 }, o: { score: 58 }, e: { score: 84 }, s: { score: 66 } }, { size: 220, total: 70, labels: false, title: '네 갈래 민감성 꽃' }),
   hspnow: () => stateMap(36, 68, { size: 220, state: 'bloom', title: '요즘 상태 지도' }),
+  interpersonal: () => circleMap({ pa: 48, bc: 36, de: 42, fg: 58, hi: 70, jk: 66, lm: 62, no: 50 }, { size: 220, labels: false, angle: 306, amp: 15, top: 'jk', title: '대인관계 원형 지도' }),
   strengths: () => {
     const sc = [62, 80, 55, 74, 58, 40, 66, 70, 52, 86, 78, 64, 60, 50, 38, 56, 48, 44, 36, 82, 76, 68, 54, 42];
     const order = [...STRENGTH_ORDER].sort((a, b) => sc[STRENGTH_ORDER.indexOf(b)] - sc[STRENGTH_ORDER.indexOf(a)]);

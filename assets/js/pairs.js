@@ -68,6 +68,28 @@ export const PAIRS = [
   },
   {
     a: 'attachment',
+    b: 'interpersonal',
+    title: '애착과 대인관계 패턴',
+    why: '가까운 관계에서의 불안과 거리가 어떤 행동으로 되풀이되는지 함께 볼 수 있어요',
+    render: (A, P) => {
+      const o = P.octants || {};
+      const list = [
+        ['애착 불안', A.anx, '가까워지려 지나치게 다가감', score(o, 'no')],
+        ['애착 불안', A.anx, '쉽게 맞춰 주고 휘둘림', score(o, 'jk')],
+        ['애착 회피', A.avo, '마음을 닫고 거리 둠', score(o, 'de')],
+        ['애착 회피', A.avo, '다가가기 망설임', score(o, 'fg')],
+      ].map(([a, x, b, y]) => [a, x, b, y, agree(x, y)]);
+      const ks = list.map((r) => r[4].k);
+      let text;
+      if (ks.every((k) => k === 'same')) text = '두 검사가 같은 방향을 가리켜요. 관계에서 느끼는 불안과 거리가 그대로 행동으로 이어지고 있어요.';
+      else if (ks.includes('diff')) text = '두 검사가 엇갈리는 곳이 있어요. 마음속 불안이나 거리감이 겉으로는 다른 모습으로 나오거나, 반대로 행동은 있는데 마음으로는 크게 느끼지 못할 수 있어요. 엇갈리는 줄을 중심으로 실제 관계 장면을 들어 보면 좋아요.';
+      else text = '두 검사가 대체로 같은 쪽을 가리키지만 정도가 조금 달라요. 마음의 불안과 거리가 행동으로 얼마나 드러나는지 이야기해 보면 좋아요.';
+      return `<div class="pp-read"><p>애착 불안은 지나치게 다가가거나 맞춰 주는 어려움과, 애착 회피는 거리를 두거나 어울리기 어려운 어려움과 함께 나타난다고 연구에서 보고돼요. 애착이 마음속 기대라면, 대인관계 패턴은 그 기대가 행동으로 되풀이되는 모습이에요.</p>
+        ${legend('성인 애착 유형 검사', '대인관계 패턴 검사')}${rows(list)}<p>${esc(text)}</p></div>`;
+    },
+  },
+  {
+    a: 'attachment',
     b: 'differentiation',
     title: '애착과 자아분화',
     why: '가까운 관계에서의 불안과 거리를 가족 안의 모습과 함께 볼 수 있어요',

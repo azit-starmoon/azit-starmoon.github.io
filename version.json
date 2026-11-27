@@ -1,5 +1,5 @@
 {
- "v": "20261127-040316",
+ "v": "20261127-044448",
  "files": [
   "./",
   "admin.html",
@@ -94,6 +94,12 @@
   "tests/hspnow/index.js",
   "tests/hspnow/report.js",
   "tests/hspnow/scoring.js",
+  "tests/interpersonal/chart.js",
+  "tests/interpersonal/content.js",
+  "tests/interpersonal/index.js",
+  "tests/interpersonal/items.js",
+  "tests/interpersonal/report.js",
+  "tests/interpersonal/scoring.js",
   "tests/lifestory/chart.js",
   "tests/lifestory/content.js",
   "tests/lifestory/index.js",

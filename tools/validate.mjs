@@ -113,6 +113,7 @@ const CATS = {
   schema: ['primaryCoping', 'top[0]'],
   hsp: ['level', 'state'],
   hspnow: ['state'],
+  interpersonal: ['style', 'level'],
   strengths: ['order[0]'],
   values: ['top', 'topGroup'],
   career: ['top', 'codeText'],

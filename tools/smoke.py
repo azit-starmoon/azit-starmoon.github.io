@@ -40,7 +40,7 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
-PAIR_IDS = ('attachment', 'godattach')  # 같은 이름으로 해서 종합 결과지의 짝 읽기를 확인한다
+PAIR_IDS = ('attachment', 'godattach', 'interpersonal')  # 같은 이름으로 해서 종합 결과지의 짝 읽기를 확인한다
 
 # 결과지 그리기 점검 (브라우저 안에서 돈다). 모의 응답 만드는 법은 tools/validate.mjs의 answersFor와 같은 갈래
 RENDER_FUZZ_JS = r"""async ({ ids, n }) => {

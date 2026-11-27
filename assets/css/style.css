@@ -1175,6 +1175,60 @@ body.has-update .toast { bottom: 84px; }
 @media (max-width: 760px) { .hsp-env { grid-template-columns: 1fr; } }
 .hsp-counsel-score { font-weight: 700; color: var(--ink-3); margin-left: 4px; }
 
+/* 대인관계 패턴 검사: 원형 지도 */
+.ip { display: block; width: 100%; height: auto; font-family: var(--font-sans); overflow: visible; }
+.ip-bg { fill: #fff; stroke: var(--line); }
+.ip-ring { fill: none; stroke: var(--line-2); }
+.ip-ring.is-mid { stroke: #c9cfe3; stroke-dasharray: 3 4; }
+.ip-spoke { stroke: var(--line); }
+.ip-poly { fill: var(--brand-soft-2); fill-opacity: .75; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; }
+.ip-dot { fill: #fff; stroke: var(--brand); stroke-width: 2; }
+.ip-dot.is-top { fill: var(--brand); }
+.ip-vec line { stroke: var(--star-ink); stroke-width: 2.5; stroke-linecap: round; }
+.ip-vec polygon { fill: var(--star-ink); }
+.ip-name { font-size: 12px; font-weight: 700; fill: var(--ink-2); }
+.ip-name.is-top { fill: var(--brand-deep); font-weight: 800; }
+.ip-num { font-weight: 600; fill: var(--ink-3); }
+.ip-cover-fig { max-width: 360px; justify-self: center; width: 100%; }
+.ip-map { display: grid; gap: 18px; }
+.ip-fig { margin: 0 auto; max-width: 380px; width: 100%; }
+.ip-fig figcaption { margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.5; text-align: center; }
+.ip-bars li { grid-template-columns: 200px minmax(0, 1fr) 30px 70px; }
+.ip-cards { display: grid; gap: 12px; }
+.ip-card { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 18px 20px; box-shadow: var(--shadow-s); }
+.ip-card .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ip-card h3 { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; }
+.ip-card .score { margin-left: auto; font-weight: 800; font-size: var(--fs-l); font-variant-numeric: tabular-nums; }
+.ip-card > p { line-height: 1.75; }
+.ip-card dl { display: grid; gap: 10px; margin-top: 12px; }
+.ip-card dl div { background: var(--tint); border-radius: var(--r-m); padding: 12px 14px; }
+.ip-card dt { font-size: var(--fs-xs); font-weight: 700; color: var(--brand-deep); margin-bottom: 2px; }
+.ip-card dd { margin: 0; line-height: 1.7; }
+.ip-axis { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 16px 20px; }
+.ip-axis + .ip-axis { margin-top: 10px; }
+.ip-axis-h { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 10px; }
+.ip-axis-h h3 { font-size: var(--fs-b); font-weight: 700; }
+.ip-axis-h span { font-size: var(--fs-s); color: var(--ink-2); }
+.ip-axis-bar { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 10px; align-items: center; margin-bottom: 8px; }
+.ip-axis-bar .l, .ip-axis-bar .r { font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); }
+.ip-axis-bar .r { text-align: right; }
+.ip-axis-bar .track { position: relative; height: 12px; background: var(--line-2); border-radius: 4px; }
+.ip-axis-bar .fill { position: absolute; top: 0; bottom: 0; min-width: 2px; background: var(--brand); border-radius: 4px; }
+.ip-axis-bar i { position: absolute; left: 50%; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--ink-3); border-radius: 1px; }
+.ip-axis p { font-size: var(--fs-s); color: var(--ink-2); line-height: 1.65; }
+@media (max-width: 560px) {
+  .ip-bars li { grid-template-columns: 1fr auto auto; }
+  .ip-card { padding: 16px; }
+}
+@media print {
+  .ip-poly, .ip-dot, .ip-vec, .ip-axis-bar .fill, .ip-card dl div { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ip-card, .ip-axis, .ip-map { break-inside: avoid; }
+  .ip-card { box-shadow: none; }
+}
+
+/* 곱씹기와 돌아보기 검사 */
+.rm-what { font-size: var(--fs-s); color: var(--ink-3); line-height: 1.6; margin-bottom: 6px; }
+
 /* 요즘의 나 체크: 문장별로 짚어 주기 */
 .sn-items { list-style: none; display: grid; gap: 10px; margin-bottom: 8px; }
 .sn-items li { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-l); padding: 16px 18px; }
