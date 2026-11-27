@@ -19,6 +19,7 @@
     실제 데이터베이스에서 읽어 온 모양(빈 배열·빈 객체가 빠진 상태, backend.js rtdbShape)으로
     결과지(상담사용·공유용), 요약, 짝 읽기를 그려 본다. 무작위 응답만으로는 잘 안 나오는 끝자락 점수도 본다
  7. 상담사 승인 창에서 이름·소속 고치기, 승인된 상담사의 이름·소속 고치기
+    관리 화면 배치: 탭 셋, 상담사별 거르기, 결과 표와 '열기' 단추가 390px·1024px 너비 안에 들어오는지
     계정 단계: 담당자 화면, 관리자 화면(담당자 기능 없음, 다른 계정 결과는 열기만), 상담사 계정(관리 화면에 못 들어옴)
  8. 모든 화면의 자바스크립트 오류 수집
 
@@ -414,6 +415,7 @@ async def run(args):
                   const R = await import('./assets/js/registry.js');
                   return R.TESTS.filter((t) => t.status === 'open' && !S.SCALE_DEFS[t.id]).map((t) => t.id);
                 }""")
+                await pg.click('[data-tab="analysis"]')  # 문항 분석은 '분석' 탭에 있다
                 await pg.click('[data-ia-run]')
                 try:
                     await pg.wait_for_selector('[data-ia-out] .ia-sum, [data-ia-out] .muted-box', timeout=8000)
@@ -446,6 +448,7 @@ async def run(args):
             await pg.goto(base + 'admin.html')
             await pg.wait_for_timeout(1500)
             try:
+                await pg.click('[data-tab="people"]')  # 승인 요청과 승인된 상담사는 '상담사' 탭에 있다
                 await pg.click('li[data-uid="demo-newbie"] [data-req="approve"]')
                 await pg.wait_for_selector('#mf-name', timeout=5000)
                 await pg.fill('#mf-name', '김새벽')
@@ -456,14 +459,14 @@ async def run(args):
                 req_left = await pg.evaluate("() => !!((JSON.parse(localStorage.getItem('azit:demo:db')).requests || {})['demo-newbie'])")
                 ok('승인하면서 이름·소속 고치기', m.get('name') == '김새벽' and m.get('note') == 'AZIT 상담팀' and not req_left,
                    f"저장된 이름 {m.get('name')}, 소속 {m.get('note')}, 요청 {'남음' if req_left else '지워짐'}")
-                await pg.click('li[data-uid="demo-newbie"] [data-mem="edit"]')
+                await pg.click('[data-uid="demo-newbie"] [data-mem="edit"]')
                 await pg.wait_for_selector('#mf-name', timeout=5000)
                 await pg.fill('#mf-name', '김새벽별')
                 await pg.fill('#mf-note', '')
                 await pg.click('.modal-actions [data-i="1"]')
                 await pg.wait_for_timeout(1200)
                 m = await pg.evaluate(member_of, 'demo-newbie') or {}
-                shown = await pg.inner_text('li[data-uid="demo-newbie"] strong') if await pg.locator('li[data-uid="demo-newbie"] strong').count() else ''
+                shown = await pg.inner_text('tr[data-uid="demo-newbie"] strong') if await pg.locator('tr[data-uid="demo-newbie"] strong').count() else ''
                 ok('상담사 이름·소속 고치기', m.get('name') == '김새벽별' and not m.get('note') and m.get('approvedAt') and '김새벽별' in shown,
                    f"저장된 이름 {m.get('name')}, 소속 '{m.get('note', '')}', 목록 표시 {shown}")
             except Exception as e:
@@ -492,14 +495,36 @@ async def run(args):
               return true;
             }""")
             if other:
+                # 관리 화면 배치: 탭 셋, 상담사별 거르기, 결과 표가 화면 안에 들어오고 '열기'가 보이는지 (휴대폰과 PC 너비)
+                await pg.goto(base + 'admin.html')
+                await pg.wait_for_timeout(1500)
+                tabs = await pg.locator('[data-tab]').count()
+                panels_ok = await pg.evaluate("() => !document.querySelector('[data-panel=\"results\"]').hidden && document.querySelector('[data-panel=\"people\"]').hidden")
+                await pg.select_option('[data-owner]', 'demo-other')
+                await pg.wait_for_timeout(200)
+                filtered_rows = await pg.locator('tbody[data-rows] tr[data-key]').count()
+                await pg.select_option('[data-owner]', '')
+                fits = {}
+                for w in (390, 1024):
+                    await pg.set_viewport_size({'width': w, 'height': 844 if w == 390 else 800})
+                    await pg.wait_for_timeout(300)
+                    fits[w] = await pg.evaluate("""(w) => {
+                      const wrap = document.querySelector('[data-panel="results"] .table-wrap');
+                      const open = document.querySelector('tbody[data-rows] tr[data-key] td.acts a');
+                      const r = open && open.getBoundingClientRect();
+                      return !!(wrap && r && wrap.scrollWidth <= wrap.clientWidth + 1 && r.right <= w && r.width > 0);
+                    }""", w)
+                await pg.set_viewport_size({'width': 390, 'height': 844})
+                ok('관리 화면 배치', tabs == 3 and panels_ok and filtered_rows == 1 and all(fits.values()),
+                   f'탭 {tabs}개, 상담사로 거르면 {filtered_rows}건, 결과 표와 열기 단추가 화면 안에 ' + ', '.join(f"{w}px {'들어옴' if v else '넘침'}" for w, v in fits.items()))
                 await pg.goto(base + 'admin.html?demorole=admin')
                 await pg.wait_for_timeout(1500)
                 line = await pg.inner_text('.role-line') if await pg.locator('.role-line').count() else ''
                 shown = [s for s in ('[data-csv]', '[data-admins]', '[data-ia-run]', '[data-fill-birth]') if await pg.locator(s).count()]
                 other_acts = await pg.locator('tr[data-key^="demo-other/"] [data-act]').count()
                 own_acts = await pg.locator(f'tr[data-key^="{me_uid}/"] [data-act]').count()
-                approve_ok = (await pg.locator('#req-t').count() > 0 and await pg.locator('li[data-uid="demo-other"] [data-mem="revoke"]').count() > 0
-                              and await pg.locator('li[data-uid="demo-other"] [data-mem="edit"]').count() > 0)
+                approve_ok = (await pg.locator('#req-t').count() > 0 and await pg.locator('[data-uid="demo-other"] [data-mem="revoke"]').count() > 0
+                              and await pg.locator('[data-uid="demo-other"] [data-mem="edit"]').count() > 0)
                 ok('관리자 화면', '관리자' in line and not shown and other_acts == 0 and own_acts > 0 and approve_ok,
                    f'담당자 기능 {shown or "없음"}, 다른 계정 결과의 공유·지우기 {other_acts}개, 내 결과 {own_acts}개, 상담사 승인 취소·정보 고치기 {"있음" if approve_ok else "없음"}')
                 await pg.goto(base + 'result.html?u=demo-other&r=smoke-other')

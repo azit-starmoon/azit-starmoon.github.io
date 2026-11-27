@@ -4,7 +4,7 @@ import {
   isUserAdmin, setUserAdmin, listAdmins, listRequests, listMembers, approveMember, updateMember, rejectRequest, revokeMember,
 } from '../backend.js';
 import { OWNER_EMAIL } from '../config.js';
-import { TESTS, groupIds, loadTest } from '../registry.js';
+import { TESTS, groupIds, loadTest, codeOf } from '../registry.js';
 import { fmtBirth, parseBirth, longBirth } from '../examinee.js';
 import { requireLogin } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
@@ -23,7 +23,11 @@ let members = {};
 let admins = {};
 // 지금 들어온 계정. 담당자(owner)는 모든 기능, 관리자는 상담사 승인과 모든 결과 보기만
 const me = { uid: '', owner: false };
-const view = { q: '', test: '' };
+const PAGE = 30; // 결과 목록은 이만큼씩 더 보여 준다
+const TAB_IDS = ['results', 'people', 'analysis'];
+const tabFromHash = () => { const h = location.hash.replace('#', ''); return TAB_IDS.includes(h) ? h : 'results'; };
+// tab: 지금 탭, q/test/owner: 결과 찾기와 거르기, mq: 상담사 찾기, limit: 결과 몇 건까지 보여 줄지
+const view = { tab: tabFromHash(), q: '', test: '', owner: '', mq: '', limit: PAGE };
 const ia = { test: '', level: 0, flat: true, ran: false }; // 문항 분석 화면 상태
 
 (async () => {
@@ -83,105 +87,189 @@ const ownerTeam = (r) => (members[r.uid] && members[r.uid].note) || '';
 function filtered() {
   const q = view.q.trim().toLowerCase();
   const digits = q.replace(/\D/g, ''); // 숫자 네 자리 이상이면 생년월일로도 찾는다
-  return all.filter((r) => (!view.test || r.testId === view.test) && (!q || `${r.name || ''} ${ownerLabel(r)} ${ownerTeam(r)} ${r.email || ''}`.toLowerCase().includes(q)
+  return all.filter((r) => (!view.test || r.testId === view.test) && (!view.owner || r.uid === view.owner) && (!q || `${r.name || ''} ${ownerLabel(r)} ${ownerTeam(r)} ${r.email || ''}`.toLowerCase().includes(q)
     || (digits.length >= 4 && String(r.birth || '').replace(/-/g, '').includes(digits))));
 }
 
+// 계정 표시와 할 수 있는 일 (관리자는 상담사 계정만, 관리자·담당자 계정은 담당자만)
+function roleTag(uid, owner) {
+  if (uid && uid === owner) return '<em class="role-chip" data-role="owner">담당자</em>';
+  return admins[uid] ? '<em class="role-chip" data-role="admin">관리자</em>' : '';
+}
+const canRevoke = (uid, owner) => uid !== me.uid && (me.owner || (!admins[uid] && uid !== owner));
+const canEditMember = (uid, owner) => me.owner || (!admins[uid] && uid !== owner && uid !== me.uid);
+
+// 탭 바꾸기 (주소의 #people, #analysis로 새로 고쳐도 같은 탭이 열린다)
+function setTab(id, focus = false) {
+  view.tab = id;
+  history.replaceState(null, '', id === 'results' ? location.pathname + location.search : `#${id}`);
+  box.querySelectorAll('[data-tab]').forEach((b) => {
+    const on = b.dataset.tab === id;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  });
+  box.querySelectorAll('[data-panel]').forEach((el) => { el.hidden = el.dataset.panel !== id; });
+  const note = box.querySelector('[data-req-note]');
+  if (note) note.hidden = id === 'people';
+}
+window.addEventListener('hashchange', () => { if (box.querySelector('[data-tab]')) setTab(tabFromHash()); });
+
 function draw() {
   const reqEntries = Object.entries(requests || {}).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
-  const memEntries = Object.entries(members || {}).sort((a, b) => (b[1].approvedAt || 0) - (a[1].approvedAt || 0));
-  const countBy = {};
-  all.forEach((r) => { countBy[r.uid] = (countBy[r.uid] || 0) + 1; });
+  const memCount = Object.keys(members || {}).length;
   const examinees = new Set(all.map((r) => `${r.uid}:${r.name || ''}`));
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const recent = all.filter((r) => (r.createdAt || 0) >= weekAgo).length;
+  const tabs = [['results', '검사 결과', all.length], ['people', '상담사', memCount], ...(me.owner ? [['analysis', '분석']] : [])];
+  if (!tabs.some(([id]) => id === view.tab)) view.tab = 'results';
+  // 결과를 남긴 상담사 계정 (상담사별로 걸러 보기)
+  const owners = [...new Set(all.map((r) => r.uid))]
+    .map((uid) => [uid, ownerLabel(all.find((r) => r.uid === uid))])
+    .sort((a, b) => a[1].localeCompare(b[1], 'ko'));
+  if (view.owner && !owners.some(([uid]) => uid === view.owner)) view.owner = '';
+  const testOptions = (sel) => groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
+    .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${sel === id ? 'selected' : ''}>${esc(title(id))}</option>`).join('')}</optgroup>`)
+    .join('');
 
   const dist = {};
   for (let t = 1; t <= 9; t++) dist[t] = 0;
   all.filter((r) => r.testId === 'enneagram' && r.scores).forEach((r) => { dist[Number(r.scores.core)] = (dist[Number(r.scores.core)] || 0) + 1; });
   const maxD = Math.max(1, ...Object.values(dist));
-
-  const owner = ownerUid();
-  const roleTag = (uid) => (uid && uid === owner ? '<em class="role-chip" data-role="owner">담당자</em>' : admins[uid] ? '<em class="role-chip" data-role="admin">관리자</em>' : '');
-  // 관리자는 상담사의 승인 취소와 정보 고치기만 할 수 있다 (관리자·담당자 계정은 담당자만)
-  const canRevoke = (uid) => uid !== me.uid && (me.owner || (!admins[uid] && uid !== owner));
-  const canEdit = (uid) => me.owner || (!admins[uid] && uid !== owner && uid !== me.uid);
+  const hid = (id) => (view.tab === id ? '' : 'hidden');
 
   box.innerHTML = `
     <p class="role-line">${me.owner
       ? '<em class="role-chip" data-role="owner">담당자</em> 모든 관리 기능을 쓸 수 있어요.'
       : '<em class="role-chip" data-role="admin">관리자</em> 상담사 승인과 모든 결과 보기를 할 수 있어요. 다른 계정 결과의 공유·지우기, 생년월일 넣기, CSV, 문항 분석, 관리자 지정은 담당자가 해요.'}</p>
 
-    <section class="admin-block" aria-labelledby="req-t">
-      <h2 id="req-t">승인 요청 <span class="count">${reqEntries.length}</span></h2>
-      ${reqEntries.length ? `<ul class="req-list">${reqEntries.map(([uid, r]) => `<li class="req" data-uid="${esc(uid)}">
-        <div><strong>${esc(r.name || '')}</strong><span>${esc(r.email || '')}, ${esc(fmtDate(r.createdAt, true))}</span>${r.note ? `<p class="note">${esc(r.note)}</p>` : ''}</div>
-        <div class="acts"><button type="button" class="btn btn--small" data-req="approve">승인</button><button type="button" class="btn btn--ghost btn--small" data-req="reject">거절</button></div>
-      </li>`).join('')}</ul>` : '<p class="muted-box">새 승인 요청이 없어요.</p>'}
-    </section>
+    <div class="admin-tabs" role="tablist" aria-label="관리 화면">${tabs.map(([id, label, n]) => `<button type="button" role="tab" id="tab-${id}" aria-controls="panel-${id}" aria-selected="${view.tab === id}" tabindex="${view.tab === id ? 0 : -1}" data-tab="${id}">${label}${n !== undefined ? `<span class="count">${n}</span>` : ''}${id === 'people' && reqEntries.length ? `<span class="tab-alert">요청 ${reqEntries.length}</span>` : ''}</button>`).join('')}</div>
+    ${reqEntries.length ? `<p class="req-notice" data-req-note ${view.tab === 'people' ? 'hidden' : ''}>승인을 기다리는 요청이 ${reqEntries.length}건 있어요. <button type="button" class="btn btn--small" data-goto="people">승인 요청 보기</button></p>` : ''}
 
-    <section class="admin-block" aria-labelledby="mem-t">
-      <h2 id="mem-t">승인된 상담사 <span class="count">${memEntries.length}</span></h2>
-      ${memEntries.length ? `<ul class="req-list">${memEntries
-        .map(([uid, m]) => `<li class="req req--member" data-uid="${esc(uid)}">
-          <div><strong>${esc(m.name || '')}${roleTag(uid)}</strong><span>${esc(m.email || '')}, ${esc(shortDate(m.approvedAt))} 승인, 검사 결과 ${countBy[uid] || 0}건</span>${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}</div>
-          <div class="acts">${canEdit(uid) ? '<button type="button" class="btn btn--ghost btn--small" data-mem="edit">이름·소속 고치기</button>' : ''}${canRevoke(uid) ? '<button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button>' : ''}</div>
-        </li>`)
-        .join('')}</ul>` : '<p class="muted-box">아직 승인된 상담사가 없어요. 담당자와 관리자 계정은 승인 없이 이용할 수 있어요.</p>'}
-    </section>
-
-    <section class="admin-block" aria-labelledby="res-t">
-      <h2 id="res-t">검사 결과 <span class="count">${all.length}</span></h2>
-      <dl class="stats">
+    <section class="admin-panel" role="tabpanel" id="panel-results" aria-labelledby="tab-results" data-panel="results" ${hid('results')}>
+      <dl class="stats stats--slim">
         <div class="stat"><dt>검사자</dt><dd>${examinees.size}명</dd></div>
         <div class="stat"><dt>결과</dt><dd>${all.length}건</dd></div>
         <div class="stat"><dt>최근 7일</dt><dd>${recent}건</dd></div>
       </dl>
+      ${me.owner && all.some((r) => !r.birth) ? `<p class="birth-missing">생년월일 없이 저장된 결과가 ${all.filter((r) => !r.birth).length}건 있어요. 같은 분의 결과로 묶이도록 생년월일을 넣을 수 있어요. <button type="button" class="btn btn--ghost btn--small" data-fill-birth>생년월일 넣기</button></p>` : ''}
+      <div class="toolbar">
+        <input class="input" type="search" placeholder="검사자, 상담사, 소속, 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자·상담사 이름, 소속, 검사자 생년월일로 찾기">
+        <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${testOptions(view.test)}</select>
+        <select class="input" data-owner aria-label="상담사 고르기"><option value="">모든 상담사</option>${owners.map(([uid, name]) => `<option value="${esc(uid)}" ${view.owner === uid ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select>
+        ${me.owner ? '<span class="spacer"></span><button type="button" class="btn btn--ghost btn--small" data-csv>CSV 내려받기</button>' : ''}
+      </div>
+      <p class="list-meta" data-meta aria-live="polite"></p>
+      <div class="table-wrap"><table class="list list--results">
+        <colgroup><col class="c-who"><col class="c-test"><col class="c-sum"><col class="c-owner"><col class="c-date"><col class="c-acts"></colgroup>
+        <thead><tr><th scope="col">검사자</th><th scope="col">검사</th><th scope="col">결과</th><th scope="col">상담사</th><th scope="col">검사일</th><th scope="col"><span class="sr-only">할 일</span></th></tr></thead>
+        <tbody data-rows></tbody></table></div>
+      <div class="list-more" data-more></div>
+    </section>
+
+    <section class="admin-panel" role="tabpanel" id="panel-people" aria-labelledby="tab-people" data-panel="people" ${hid('people')}>
+      <section class="admin-block" aria-labelledby="req-t">
+        <h2 id="req-t">승인 요청 <span class="count">${reqEntries.length}</span></h2>
+        ${reqEntries.length ? `<ul class="req-list">${reqEntries.map(([uid, r]) => `<li class="req" data-uid="${esc(uid)}">
+          <div><strong>${esc(r.name || '')}</strong><span>${esc(r.email || '')}, ${esc(fmtDate(r.createdAt, true))}</span>${r.note ? `<p class="note">${esc(r.note)}</p>` : ''}</div>
+          <div class="acts"><button type="button" class="btn btn--small" data-req="approve">승인</button><button type="button" class="btn btn--ghost btn--small" data-req="reject">거절</button></div>
+        </li>`).join('')}</ul>` : '<p class="muted-box">새 승인 요청이 없어요.</p>'}
+      </section>
+      <section class="admin-block" aria-labelledby="mem-t">
+        <h2 id="mem-t">승인된 상담사 <span class="count">${memCount}</span></h2>
+        <div class="toolbar">
+          <input class="input" type="search" placeholder="이름, 소속, 이메일로 찾기" value="${esc(view.mq)}" data-mq aria-label="승인된 상담사 찾기">
+          ${me.owner ? '<span class="spacer"></span><button type="button" class="btn btn--ghost btn--small" data-admins>관리자 지정</button>' : ''}
+        </div>
+        <div class="table-wrap"><table class="list list--people">
+          <thead><tr><th scope="col">이름</th><th scope="col">소속</th><th scope="col">이메일</th><th scope="col">승인</th><th scope="col">검사 결과</th><th scope="col"><span class="sr-only">할 일</span></th></tr></thead>
+          <tbody data-people></tbody></table></div>
+      </section>
+    </section>
+
+    ${me.owner ? `<section class="admin-panel" role="tabpanel" id="panel-analysis" aria-labelledby="tab-analysis" data-panel="analysis" ${hid('analysis')}>
+      <section class="admin-block" aria-labelledby="ia-t">
+        <h2 id="ia-t">문항 분석</h2>
+        <p class="ia-lead">쌓인 응답으로 척도마다 문항들이 같은 마음을 일관되게 재는지(신뢰도, Cronbach α), 척도와 따로 노는 문항은 없는지 살펴봐요. 계산은 이 브라우저 안에서만 하고, 응답은 어디로도 보내지 않아요.</p>
+        <div class="toolbar">
+          <select class="input" data-ia-test aria-label="분석할 검사">${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
+            .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${ia.test === id ? 'selected' : ''}>${esc(title(id))} (${all.filter((r) => r.testId === id).length}건)</option>`).join('')}</optgroup>`)
+            .join('')}</select>
+          <select class="input" data-ia-level aria-label="척도로 묶는 기준" hidden></select>
+          <label class="ia-check"><input type="checkbox" data-ia-flat ${ia.flat ? 'checked' : ''}> 모두 같은 답만 고른 응답 빼기</label>
+          <span class="spacer"></span>
+          <button type="button" class="btn btn--small" data-ia-run>분석하기</button>
+          <button type="button" class="btn btn--ghost btn--small" data-ia-csv hidden>문항 응답 CSV (이름 없이)</button>
+        </div>
+        <div data-ia-out></div>
+      </section>
       <section class="dist" aria-labelledby="dist-t">
         <h2 id="dist-t">한국형 성향 유형 검사의 핵심 유형 분포</h2>
         <div class="dist-cols">${Object.keys(dist)
           .map((t) => `<div class="dist-col" title="${t}번 ${dist[t]}건"><span class="v">${dist[t]}</span><span class="b" style="height:${((dist[t] / maxD) * 80).toFixed(0)}px"></span><span class="t">${t}</span></div>`)
           .join('')}</div>
       </section>
-      ${me.owner && all.some((r) => !r.birth) ? `<p class="birth-missing">생년월일 없이 저장된 결과가 ${all.filter((r) => !r.birth).length}건 있어요. 같은 분의 결과로 묶이도록 생년월일을 넣을 수 있어요. <button type="button" class="btn btn--ghost btn--small" data-fill-birth>생년월일 넣기</button></p>` : ''}
-      <div class="toolbar">
-        <input class="input" type="search" placeholder="이름이나 생년월일로 찾기" value="${esc(view.q)}" data-q aria-label="검사자·상담사 이름이나 검사자 생년월일로 찾기">
-        <select class="input" data-test aria-label="검사 고르기"><option value="">모든 검사</option>${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
-          .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${view.test === id ? 'selected' : ''}>${esc(title(id))}</option>`).join('')}</optgroup>`)
-          .join('')}</select>
-        ${me.owner ? `<span class="spacer"></span>
-        <button type="button" class="btn btn--ghost btn--small" data-csv>CSV 내려받기</button>
-        <button type="button" class="btn btn--ghost btn--small" data-admins>관리자 지정</button>` : ''}
-      </div>
-      <div class="table-wrap"><table class="list"><thead><tr><th>검사자</th><th>상담사</th><th>검사</th><th>결과</th><th>검사일</th><th>공유</th><th></th></tr></thead><tbody data-rows></tbody></table></div>
-    </section>
-
-    ${me.owner ? `<section class="admin-block" aria-labelledby="ia-t">
-      <h2 id="ia-t">문항 분석</h2>
-      <p class="ia-lead">쌓인 응답으로 척도마다 문항들이 같은 마음을 일관되게 재는지(신뢰도, Cronbach α), 척도와 따로 노는 문항은 없는지 살펴봐요. 계산은 이 브라우저 안에서만 하고, 응답은 어디로도 보내지 않아요.</p>
-      <div class="toolbar">
-        <select class="input" data-ia-test aria-label="분석할 검사">${groupIds(TESTS.filter((t) => t.status === 'open').map((t) => t.id))
-          .map((g) => `<optgroup label="${esc(g.name)}">${g.tests.map((id) => `<option value="${id}" ${ia.test === id ? 'selected' : ''}>${esc(title(id))} (${all.filter((r) => r.testId === id).length}건)</option>`).join('')}</optgroup>`)
-          .join('')}</select>
-        <select class="input" data-ia-level aria-label="척도로 묶는 기준" hidden></select>
-        <label class="ia-check"><input type="checkbox" data-ia-flat ${ia.flat ? 'checked' : ''}> 모두 같은 답만 고른 응답 빼기</label>
-        <span class="spacer"></span>
-        <button type="button" class="btn btn--small" data-ia-run>분석하기</button>
-        <button type="button" class="btn btn--ghost btn--small" data-ia-csv hidden>문항 응답 CSV (이름 없이)</button>
-      </div>
-      <div data-ia-out></div>
     </section>` : ''}`;
   drawRows();
+  drawPeople();
 
-  box.querySelector('[data-q]').addEventListener('input', (e) => { view.q = e.target.value; drawRows(); });
-  box.querySelector('[data-test]').addEventListener('change', (e) => { view.test = e.target.value; drawRows(); });
+  // 탭: 누르거나 좌우 화살표로 옮긴다
+  const tabEls = [...box.querySelectorAll('[data-tab]')];
+  tabEls.forEach((b, i) => {
+    b.addEventListener('click', () => setTab(b.dataset.tab));
+    b.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = tabEls[(i + (e.key === 'ArrowRight' ? 1 : tabEls.length - 1)) % tabEls.length];
+      setTab(next.dataset.tab, true);
+    });
+  });
+  box.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.goto, true)));
+
+  const refilter = () => { view.limit = PAGE; drawRows(); };
+  box.querySelector('[data-q]').addEventListener('input', (e) => { view.q = e.target.value; refilter(); });
+  box.querySelector('[data-test]').addEventListener('change', (e) => { view.test = e.target.value; refilter(); });
+  box.querySelector('[data-owner]').addEventListener('change', (e) => { view.owner = e.target.value; refilter(); });
+  box.querySelector('[data-mq]').addEventListener('input', (e) => { view.mq = e.target.value; drawPeople(); });
+  box.querySelector('[data-more]').addEventListener('click', (e) => { if (e.target.closest('[data-more-btn]')) { view.limit += PAGE; drawRows(); } });
   const on = (sel, fn) => { const el = box.querySelector(sel); if (el) el.addEventListener('click', fn); };
   on('[data-csv]', exportCsv);
   on('[data-admins]', manageAdmins);
   on('[data-fill-birth]', fillBirth);
   if (box.querySelector('[data-ia-run]')) wireItemStats();
   box.querySelectorAll('[data-req]').forEach((b) => b.addEventListener('click', onRequest));
-  box.querySelectorAll('[data-mem]').forEach((b) => b.addEventListener('click', onMember));
+}
+
+// 승인된 상담사 표 (이름순, 찾기)
+function drawPeople() {
+  const tb = box.querySelector('[data-people]');
+  if (!tb) return;
+  const owner = ownerUid();
+  const q = view.mq.trim().toLowerCase();
+  const countBy = {};
+  all.forEach((r) => { countBy[r.uid] = (countBy[r.uid] || 0) + 1; });
+  const total = Object.keys(members || {}).length;
+  const rows = Object.entries(members || {})
+    .filter(([, m]) => !q || `${m.name || ''} ${m.note || ''} ${m.email || ''}`.toLowerCase().includes(q))
+    .sort((a, b) => String(a[1].name || '').localeCompare(String(b[1].name || ''), 'ko'));
+  if (!rows.length) {
+    tb.innerHTML = `<tr class="empty-row"><td colspan="6">${total ? '조건에 맞는 상담사가 없어요.' : '아직 승인된 상담사가 없어요. 담당자와 관리자 계정은 승인 없이 이용할 수 있어요.'}</td></tr>`;
+    return;
+  }
+  tb.innerHTML = rows.map(([uid, m]) => `<tr data-uid="${esc(uid)}">
+      <td class="p-name"><strong>${esc(m.name || '')}</strong>${roleTag(uid, owner)}</td>
+      <td class="p-team">${m.note ? esc(m.note) : '<span class="muted">소속 없음</span>'}</td>
+      <td class="p-mail">${esc(m.email || '')}</td>
+      <td class="p-date">${esc(shortDate(m.approvedAt))} 승인</td>
+      <td class="p-count">${countBy[uid] ? `<button type="button" class="btn btn--text btn--small" data-show="${esc(uid)}" title="이 상담사의 결과만 보기">결과 ${countBy[uid]}건</button>` : '<span class="muted">결과 0건</span>'}</td>
+      <td class="acts">${canEditMember(uid, owner) ? '<button type="button" class="btn btn--ghost btn--small" data-mem="edit">이름·소속 고치기</button>' : ''}${canRevoke(uid, owner) ? '<button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button>' : ''}</td>
+    </tr>`).join('');
+  tb.querySelectorAll('[data-mem]').forEach((b) => b.addEventListener('click', onMember));
+  tb.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => {
+    Object.assign(view, { owner: b.dataset.show, q: '', test: '', limit: PAGE, tab: 'results' });
+    draw();
+    setTab('results');
+  }));
 }
 
 async function onRequest(e) {
@@ -268,23 +356,26 @@ async function onMember(e) {
 function drawRows() {
   const rows = filtered();
   const tb = box.querySelector('[data-rows]');
+  const meta = box.querySelector('[data-meta]');
+  const more = box.querySelector('[data-more]');
+  if (meta) meta.textContent = rows.length === all.length ? `모두 ${all.length}건, 최근 것부터` : `${all.length}건 가운데 ${rows.length}건`;
   if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:28px">${all.length ? '조건에 맞는 결과가 없어요.' : '아직 결과가 없어요.'}</td></tr>`;
+    tb.innerHTML = `<tr class="empty-row"><td colspan="6">${all.length ? '조건에 맞는 결과가 없어요.' : '아직 결과가 없어요.'}</td></tr>`;
+    if (more) more.innerHTML = '';
     return;
   }
-  tb.innerHTML = rows
+  const shown = rows.slice(0, view.limit);
+  tb.innerHTML = shown
     .map((r) => `<tr data-key="${esc(r.uid)}/${esc(r.rid)}">
-      <td><div class="who"><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a><span>${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></div></td>
-      <td><div class="who" title="${esc(r.email || '')}"><strong>${esc(ownerLabel(r))}</strong><span>${esc(ownerTeam(r) || r.email || '')}</span></div></td>
-      <td>${esc(title(r.testId))}</td>
-      <td>${esc(r.summary || '')}</td>
-      <td>${esc(shortDate(r.createdAt))}</td>
-      <td>${r.shareToken ? '공유 중' : '–'}</td>
-      <td class="acts"><a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">열기</a>${canEditResult(r) ? `
-        <button type="button" class="btn btn--ghost btn--small" data-act="share">공유</button>
-        <button type="button" class="btn btn--text btn--small" data-act="delete">지우기</button>` : ''}</td>
+      <td class="r-who"><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a><span>${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></td>
+      <td class="r-test">${codeOf(r.testId) ? `<span class="tcard-code">${esc(codeOf(r.testId))}</span>` : ''}<span class="r-test-name">${esc(title(r.testId))}</span></td>
+      <td class="r-sum"><span class="clamp">${esc(r.summary || '')}</span></td>
+      <td class="r-owner" title="${esc(r.email || '')}"><strong>${esc(ownerLabel(r))}</strong><span>${esc(ownerTeam(r) || r.email || '')}</span></td>
+      <td class="r-date">${esc(shortDate(r.createdAt))}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</td>
+      <td class="acts"><a class="btn btn--small" href="${resultUrl(r.uid, r.rid)}">열기</a>${canEditResult(r) ? `<button type="button" class="btn btn--ghost btn--small" data-act="share">공유</button><button type="button" class="btn btn--text btn--small" data-act="delete">지우기</button>` : ''}</td>
     </tr>`)
     .join('');
+  if (more) more.innerHTML = rows.length > shown.length ? `<button type="button" class="btn btn--ghost" data-more-btn>더 보기 <span>${rows.length - shown.length}건 남음</span></button>` : '';
   tb.onclick = async (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;

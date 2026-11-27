@@ -70,13 +70,18 @@ async function renderOwned() {
   const acct = admin && !mine ? await getMember(uid) : null; // 관리 화면에서 이름을 고쳤으면 지금 이름으로
   const who = esc((acct && acct.name) || rec.ownerName || rec.email || '');
   document.title = `${rec.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
-  box.innerHTML = `<div class="report-actions no-print">
-      ${canEdit ? `<button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>` : ''}
-      <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
-      <a class="btn btn--ghost btn--small" href="${personUrl(uid, rid)}">종합 결과지</a>
-      ${admin && !mine ? `<a class="btn btn--ghost btn--small" href="admin.html">관리로 돌아가기</a>` : `<a class="btn btn--ghost btn--small" href="me.html">검사 결과 목록</a>`}
-      ${canEdit ? '<button type="button" class="btn btn--ghost btn--small" data-act="delete">결과 지우기</button>' : ''}
-    </div>
+  // 왼쪽은 돌아가는 길, 오른쪽은 이 결과지로 하는 일. 지우기는 조용한 글자 단추로 맨 끝에
+  box.innerHTML = `<div class="report-actions no-print"><div class="ra-inner">
+      <div class="ra-back">${admin && !mine
+        ? '<a class="btn btn--text btn--small" href="admin.html">관리로 돌아가기</a>'
+        : '<a class="btn btn--text btn--small" href="me.html">검사 결과 목록으로</a>'}</div>
+      <div class="ra-main">
+        ${canEdit ? `<button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>` : ''}
+        <button type="button" class="btn btn--ghost btn--small" data-act="print">PDF로 저장</button>
+        <a class="btn btn--ghost btn--small" href="${personUrl(uid, rid)}">종합 결과지</a>
+      </div>
+      ${canEdit ? '<button type="button" class="btn btn--text btn--small ra-del" data-act="delete">결과 지우기</button>' : ''}
+    </div></div>
     ${admin && !mine ? `<div class="shared-note">${st.owner
       ? `${who} 상담사님 계정의 결과를 담당자 권한으로 보고 있어요.`
       : `${who} 상담사님 계정의 결과를 관리자 권한으로 보고 있어요. 공유와 지우기는 담당자만 할 수 있어요.`}</div>` : ''}

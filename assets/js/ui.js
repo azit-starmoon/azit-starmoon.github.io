@@ -173,6 +173,9 @@ export function setRequestBadge(n) {
   badge.textContent = String(n);
   badge.hidden = !n;
   badge.setAttribute('aria-label', `승인 요청 ${n}건`);
+  // 승인 요청이 있으면 '관리'를 눌렀을 때 바로 상담사 탭이 열리게
+  const link = badge.closest('a');
+  if (link) link.setAttribute('href', n ? 'admin.html#people' : 'admin.html');
 }
 
 export function mountHeader(active = '') {

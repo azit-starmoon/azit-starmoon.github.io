@@ -189,6 +189,12 @@ ul, ol { margin: 0; padding: 0; }
   .hero-grid { grid-template-columns: 1fr; gap: 10px; }
   .hero-figure { order: -1; width: min(250px, 70%); }
 }
+/* 휴대폰: 장식 그림을 작게 해서 인사와 묶음, 검사 목록이 첫 화면에 더 올라오게 */
+@media (max-width: 600px) {
+  .hero { padding: 20px 0 32px; }
+  .hero-figure { width: 132px; }
+  .hero-lead { margin: 16px 0 22px; }
+}
 
 .section { padding: 52px 0; }
 .section-head { margin-bottom: 22px; }
@@ -356,7 +362,18 @@ ul, ol { margin: 0; padding: 0; }
 .working p { color: var(--ink-2); }
 
 /* ── 결과지 공통 ───────────────────────── */
-.report-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--line-2); }
+.report-actions { padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line-2); }
+.report-actions .ra-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; max-width: calc(var(--wrap) - 40px); margin: 0 auto; }
+.report-actions .ra-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.report-actions .ra-back .btn { padding-left: 0; }
+.report-actions .ra-del { color: var(--ink-3); }
+@media (max-width: 600px) {
+  .report-actions { padding: 6px 16px 12px; }
+  .report-actions .ra-inner { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+  .report-actions .ra-back { grid-column: 1; grid-row: 1; }
+  .report-actions .ra-del { grid-column: 2; grid-row: 1; padding-right: 0; }
+  .report-actions .ra-main { grid-column: 1 / -1; grid-row: 2; gap: 6px; margin-left: 0; }
+}
 .shared-note { background: var(--brand-soft); color: var(--brand-deep); text-align: center; font-size: var(--fs-s); padding: 10px 16px; }
 .shared-note a { color: var(--brand-deep); font-weight: 700; }
 
@@ -617,6 +634,7 @@ ul, ol { margin: 0; padding: 0; }
 .page-head { padding: 36px 0 18px; }
 .page-head h1 { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 600; }
 .page-head p { color: var(--ink-2); margin-top: 6px; }
+.page-head--tight { padding-bottom: 10px; }
 .empty { text-align: center; padding: 56px 20px; background: var(--card); border-radius: var(--r-l); border: 1px dashed var(--line); }
 .empty p { color: var(--ink-2); margin-bottom: 16px; }
 
@@ -1957,3 +1975,82 @@ strong .role-chip { margin-left: 6px; }
 /* 상담사 이름·소속 창 */
 .mf-email { margin: 6px 0 14px; color: var(--ink-3); font-size: var(--fs-s); word-break: break-all; }
 .req .acts { flex-wrap: wrap; justify-content: flex-end; }
+
+/* ── 관리 화면: 탭, 결과 표, 상담사 표 ── */
+.admin-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin: 0 0 18px; background: var(--tint); border-radius: 999px; }
+.admin-tabs [role='tab'] { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-size: var(--fs-s); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.admin-tabs [role='tab'][aria-selected='true'] { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: var(--shadow-s); }
+.admin-tabs [role='tab']:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.admin-tabs .count, .admin-tabs .tab-alert { font-size: var(--fs-xs); font-weight: 700; border-radius: 999px; padding: 0 8px; line-height: 1.7; }
+.admin-tabs .count { color: var(--brand-deep); background: var(--brand-soft); }
+.admin-tabs .tab-alert { color: var(--star-ink); background: var(--star-soft); }
+.req-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: -4px 0 18px; padding: 10px 14px; border-radius: var(--r-m); background: var(--star-soft); color: var(--star-ink); font-size: var(--fs-s); }
+.admin-panel > .admin-block:last-child { margin-bottom: 0; }
+.admin-panel > .dist { margin: 8px 0 0; }
+.stats--slim { margin-bottom: 14px; }
+.stats--slim .stat { padding: 12px 16px; }
+.stats--slim .stat dd { font-size: var(--fs-l); margin-top: 2px; }
+.list-meta { margin: -4px 0 8px; font-size: var(--fs-xs); color: var(--ink-3); }
+.list-more { display: flex; justify-content: center; margin-top: 14px; }
+.list-more:empty { display: none; }
+.list-more .btn span { margin-left: 4px; color: var(--ink-3); font-weight: 500; }
+.muted { color: var(--ink-3); }
+table.list tr.empty-row td { text-align: center; color: var(--ink-3); padding: 28px; white-space: normal; }
+
+/* 결과 표: 열 너비를 정해 화면 안에 들어오게 하고, 결과 요약은 두 줄까지 */
+table.list--results { table-layout: fixed; }
+table.list--results col.c-who { width: 13%; }
+table.list--results col.c-test { width: 16%; }
+table.list--results col.c-owner { width: 14%; }
+table.list--results col.c-date { width: 10%; }
+table.list--results col.c-acts { width: 190px; }
+table.list--results td { white-space: normal; vertical-align: top; word-break: keep-all; overflow-wrap: anywhere; }
+table.list--results td.acts { white-space: nowrap; padding-top: 7px; text-align: left; } /* '열기'가 모든 줄에서 같은 자리에 */
+table.list--results td.acts .btn + .btn, table.list--people td.acts .btn + .btn { margin-left: 4px; }
+.r-who strong, .r-owner strong { display: block; }
+.r-who span, .r-owner span { display: block; color: var(--ink-3); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-test .tcard-code { display: inline-block; margin: 0 0 2px; vertical-align: 0; }
+.r-test-name { display: block; }
+.r-date .tag { display: table; margin-top: 4px; padding: 1px 8px; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 상담사 표 */
+table.list--people td { white-space: normal; vertical-align: middle; }
+table.list--people .p-name .role-chip { margin-left: 6px; }
+table.list--people .p-mail { color: var(--ink-3); font-size: var(--fs-xs); word-break: break-all; }
+table.list--people .p-date { color: var(--ink-3); font-size: var(--fs-xs); white-space: nowrap; }
+table.list--people td.acts { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .toolbar input.input[type='search'] { max-width: none; flex: 1 1 100%; }
+  .toolbar select.input { flex: 1 1 40%; min-width: 0; max-width: none; }
+  .toolbar .spacer { display: none; }
+  .toolbar > .btn:last-child { margin-left: auto; }
+}
+@media (max-width: 760px) {
+  .admin-tabs { display: flex; width: 100%; border-radius: var(--r-m); }
+  .admin-tabs [role='tab'] { flex: 1 1 auto; justify-content: center; gap: 4px; padding: 0 10px; }
+  /* 표 줄을 카드처럼 쌓는다 */
+  table.list--results thead, table.list--people thead { display: none; }
+  table.list--results, table.list--results tbody, table.list--people, table.list--people tbody { display: block; }
+  table.list--results tr, table.list--people tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 16px; border-bottom: 1px solid var(--line-2); }
+  table.list--results tr:last-child, table.list--people tr:last-child { border-bottom: 0; }
+  table.list--results td, table.list--people td { display: block; padding: 0; border: 0; }
+  table.list tr.empty-row { display: block; }
+  table.list tr.empty-row td { padding: 20px 16px; }
+  .r-who { grid-column: 1; grid-row: 1; }
+  .r-date { grid-column: 2; grid-row: 1; text-align: right; color: var(--ink-3); font-size: var(--fs-xs); }
+  .r-date .tag { margin-left: auto; }
+  .r-test, .r-sum, .r-owner, table.list--results td.acts { grid-column: 1 / -1; }
+  .r-test .tcard-code { margin: 0 6px 0 0; }
+  .r-test-name { display: inline; }
+  .r-owner strong, .r-owner span { display: inline; font-size: var(--fs-xs); color: var(--ink-3); font-weight: 500; }
+  .r-owner strong::before { content: '상담사 '; }
+  .r-owner span::before { content: ', '; }
+  table.list--results td.acts { margin-top: 8px; text-align: left; white-space: normal; }
+  table.list--people .p-name { grid-column: 1; grid-row: 1; }
+  table.list--people .p-date { grid-column: 2; grid-row: 1; text-align: right; }
+  table.list--people .p-team, table.list--people .p-mail, table.list--people .p-count, table.list--people td.acts { grid-column: 1 / -1; }
+  table.list--people .p-count .btn { padding: 0; min-height: 28px; }
+  table.list--people td.acts { margin-top: 6px; white-space: normal; }
+}
