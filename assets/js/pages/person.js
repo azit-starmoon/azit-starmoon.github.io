@@ -3,7 +3,7 @@
 // 생년월일 없이 저장된 예전 결과는 이름끼리 따로 묶이고, 이름만 같은 다른 기록은 머리말 아래에 링크로 알려 준다.
 // 주소에는 이름을 넣지 않는다(방문 기록에 남지 않게). 생년월일은 화면에만 보이고 인쇄(PDF)에는 넣지 않는다. 짝이 되는 검사를 함께 했으면 나란히 읽어 준다. 공유 링크로는 열리지 않는다.
 import { mountHeader, mountFooter, esc, fmtDate } from '../ui.js';
-import { listResultsOf, resultUrl, personUrl } from '../backend.js';
+import { listResultsOf, getMember, resultUrl, personUrl } from '../backend.js';
 import { TESTS, groupIds, codeOf } from '../registry.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
@@ -57,7 +57,8 @@ const glyph = (r) => {
     others.get(k).n++;
   });
   document.title = `${name} 님의 종합 결과지 | AZIT : Star&Moon`;
-  render(name, list, { mine, owner: anchor.ownerName || anchor.email || '', birth: anchor.birth || '', others: [...others.values()], viewer: st.owner ? '담당자' : '관리자' });
+  const acct = mine ? null : await getMember(uid); // 관리 화면에서 이름을 고쳤으면 지금 이름으로
+  render(name, list, { mine, owner: (acct && acct.name) || anchor.ownerName || anchor.email || '', birth: anchor.birth || '', others: [...others.values()], viewer: st.owner ? '담당자' : '관리자' });
 })();
 
 function gate(t, d) {

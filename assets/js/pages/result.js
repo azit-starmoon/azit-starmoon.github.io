@@ -1,5 +1,5 @@
 import { mountHeader, mountFooter, esc, toast, modal, copyText } from '../ui.js';
-import { ready, getResult, getShare, createShare, revokeShare, deleteResult, shareUrl, personUrl } from '../backend.js';
+import { ready, getResult, getMember, getShare, createShare, revokeShare, deleteResult, shareUrl, personUrl } from '../backend.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { loadTest, codeOf } from '../registry.js';
@@ -67,7 +67,8 @@ async function renderOwned() {
   const admin = st.admin;
   const mine = st.user.uid === uid;
   const canEdit = mine || st.owner; // 다른 계정 결과의 공유·지우기는 담당자만
-  const who = esc(rec.ownerName || rec.email || '');
+  const acct = admin && !mine ? await getMember(uid) : null; // 관리 화면에서 이름을 고쳤으면 지금 이름으로
+  const who = esc((acct && acct.name) || rec.ownerName || rec.email || '');
   document.title = `${rec.name || ''} 님의 ${def.title} 결과지 | AZIT : Star&Moon`;
   box.innerHTML = `<div class="report-actions no-print">
       ${canEdit ? `<button type="button" class="btn btn--small" data-act="share">${rec.shareToken ? '공유 링크 보기' : '공유 링크 만들기'}</button>` : ''}

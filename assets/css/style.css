@@ -1954,3 +1954,6 @@ body.has-update .toast { bottom: 84px; }
 strong .role-chip { margin-left: 6px; }
 .account-menu .who .role-chip { margin-top: 6px; }
 .role-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 16px; color: var(--ink-2); font-size: var(--fs-s); }
+/* 상담사 이름·소속 창 */
+.mf-email { margin: 6px 0 14px; color: var(--ink-3); font-size: var(--fs-s); word-break: break-all; }
+.req .acts { flex-wrap: wrap; justify-content: flex-end; }

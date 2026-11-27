@@ -340,13 +340,30 @@ export async function approveMember(uid, info = {}) {
   const u = requireUser();
   await requireStaff();
   await dbSet(`members/${uid}`, {
-    name: String(info.name || '').slice(0, 30) || '상담사',
+    name: String(info.name || '').trim().slice(0, 30) || '상담사',
     email: info.email || '',
-    note: String(info.note || '').slice(0, 100),
+    note: String(info.note || '').trim().slice(0, 100),
     approvedAt: Date.now(),
     approvedBy: u.uid,
   });
   await dbRemove(`requests/${uid}`);
+}
+
+// 승인된 상담사의 이름과 소속 고치기 (관리자 계정의 정보는 담당자만, 보안 규칙도 같다)
+export async function updateMember(uid, { name, note } = {}) {
+  const u = requireUser();
+  await requireStaff();
+  if (!(await isOwner()) && (await isUserAdmin(uid))) throw new Error('관리자 계정의 정보는 담당자만 고칠 수 있어요.');
+  const cur = await dbGet(`members/${uid}`);
+  if (!cur) throw new Error('승인된 상담사가 아니에요.');
+  const clean = String(name || '').trim().slice(0, 30);
+  if (!clean) throw new Error('이름을 적어 주세요.');
+  await dbSet(`members/${uid}`, { ...cur, name: clean, note: String(note || '').trim().slice(0, 100), updatedAt: Date.now(), updatedBy: u.uid });
+}
+
+// 상담사 계정 정보 (내 계정이 아니면 담당자와 관리자만 읽을 수 있다. 못 읽으면 null)
+export async function getMember(uid) {
+  try { return await dbGet(`members/${uid}`); } catch (e) { return null; }
 }
 
 export async function rejectRequest(uid) {

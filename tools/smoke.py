@@ -18,7 +18,8 @@
  6. 결과지 그리기: 검사마다 여러 모양의 모의 응답(고루, 극단, 무작위, 한쪽 끝, 같은 답)을 채점해서,
     실제 데이터베이스에서 읽어 온 모양(빈 배열·빈 객체가 빠진 상태, backend.js rtdbShape)으로
     결과지(상담사용·공유용), 요약, 짝 읽기를 그려 본다. 무작위 응답만으로는 잘 안 나오는 끝자락 점수도 본다
- 7. 계정 단계: 담당자 화면, 관리자 화면(담당자 기능 없음, 다른 계정 결과는 열기만), 상담사 계정(관리 화면에 못 들어옴)
+ 7. 상담사 승인 창에서 이름·소속 고치기, 승인된 상담사의 이름·소속 고치기
+    계정 단계: 담당자 화면, 관리자 화면(담당자 기능 없음, 다른 계정 결과는 열기만), 상담사 계정(관리 화면에 못 들어옴)
  8. 모든 화면의 자바스크립트 오류 수집
 
 필요한 것: python3, playwright (pip install playwright --break-system-packages; python3 -m playwright install chromium)
@@ -433,6 +434,41 @@ async def run(args):
                     ok(f"결과지 그리기 ({t['title']})", not fails, detail)
                 ok('짝 읽기 그리기', not fz['pairFails'], '; '.join(f'{k} {v}번' for k, v in fz['pairFails'].items()) or '함께 고른 검사의 짝 모두')
 
+            # 상담사 승인과 이름·소속 고치기: 별명으로 온 승인 요청을 흉내 내서, 승인 창에서 이름과 소속을 고쳐 승인하고 다시 고친다
+            await unlock('result')
+            await pg.evaluate("""() => {
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              db.requests = db.requests || {};
+              db.requests['demo-newbie'] = { name: '멍뭉이', email: 'newbie@azit.local', note: '예전 소속', createdAt: Date.now() };
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+            }""")
+            member_of = "(uid) => (JSON.parse(localStorage.getItem('azit:demo:db')).members || {})[uid] || null"
+            await pg.goto(base + 'admin.html')
+            await pg.wait_for_timeout(1500)
+            try:
+                await pg.click('li[data-uid="demo-newbie"] [data-req="approve"]')
+                await pg.wait_for_selector('#mf-name', timeout=5000)
+                await pg.fill('#mf-name', '김새벽')
+                await pg.fill('#mf-note', 'AZIT 상담팀')
+                await pg.click('.modal-actions [data-i="1"]')
+                await pg.wait_for_timeout(1200)
+                m = await pg.evaluate(member_of, 'demo-newbie') or {}
+                req_left = await pg.evaluate("() => !!((JSON.parse(localStorage.getItem('azit:demo:db')).requests || {})['demo-newbie'])")
+                ok('승인하면서 이름·소속 고치기', m.get('name') == '김새벽' and m.get('note') == 'AZIT 상담팀' and not req_left,
+                   f"저장된 이름 {m.get('name')}, 소속 {m.get('note')}, 요청 {'남음' if req_left else '지워짐'}")
+                await pg.click('li[data-uid="demo-newbie"] [data-mem="edit"]')
+                await pg.wait_for_selector('#mf-name', timeout=5000)
+                await pg.fill('#mf-name', '김새벽별')
+                await pg.fill('#mf-note', '')
+                await pg.click('.modal-actions [data-i="1"]')
+                await pg.wait_for_timeout(1200)
+                m = await pg.evaluate(member_of, 'demo-newbie') or {}
+                shown = await pg.inner_text('li[data-uid="demo-newbie"] strong') if await pg.locator('li[data-uid="demo-newbie"] strong').count() else ''
+                ok('상담사 이름·소속 고치기', m.get('name') == '김새벽별' and not m.get('note') and m.get('approvedAt') and '김새벽별' in shown,
+                   f"저장된 이름 {m.get('name')}, 소속 '{m.get('note', '')}', 목록 표시 {shown}")
+            except Exception as e:
+                ok('승인하면서 이름·소속 고치기', False, f'창이 열리지 않음: {str(e)[:80]}')
+
             # 계정 단계: 담당자는 모든 기능, 관리자는 승인과 모든 결과 보기만, 상담사는 관리 화면에 못 들어온다
             await unlock('result')
             await pg.goto(base + 'admin.html')
@@ -462,9 +498,10 @@ async def run(args):
                 shown = [s for s in ('[data-csv]', '[data-admins]', '[data-ia-run]', '[data-fill-birth]') if await pg.locator(s).count()]
                 other_acts = await pg.locator('tr[data-key^="demo-other/"] [data-act]').count()
                 own_acts = await pg.locator(f'tr[data-key^="{me_uid}/"] [data-act]').count()
-                approve_ok = await pg.locator('#req-t').count() > 0 and await pg.locator('li[data-uid="demo-other"] [data-mem="revoke"]').count() > 0
+                approve_ok = (await pg.locator('#req-t').count() > 0 and await pg.locator('li[data-uid="demo-other"] [data-mem="revoke"]').count() > 0
+                              and await pg.locator('li[data-uid="demo-other"] [data-mem="edit"]').count() > 0)
                 ok('관리자 화면', '관리자' in line and not shown and other_acts == 0 and own_acts > 0 and approve_ok,
-                   f'담당자 기능 {shown or "없음"}, 다른 계정 결과의 공유·지우기 {other_acts}개, 내 결과 {own_acts}개, 승인 취소 {"있음" if approve_ok else "없음"}')
+                   f'담당자 기능 {shown or "없음"}, 다른 계정 결과의 공유·지우기 {other_acts}개, 내 결과 {own_acts}개, 상담사 승인 취소·정보 고치기 {"있음" if approve_ok else "없음"}')
                 await pg.goto(base + 'result.html?u=demo-other&r=smoke-other')
                 await pg.wait_for_timeout(1500)
                 acts = await pg.locator('.report-actions [data-act="share"], .report-actions [data-act="delete"]').count()

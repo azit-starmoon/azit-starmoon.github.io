@@ -1,7 +1,7 @@
 import { mountHeader, mountFooter, esc, toast, modal, fmtDate, shortDate, copyText, resultCode, setRequestBadge } from '../ui.js';
 import {
   listAllResults, listUsers, deleteResult, createShare, revokeShare, resultUrl, personUrl, shareUrl, isDemo, currentUser, setResultBirth,
-  isUserAdmin, setUserAdmin, listAdmins, listRequests, listMembers, approveMember, rejectRequest, revokeMember,
+  isUserAdmin, setUserAdmin, listAdmins, listRequests, listMembers, approveMember, updateMember, rejectRequest, revokeMember,
 } from '../backend.js';
 import { OWNER_EMAIL } from '../config.js';
 import { TESTS, groupIds, loadTest } from '../registry.js';
@@ -77,11 +77,13 @@ async function load() {
 function ownerLabel(r) {
   return (members[r.uid] && members[r.uid].name) || r.ownerName || (users[r.uid] && users[r.uid].name) || r.email || '';
 }
+// 상담사 소속 (관리 화면에서 고친 값)
+const ownerTeam = (r) => (members[r.uid] && members[r.uid].note) || '';
 
 function filtered() {
   const q = view.q.trim().toLowerCase();
   const digits = q.replace(/\D/g, ''); // 숫자 네 자리 이상이면 생년월일로도 찾는다
-  return all.filter((r) => (!view.test || r.testId === view.test) && (!q || `${r.name || ''} ${ownerLabel(r)} ${r.email || ''}`.toLowerCase().includes(q)
+  return all.filter((r) => (!view.test || r.testId === view.test) && (!q || `${r.name || ''} ${ownerLabel(r)} ${ownerTeam(r)} ${r.email || ''}`.toLowerCase().includes(q)
     || (digits.length >= 4 && String(r.birth || '').replace(/-/g, '').includes(digits))));
 }
 
@@ -101,8 +103,9 @@ function draw() {
 
   const owner = ownerUid();
   const roleTag = (uid) => (uid && uid === owner ? '<em class="role-chip" data-role="owner">담당자</em>' : admins[uid] ? '<em class="role-chip" data-role="admin">관리자</em>' : '');
-  // 관리자는 상담사의 승인만 취소할 수 있다 (관리자·담당자 계정은 담당자만)
+  // 관리자는 상담사의 승인 취소와 정보 고치기만 할 수 있다 (관리자·담당자 계정은 담당자만)
   const canRevoke = (uid) => uid !== me.uid && (me.owner || (!admins[uid] && uid !== owner));
+  const canEdit = (uid) => me.owner || (!admins[uid] && uid !== owner && uid !== me.uid);
 
   box.innerHTML = `
     <p class="role-line">${me.owner
@@ -122,7 +125,7 @@ function draw() {
       ${memEntries.length ? `<ul class="req-list">${memEntries
         .map(([uid, m]) => `<li class="req req--member" data-uid="${esc(uid)}">
           <div><strong>${esc(m.name || '')}${roleTag(uid)}</strong><span>${esc(m.email || '')}, ${esc(shortDate(m.approvedAt))} 승인, 검사 결과 ${countBy[uid] || 0}건</span>${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}</div>
-          <div class="acts">${canRevoke(uid) ? '<button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button>' : ''}</div>
+          <div class="acts">${canEdit(uid) ? '<button type="button" class="btn btn--ghost btn--small" data-mem="edit">이름·소속 고치기</button>' : ''}${canRevoke(uid) ? '<button type="button" class="btn btn--text btn--small" data-mem="revoke">승인 취소</button>' : ''}</div>
         </li>`)
         .join('')}</ul>` : '<p class="muted-box">아직 승인된 상담사가 없어요. 담당자와 관리자 계정은 승인 없이 이용할 수 있어요.</p>'}
     </section>
@@ -186,10 +189,17 @@ async function onRequest(e) {
   const uid = b.closest('[data-uid]').dataset.uid;
   const r = requests[uid];
   if (b.dataset.req === 'approve') {
+    // 별명으로 요청이 와도 알아보기 쉽게, 승인하면서 이름과 소속을 확인하고 고친다
+    const v = await memberForm({
+      title: '상담사 승인',
+      lead: '승인하면 이 계정으로 검사를 하고 결과를 볼 수 있어요. 나중에 알아보기 쉽게 이름과 소속을 확인해 주세요.',
+      name: r.name, note: r.note, email: r.email, okLabel: '승인',
+    });
+    if (!v) return;
     b.disabled = true;
     try {
-      await approveMember(uid, { name: r.name, email: r.email, note: r.note });
-      toast(`${r.name} 상담사님을 승인했어요.`);
+      await approveMember(uid, { name: v.name, email: r.email, note: v.note });
+      toast(`${v.name} 상담사님을 승인했어요.`);
       await load();
     } catch (err) { console.error(err); toast('승인하지 못했어요.'); b.disabled = false; }
   } else {
@@ -203,9 +213,49 @@ async function onRequest(e) {
   }
 }
 
+// 이름과 소속을 적는 창 (승인할 때와 고칠 때 함께 쓴다). 적은 값 { name, note }이나 null
+async function memberForm({ title: heading, lead, name, note, email, okLabel }) {
+  let vals = null;
+  const ok = await modal({
+    title: heading,
+    body: `<p>${esc(lead)}</p>
+      ${email ? `<p class="mf-email">${esc(email)}</p>` : ''}
+      <div class="field"><label for="mf-name">이름</label><input class="input" id="mf-name" maxlength="30" autocomplete="off" value="${esc(name || '')}">
+        <p class="field-hint field-hint--quiet">관리 화면과 결과 목록에 쓰여요. 별명이면 실명으로 바꿔 주세요.</p></div>
+      <div class="field"><label for="mf-note">소속 <span class="field-opt">(선택)</span></label><input class="input" id="mf-note" maxlength="60" autocomplete="off" placeholder="예: AZIT 상담팀" value="${esc(note || '')}"></div>`,
+    actions: [{ label: '취소', value: false }, { label: okLabel, value: true, primary: true }],
+    onOpen: (root) => {
+      const n = root.querySelector('#mf-name');
+      const t = root.querySelector('#mf-note');
+      const go = root.querySelector('.modal-actions [data-i="1"]');
+      const sync = () => {
+        vals = { name: n.value.trim(), note: t.value.trim() };
+        go.disabled = !vals.name;
+      };
+      n.addEventListener('input', sync);
+      t.addEventListener('input', sync);
+      sync();
+      n.focus();
+      n.select();
+    },
+  });
+  return ok && vals && vals.name ? vals : null;
+}
+
 async function onMember(e) {
-  const uid = e.currentTarget.closest('[data-uid]').dataset.uid;
+  const b = e.currentTarget;
+  const uid = b.closest('[data-uid]').dataset.uid;
   const m = members[uid];
+  if (b.dataset.mem === 'edit') {
+    const v = await memberForm({
+      title: '이름·소속 고치기',
+      lead: '고친 이름과 소속은 관리 화면, 결과 목록, CSV에 바로 쓰이고, 이 상담사의 첫 화면 인사에도 쓰여요.',
+      name: m.name, note: m.note, email: m.email, okLabel: '저장',
+    });
+    if (!v) return;
+    try { await updateMember(uid, v); toast(`${v.name} 상담사님 정보를 고쳤어요.`); await load(); } catch (err) { console.error(err); toast('고치지 못했어요.'); }
+    return;
+  }
   const ok = await modal({
     title: '승인을 취소할까요?',
     body: `<p>${esc(m.name)} 상담사님은 더 이상 검사를 진행하거나 결과를 볼 수 없어요. 이미 저장된 결과는 지워지지 않고, 관리 페이지에서는 계속 볼 수 있어요.</p>`,
@@ -225,7 +275,7 @@ function drawRows() {
   tb.innerHTML = rows
     .map((r) => `<tr data-key="${esc(r.uid)}/${esc(r.rid)}">
       <td><div class="who"><a class="person-link" href="${personUrl(r.uid, r.rid)}" title="이 검사자의 종합 결과지"><strong>${esc(r.name || '이름 없음')}</strong></a><span>${r.birth ? esc(fmtBirth(r.birth)) : '생년월일 없음'}</span></div></td>
-      <td><div class="who"><strong>${esc(ownerLabel(r))}</strong><span>${esc(r.email || '')}</span></div></td>
+      <td><div class="who" title="${esc(r.email || '')}"><strong>${esc(ownerLabel(r))}</strong><span>${esc(ownerTeam(r) || r.email || '')}</span></div></td>
       <td>${esc(title(r.testId))}</td>
       <td>${esc(r.summary || '')}</td>
       <td>${esc(shortDate(r.createdAt))}</td>

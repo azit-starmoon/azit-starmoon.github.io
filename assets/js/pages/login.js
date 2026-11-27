@@ -36,8 +36,9 @@ function renderRequestForm(u) {
   box.innerHTML = `${whoLine(u)}
     <h2 class="login-h">이용 승인이 필요해요</h2>
     <p class="login-note">아래 내용을 적어 요청을 보내면, 관리자가 확인한 뒤 승인해 드려요.</p>
-    <div class="field"><label for="rq-name">이름</label><input class="input" id="rq-name" maxlength="20" autocomplete="name" value="${esc(u.name || '')}"></div>
-    <div class="field"><label for="rq-note">소속 또는 메모 <span class="field-opt">(선택)</span></label><input class="input" id="rq-note" maxlength="60" placeholder="예: 구리교회 상담팀"></div>
+    <div class="field"><label for="rq-name">이름</label><input class="input" id="rq-name" maxlength="20" autocomplete="name" value="${esc(u.name || '')}">
+      <p class="field-hint field-hint--quiet">담당자가 알아볼 수 있게 실명으로 적어 주세요.</p></div>
+    <div class="field"><label for="rq-note">소속 또는 메모 <span class="field-opt">(선택)</span></label><input class="input" id="rq-note" maxlength="60" placeholder="예: AZIT 상담팀"></div>
     <button type="button" class="btn btn--block" data-act="request">요청 보내기</button>`;
   const nameEl = box.querySelector('#rq-name');
   const btn = box.querySelector('[data-act="request"]');
