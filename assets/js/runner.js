@@ -40,12 +40,17 @@ export async function runTest(def, mount, opts = {}) {
     consent: false,
   };
   const totalCount = def.parts.reduce((s, p) => s + p.count, 0);
+  // 링크로 받은 검사(내담자 혼자): 로그인·잠금 없이 하고, 진행은 이 기기에만 두며, 끝나면 결과 대신 답을 낸다
+  //   opts.link = { token, invite, tests: [검사 차례], done: Set(낸 검사), submit(검사, 답), submittedAt(검사), markDone(검사) }
+  const L = opts.link || null;
+  const homeHref = L ? `take.html?k=${encodeURIComponent(L.token)}` : 'index.html';
+  const homeLabel = L ? '목록으로' : '처음으로';
 
   mount.innerHTML = `<div class="runner-page">
     <div class="runner-top"><div class="wrap runner-top-inner">
-      <a class="brand" href="index.html" aria-label="처음으로" data-leave>${brandHTML()}</a>
+      <a class="brand" href="${homeHref}" aria-label="${homeLabel}" data-leave>${brandHTML()}</a>
       <span class="runner-title">${esc(def.title)}</span>
-      <a class="btn btn--text runner-exit" href="index.html" data-leave data-exit>처음으로</a>
+      <a class="btn btn--text runner-exit" href="${homeHref}" data-leave data-exit>${homeLabel}</a>
     </div><div class="progress" aria-hidden="true"><i data-progress></i></div></div>
     <main class="runner-main" id="main"><div class="stage" data-stage></div></main>
   </div>`;
@@ -60,11 +65,12 @@ export async function runTest(def, mount, opts = {}) {
   //     데이터베이스 규칙에 drafts가 아직 없으면 조용히 1)만 쓴다.
   const KEEP_DAYS = 30;
   const base = () => {
+    if (L) return `azit:link:${L.token}:${def.id}:${def.version}`; // 링크: 받은 분 한 사람의 진행만 둔다
     const u = currentUser();
     return u ? `azit:progress:${def.id}:${def.version}:${u.uid}` : null;
   };
   const keyFor = (sid) => { const b = base(); return b ? (sid ? `${b}:${sid}` : b) : null; };
-  const newSid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const newSid = () => (L ? 'L' : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);
   const draftId = (sid) => `${def.id}-${def.version}-${sid}`;
   const alive = (v) => !!(v && v.answers) && Date.now() - (v.savedAt || 0) <= KEEP_DAYS * 864e5;
   const readLocal = (sid) => { const k = keyFor(sid); if (!k) return null; try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
@@ -113,6 +119,7 @@ export async function runTest(def, mount, opts = {}) {
 
   // 계정에 저장된 진행을 읽어 온다. 다른 기기에서 끝냈거나 지운 검사는 이 기기에서도 정리한다.
   async function syncRemote() {
+    if (L) { cloud = 'off'; return; } // 링크: 계정 없이 이 기기에만 둔다
     try {
       const all = await Promise.race([listDrafts(), delay(6000).then(() => { throw new Error('timeout'); })]);
       remote.clear();
@@ -150,6 +157,7 @@ export async function runTest(def, mount, opts = {}) {
     S.localOK = writeLocal(S.sid, v);
     S.savedAt = v.savedAt;
     updateChip();
+    if (L) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushRemote, 1200);
   };
@@ -186,7 +194,7 @@ export async function runTest(def, mount, opts = {}) {
     if (sid === S.sid) { clearTimeout(pushTimer); pushTimer = 0; }
     dropLocal(sid);
     remote.delete(sid);
-    if (sid) pushing.then(() => deleteDraft(draftId(sid))).catch(() => {});
+    if (sid && !L) pushing.then(() => deleteDraft(draftId(sid))).catch(() => {});
   };
 
   // ── 예전 창 지키기 ─────────────────────────────
@@ -202,7 +210,7 @@ export async function runTest(def, mount, opts = {}) {
     return missing || finished;
   }
   function checkStale() {
-    if (!inSession()) return Promise.resolve(false);
+    if (L || !inSession()) return Promise.resolve(false);
     if (staleCheck) return staleCheck;
     const sid = S.sid;
     staleCheck = sessionEnded(sid).then((ended) => {
@@ -225,6 +233,7 @@ export async function runTest(def, mount, opts = {}) {
   // 검사를 끝냈을 때: 같은 검사자가 이 검사를 하다 멈춘 다른 진행도 이제 필요 없다.
   // (다른 창·기기에서 시작했다가 처음부터 다시 해서 끝낸 경우. 계정에 있는 것은 다시 읽어서 지운다)
   function dropOthers(rec) {
+    if (L) return;
     const now = Date.now();
     listSessions().forEach((v) => { if (v.sid && samePerson(v, rec) && startOf(v) < now) clearProgress(v.sid); });
     within(listDrafts(), 6000, []).then((all) => all.forEach((d) => {
@@ -251,6 +260,7 @@ export async function runTest(def, mount, opts = {}) {
   }
   function saveInfo() {
     if (chipState() === 'fail') return toast('이 브라우저에서는 저장이 막혀 있어요. 이번 검사는 끝까지 마쳐 주세요.', 5200);
+    if (L) return toast('답할 때마다 이 기기에 저장돼요. 나갔다가 이 링크를 다시 열면 이 자리부터 이어져요.', 5200);
     const where = cloud === 'on' ? '상담사님 계정에 저장돼요. 다른 기기에서도' : '이 기기에 저장돼요. 나갔다 와도';
     toast(`답할 때마다 ${where} 첫 화면 '이어서 할 검사'에서 이 자리부터 이어져요.`, 5200);
   }
@@ -308,20 +318,43 @@ export async function runTest(def, mount, opts = {}) {
     </div>`;
   }
 
-  function bundleStrip() {
-    if (!bundle) return '';
-    const done = (bundleState() || {}).done || [];
-    return `<div class="bd-strip">
-      <p class="bd-strip-k">${esc(bundle.name)} 묶음</p>
-      <ol>${bundle.tests.map((id, i) => {
+  const stripHTML = (label, tests, isDone) => `<div class="bd-strip">
+      <p class="bd-strip-k">${esc(label)}</p>
+      <ol>${tests.map((id, i) => {
         const now = id === def.id;
-        const ok = !now && done.includes(id);
+        const ok = !now && isDone(id);
         return `<li class="${now ? 'is-now' : ok ? 'is-done' : ''}"${now ? ' aria-current="step"' : ''}><span class="n" aria-hidden="true">${ok ? '✓' : i + 1}</span>${esc(testTitle(id).replace(/ 검사$/, ''))}${ok ? '<span class="sr-only"> (마침)</span>' : ''}</li>`;
       }).join('')}</ol>
     </div>`;
+  function bundleStrip() {
+    if (L) return L.tests.length > 1 ? stripHTML(`${L.invite.ownerName} 상담사님이 보낸 검사`, L.tests, (id) => L.done.has(id)) : '';
+    if (!bundle) return '';
+    const done = (bundleState() || {}).done || [];
+    return stripHTML(`${bundle.name} 묶음`, bundle.tests, (id) => done.includes(id));
+  }
+
+  // 링크로 받은 검사의 소개: 받은 분 한 사람의 진행만 있으니 '이어서 하기'와 '처음부터 다시'만 둔다
+  function renderLinkIntro() {
+    const cur = listSessions().find((v) => doneCount(v) > 0);
+    const intro = def.intro;
+    const actions = cur
+      ? `<button type="button" class="btn btn--block" data-act="resume" data-sid="${esc(cur.sid)}">이어서 하기 (${doneCount(cur)}/${cur.total || totalCount})</button>
+        <button type="button" class="btn btn--ghost btn--block" data-act="restart-link">처음부터 다시 하기</button>`
+      : '<button type="button" class="btn btn--block" data-act="start">검사 시작하기</button>';
+    stage.innerHTML = `<section class="intro-card" aria-labelledby="intro-title">
+      <p class="intro-kicker">${codeOf(def.id) ? `<span class="intro-code">${esc(codeOf(def.id))}</span>` : ''}${esc(intro.kicker)}</p>
+      <h1 class="intro-title" id="intro-title" tabindex="-1" data-focus>${esc(def.title)}</h1>
+      ${bundleStrip()}
+      ${cur ? `<p class="link-resume">${esc(when(cur.savedAt))}에 ${doneCount(cur)}문항까지 답했어요. 이어서 하면 그 자리부터 시작해요.</p>` : ''}
+      <p class="intro-lead">${esc(intro.lead)}</p>
+      <dl class="intro-facts">${intro.facts.map((f) => `<div><dt>${esc(f.dt)}</dt><dd>${esc(f.dd)}</dd></div>`).join('')}</dl>
+      <ol class="parts-list">${(intro.overview || def.parts).map((p) => `<li><div><strong>${esc(p.title)} <span class="tag">${p.count}문항</span></strong><span>${esc(p.summary)}</span></div></li>`).join('')}</ol>
+      <div class="intro-actions">${actions}</div>
+    </section>`;
   }
 
   function renderIntro() {
+    if (L) return renderLinkIntro();
     const u = currentUser();
     const sessions = u ? listSessions().filter((v) => doneCount(v) > 0) : [];
     const intro = def.intro;
@@ -339,6 +372,49 @@ export async function runTest(def, mount, opts = {}) {
       <div class="gets"><h3>결과지에 담기는 것</h3><ul>${intro.gets.map((g) => `<li class="tag">${esc(g)}</li>`).join('')}</ul></div>
       <div class="intro-actions">${actions}</div>
     </section>`;
+  }
+
+  function renderLinkProfile() {
+    const inv = L.invite;
+    const birthText = S.birthText || fmtBirth(S.birth);
+    stage.innerHTML = `<section class="intro-card" aria-labelledby="pf-title">
+      <p class="intro-kicker">${esc(def.title)}</p>
+      <h1 class="intro-title" id="pf-title" tabindex="-1" data-focus>시작하기 전에 확인해 주세요</h1>
+      <dl class="link-who"><div><dt>검사하는 분</dt><dd>${esc(inv.name)} 님</dd></div><div><dt>보낸 상담사</dt><dd>${esc(inv.ownerName)}</dd></div></dl>
+      ${inv.needBirth ? `<div class="field">
+        <label for="pf-birth">생년월일</label>
+        <input class="input" id="pf-birth" inputmode="numeric" maxlength="10" autocomplete="off" value="${esc(birthText)}" placeholder="예: 19950312" aria-describedby="pf-birth-hint" required>
+        <p class="field-hint field-hint--quiet" id="pf-birth-hint" data-birth-hint aria-live="polite">이름이 같은 분과 구분하는 데만 써요.</p>
+      </div>` : ''}
+      <label class="consent">
+        <input type="checkbox" id="pf-consent" ${S.consent ? 'checked' : ''}>
+        <div><strong>답을 보내는 데 동의해요</strong>
+        <span>이름${inv.needBirth ? '과 생년월일' : ''}, 응답은 ${esc(inv.ownerName)} 상담사님에게 전송되고, AZIT 관리자도 볼 수 있어요. 결과는 상담사님을 통해 안내받아요.</span></div>
+      </label>
+      <div class="intro-actions">
+        <button type="button" class="btn btn--block" data-act="begin" disabled>시작하기</button>
+        <button type="button" class="btn btn--text" data-act="to-intro">뒤로</button>
+      </div>
+    </section>`;
+    const birthEl = stage.querySelector('#pf-birth');
+    const birthHint = stage.querySelector('[data-birth-hint]');
+    const consentEl = stage.querySelector('#pf-consent');
+    const beginEl = stage.querySelector('[data-act="begin"]');
+    const sync = () => {
+      S.name = inv.name;
+      if (birthEl) {
+        S.birthText = birthEl.value;
+        S.birth = parseBirth(birthEl.value);
+        const typed = birthEl.value.replace(/\D/g, '');
+        birthHint.textContent = S.birth ? longBirth(S.birth) : typed.length >= 6 ? '날짜를 다시 확인해 주세요. 8자리(19950312)나 6자리(950312)로 적어요.' : '이름이 같은 분과 구분하는 데만 써요.';
+        birthHint.classList.toggle('is-error', !S.birth && typed.length >= 6);
+      } else S.birth = '';
+      S.consent = consentEl.checked;
+      beginEl.disabled = !(S.consent && (!birthEl || S.birth));
+    };
+    if (birthEl) birthEl.addEventListener('input', sync);
+    consentEl.addEventListener('change', sync);
+    sync();
   }
 
   function renderProfile() {
@@ -554,11 +630,35 @@ export async function runTest(def, mount, opts = {}) {
     </section>`;
   }
 
+  function renderLinkDone() {
+    const left = L.tests.filter((id) => !L.done.has(id));
+    const at = L.tests.indexOf(def.id);
+    const next = left.find((id) => L.tests.indexOf(id) > at) || left[0] || '';
+    stage.innerHTML = `<section class="done" aria-live="polite">
+      <div class="done-mark" aria-hidden="true">${starGlyph('#4b5bdb')}</div>
+      <h1 tabindex="-1" data-focus>답을 보냈어요</h1>
+      <p>${esc(S.doneName || '')} 님, 끝까지 답해 주셔서 고마워요. 결과는 ${esc(L.invite.ownerName)} 상담사님이 안내해 드려요.</p>
+      <dl class="done-receipt">
+        <div><dt>검사</dt><dd>${esc(def.title)}</dd></div>
+        <div><dt>받는 상담사</dt><dd>${esc(L.invite.ownerName)}</dd></div>
+        <div><dt>보낸 시각</dt><dd>${esc(fmtDate(S.doneAt || Date.now(), true))}</dd></div>
+      </dl>
+      ${L.tests.length > 1 ? `<div class="bd-done">
+        <p class="bd-done-k">받은 검사 <span>${L.tests.length - left.length}/${L.tests.length}</span></p>
+        <p>${next ? `다음은 <strong>${esc(testTitle(next))}</strong>예요.` : '보내 주신 검사를 모두 마쳤어요. 고마워요.'}</p>
+      </div>` : ''}
+      <div class="done-actions">
+        ${next ? `<a class="btn btn--block" href="${homeHref}&amp;t=${encodeURIComponent(next)}">이어서 ${esc(testTitle(next))} 하기</a>` : ''}
+        <a class="btn ${next ? 'btn--ghost ' : ''}btn--block" href="${homeHref}">${next ? '목록으로' : '처음 화면으로'}</a>
+      </div>
+    </section>`;
+  }
+
   function renderSaveError() {
     stage.innerHTML = `<section class="gate" style="margin-top:0">
-      <h2 tabindex="-1" data-focus>결과를 저장하지 못했어요</h2>
-      <p>인터넷 연결을 확인한 뒤 다시 시도해 주세요. 응답은 이 기기에 그대로 남아 있어요.</p>
-      <button type="button" class="btn btn--block" data-act="retry">다시 저장하기</button>
+      <h2 tabindex="-1" data-focus>${L ? '답을 보내지 못했어요' : '결과를 저장하지 못했어요'}</h2>
+      <p>${L ? '인터넷 연결을 확인한 뒤 다시 보내 주세요. 답은 이 기기에 그대로 남아 있어요. 링크의 기한이 지났다면 상담사님께 새 링크를 받아 주세요.' : '인터넷 연결을 확인한 뒤 다시 시도해 주세요. 응답은 이 기기에 그대로 남아 있어요.'}</p>
+      <button type="button" class="btn btn--block" data-act="retry">${L ? '다시 보내기' : '다시 저장하기'}</button>
     </section>`;
   }
 
@@ -573,15 +673,15 @@ export async function runTest(def, mount, opts = {}) {
     } catch (e) { /* 주소를 못 바꾸는 환경 */ }
   }
   function render() {
-    exitEl.textContent = S.step === 'item' || S.step === 'part' ? '저장하고 나가기' : '처음으로';
+    exitEl.textContent = S.step === 'item' || S.step === 'part' ? '저장하고 나가기' : homeLabel;
     syncUrl();
     setBar();
     if (S.step === 'intro') renderIntro();
-    else if (S.step === 'profile') renderProfile();
+    else if (S.step === 'profile') (L ? renderLinkProfile : renderProfile)();
     else if (S.step === 'part') renderPartIntro();
     else if (S.step === 'item') renderItem();
-    else if (S.step === 'working') renderWorking();
-    else if (S.step === 'done') renderDone();
+    else if (S.step === 'working') renderWorking(L ? '답을 보내고 있어요' : undefined);
+    else if (S.step === 'done') (L ? renderLinkDone : renderDone)();
     else if (S.step === 'error') renderSaveError();
     focusStage();
   }
@@ -654,10 +754,27 @@ export async function runTest(def, mount, opts = {}) {
     await save();
   }
 
+  // 링크로 받은 검사: 채점하지 않고 답만 보낸다(채점은 링크를 만든 상담사 쪽에서). 이미 낸 검사면 낸 것으로 본다
+  async function submitLink(used, durationSec) {
+    const payload = { testId: def.id, version: def.version, answers: used, name: S.name, ...(S.birth ? { birth: S.birth } : {}), durationSec, submittedAt: Date.now() };
+    try {
+      await Promise.all([L.submit(def.id, payload), delay(1200)]);
+    } catch (e) {
+      const at = await within(L.submittedAt(def.id), 6000, null);
+      if (!at) { console.error(e); S.step = 'error'; render(); return; }
+    }
+    L.done.add(def.id);
+    if (L.markDone) L.markDone(def.id);
+    clearProgress();
+    Object.assign(S, { doneName: S.name, doneAt: Date.now(), sid: '', savedAt: 0, answers: {}, birth: '', birthText: '', consent: false, startedAt: 0, pi: 0, ii: 0, items: [], step: 'done' });
+    render();
+  }
+
   async function save() {
     const durationSec = Math.min(3 * 3600, Math.round((Date.now() - (S.startedAt || Date.now())) / 1000));
     const used = {};
     def.parts.forEach((p, pi) => itemsFor(pi).forEach((it) => { used[it.id] = S.answers[it.id]; }));
+    if (L) return submitLink(used, durationSec);
     const scores = def.score(used, { durationSec });
     const record = {
       testId: def.id,
@@ -732,11 +849,12 @@ export async function runTest(def, mount, opts = {}) {
       render();
     } else {
       S.sid = newSid(); // 새 검사자: 다른 검사자의 진행은 그대로 둔다
+      if (L) gone.delete(S.sid); // 링크는 세션 이름이 하나라서, '처음부터 다시'로 지운 뒤에도 같은 이름을 다시 쓴다
       S.synced = false;
       S.answers = {};
-      const bs = bundleState();
+      const bs = L ? null : bundleState();
       S.carried = bs && bs.name ? { name: bs.name, birth: bs.birth || '' } : null;
-      S.name = S.carried ? S.carried.name : '';
+      S.name = L ? L.invite.name : S.carried ? S.carried.name : '';
       S.birth = S.carried ? S.carried.birth : '';
       S.birthText = '';
       S.consent = false;
@@ -779,6 +897,14 @@ export async function runTest(def, mount, opts = {}) {
       });
       if (ok) { clearProgress(t.dataset.sid || ''); toast('진행 기록을 지웠어요.'); render(); }
     }
+    else if (act === 'restart-link') {
+      const ok = await modal({
+        title: '처음부터 다시 할까요?',
+        body: '<p>지금까지 답한 것은 지워지고, 첫 문항부터 다시 시작해요.</p>',
+        actions: [{ label: '취소', value: false }, { label: '처음부터 다시', value: true, primary: true, danger: true }],
+      });
+      if (ok) { clearProgress('L'); begin(true); }
+    }
     else if (act === 'to-intro') { S.step = 'intro'; render(); }
     else if (act === 'begin') {
       // 같은 이름(과 생년월일)으로 하다 멈춘 검사가 있으면 먼저 물어본다. 생년월일 없이 저장된 예전 진행도 같은 이름이면 묻는다.
@@ -786,7 +912,7 @@ export async function runTest(def, mount, opts = {}) {
       t.disabled = true;
       await syncing;
       t.disabled = false;
-      const same = listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && samePerson(v, S));
+      const same = L ? null : listSessions().find((v) => v.sid !== S.sid && doneCount(v) > 0 && samePerson(v, S));
       if (same) {
         const pick = await modal({
           title: `${S.name} 님이 하다 멈춘 검사가 있어요`,
@@ -883,7 +1009,7 @@ export async function runTest(def, mount, opts = {}) {
 
   // 나갈 때: 마지막 답까지 계정에 올리고, 첫 화면에 '여기까지 저장했어요'를 남긴다
   const leaveNote = () => {
-    if (!inSession()) return;
+    if (L || !inSession()) return;
     try { sessionStorage.setItem('azit:saved-note', JSON.stringify({ testId: def.id, sid: S.sid, name: S.name, n: doneCount(S), total: totalCount, at: Date.now() })); } catch (e) { /* */ }
   };
   mount.querySelectorAll('[data-leave]').forEach((a) => a.addEventListener('click', async (e) => {
@@ -919,6 +1045,7 @@ export async function runTest(def, mount, opts = {}) {
     else { render(); toast('이 검사는 이미 끝났거나 지워졌어요.'); }
   }
   onUser((u) => {
+    if (L) return; // 링크로 받은 검사는 로그인과 상관없다
     if (!u) {
       if (S.step !== 'intro') { S.step = 'intro'; }
       render();

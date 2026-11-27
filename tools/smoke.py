@@ -15,6 +15,9 @@
     - 끝난 검사의 임시 저장: 같은 검사자가 진행을 시작한 뒤 같은 검사를 끝낸 결과가 있으면 첫 화면·검사 소개에서 정리되는지
       (먼저 끝낸 결과, 다른 분, 생년월일 없는 예전 진행 구분), 첫 화면 카드 '지우기', 끝난 진행 링크 알림,
       끝내면 같은 검사자의 다른 진행도 정리, 같은 진행을 다른 창에서 끝내면 예전 창이 멈추고 되살리지 않는지
+    - 검사 링크: 링크 만들기(고른 차례, 문자 주소), 받는 분이 로그인 없이 답하다 나갔다 와서 이어 하고 보내기,
+      모두 마친 뒤 다시 내기 막힘, 상담사 쪽에서 채점해 결과로 옮기기(보낸 링크 화면·첫 화면), 어긋난 답 막기,
+      멈춘·기한 지난·없는 링크 안내, 보낸 링크 지우기
  4. 첫 화면 검사 고르기 탭(추천 묶음 + 분류, 한 칸씩, 고른 탭 기억), 검사 결과 목록과 결과지마다: 목차, 스크롤이 막힘 없이 내려가는지, 목차 표시가 따라오는지
  5. 관리 화면이 오류 없이 열리는지, 생년월일 없는 예전 결과(흉내 낸 1건)에 '생년월일 넣기'가 되는지,
     CSV 열이 머리줄과 맞고 '생년월일' 열이 빈칸 없이 채워지는지
@@ -652,6 +655,168 @@ async def run(args):
               const names = ['정리하나', '정리둘', '정리셋', '정리넷'];
               Object.entries((db.results || {})[u.uid] || {}).forEach(([k, r]) => { if (names.includes(r.name)) delete db.results[u.uid][k]; });
               Object.entries((db.drafts || {})[u.uid] || {}).forEach(([k, d]) => { if (names.includes(d.name)) delete db.drafts[u.uid][k]; });
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+            }""")
+
+            # 검사 링크: 상담사가 링크를 만들고 → 받는 분이 로그인 없이 혼자 답해 보내고 → 상담사 쪽에서 채점해 결과로 옮긴다
+            db_js = "() => { const u = JSON.parse(localStorage.getItem('azit:demo:user')); const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}'); return { uid: u.uid, db }; }"
+            await unlock('test')
+            await pg.goto(base + 'send.html')
+            await pg.wait_for_selector('#sf-name', timeout=10000)
+            await pg.fill('#sf-name', '링크둘')
+            await pg.check('[data-pick][value="hspnow"]')
+            await pg.check('[data-pick][value="rumination"]')
+            order = await pg.eval_on_selector_all('[data-no]', 'els => els.map((e) => e.textContent).filter(Boolean)')
+            await pg.click('[data-make]')
+            link = ''
+            sms = ''
+            try:
+                await pg.wait_for_selector('#sh-url', timeout=6000)
+                link = await pg.input_value('#sh-url')
+                msg = await pg.input_value('#sh-msg')
+                # 문자 단추: 번호와 글이 든 sms: 주소를 만든다 (실제로 열지는 않는다)
+                await pg.evaluate("() => document.addEventListener('click', (e) => { if (e.target.closest('[data-sms]')) e.preventDefault(); }, true)")
+                await pg.fill('#sh-tel', '010-1234-5678')
+                await pg.click('[data-sms]')
+                sms = await pg.get_attribute('[data-sms]', 'href') or ''
+                await shot('link-share')
+                await pg.click('.modal-actions [data-i="0"]')
+            except Exception as e:
+                msg = f'보내기 창이 열리지 않음: {str(e)[:60]}'
+            ok('링크 만들기', 'take.html?k=' in link and order == ['1', '2'] and '링크둘 님' in msg and link in msg and sms.startswith('sms:01012345678') and 'body=' in sms,
+               f"링크 {'있음' if link else '없음'}, 고른 차례 {order}, 문자 주소 {sms[:28]}")
+            token = link.split('k=')[-1] if link else ''
+            pc = await ctx.new_page()
+            pc.on('pageerror', lambda e: report['errors'].append(f'pageerror (받은 검사) {pc.url.split("/")[-1]}: {e}'))
+            pc.on('console', lambda m: report['errors'].append(f'console (받은 검사) {pc.url.split("/")[-1]}: {m.text}')
+                  if m.type == 'error' and 'Failed to load resource' not in m.text else None)
+            land = {}
+            resumed = ''
+            done1 = done2 = False
+            if link:
+                await pc.goto(link)
+                await pc.wait_for_selector('.take-list', timeout=10000)
+                land = await pc.evaluate("() => ({ items: document.querySelectorAll('.take-list li').length, due: (document.querySelector('.take-due') || {}).textContent || '', from: (document.querySelector('.take-from') || {}).textContent || '' })")
+                await pc.click('.take-list a.btn')
+                await pc.wait_for_selector('[data-act="start"]', timeout=10000)
+                await pc.click('[data-act="start"]')
+                await pc.wait_for_selector('#pf-consent', timeout=5000)
+                need = await pc.locator('#pf-birth').count()
+                await pc.check('#pf-consent')
+                blocked = await pc.locator('[data-act="begin"]').is_disabled()
+                await pc.fill('#pf-birth', '19900101')
+                await pc.click('[data-act="begin"]')
+                await pc.wait_for_timeout(300)
+                await answer_until_done(20, stop_after=3, page=pc)
+                await pc.click('[data-exit]')  # 저장하고 나가기 → 받은 검사 목록
+                await pc.wait_for_selector('.take-list', timeout=8000)
+                resumed = await pc.inner_text('.take-list li:first-child')
+                await pc.click('.take-list li:first-child a.btn')
+                await pc.wait_for_selector('[data-act="resume"]', timeout=8000)
+                await pc.click('[data-act="resume"]')
+                await pc.wait_for_selector('.part-meta .where', timeout=8000)
+                where = await pc.inner_text('.part-meta .where')
+                done1, _ = await answer_until_done(80, page=pc)
+                await pc.wait_for_timeout(400)
+                h1 = await pc.inner_text('.done h1') if await pc.locator('.done h1').count() else ''
+                ok('받은 검사: 혼자 답하고 보내기', land.get('items') == 2 and '까지 열려 있어요' in land.get('due', '') and need == 1 and blocked
+                   and '3문항까지 답함' in resumed and where.split()[-1].startswith('4/') and done1 and '보냈어요' in h1,
+                   f"목록 {land}, 생년월일 칸 {need}개, 동의 전 시작 {'막힘' if blocked else '열림'}, 나갔다 온 뒤 '{resumed.split(chr(10))[-1]}', 이어진 자리 {where}, 끝 화면 '{h1}'")
+                await pc.click('.done-actions a.btn')  # 이어서 다음 검사
+                await pc.wait_for_selector('[data-act="start"]', timeout=8000)
+                await pc.click('[data-act="start"]')
+                await pc.wait_for_selector('#pf-consent', timeout=5000)
+                await pc.fill('#pf-birth', '19900101')
+                await pc.check('#pf-consent')
+                await pc.click('[data-act="begin"]')
+                done2, _ = await answer_until_done(80, page=pc)
+                await pc.wait_for_timeout(400)
+                await pc.goto(link)
+                await pc.wait_for_selector('.take-card h1', timeout=8000)
+                fin = await pc.inner_text('.take-card h1')
+                sent_tags = await pc.locator('.take-list li.is-done').count()
+                # 이미 보낸 검사로 다시 들어오면 검사가 아니라 목록이 열린다
+                await pc.goto(link + '&t=hspnow')
+                await pc.wait_for_timeout(1500)
+                again = await pc.locator('.take-list').count() > 0 and not await pc.locator('[data-act="start"]').count()
+                ok('받은 검사: 모두 마침, 다시 내기 막힘', done2 and '모두 마쳤어요' in fin and sent_tags == 2 and again, f"끝 '{fin}', 보냄 {sent_tags}개, 보낸 검사 다시 열기 {'목록으로' if again else '검사가 열림'}")
+                if shots:
+                    await pc.screenshot(path=str(shots / 'take-all.png'))
+            # 상담사 쪽: 링크 보내기 화면을 열면 채점해서 결과로 옮긴다
+            await pg.goto(base + 'send.html')
+            await pg.wait_for_timeout(2500)
+            row = await pg.evaluate("""(token) => { const li = document.querySelector(`[data-token="${token}"]`); return li ? { state: li.querySelector('.sent-state').dataset.state, got: li.querySelectorAll('.sent-tests .is-got a').length } : null; }""", token)
+            st = await pg.evaluate(db_js)
+            got = [r for r in (st['db'].get('results', {}).get(st['uid'], {}) or {}).values() if r.get('via') == 'link' and r.get('name') == '링크둘']
+            subs = (st['db'].get('submissions') or {}).get(token) or {}
+            ok('링크 결과 옮기기', row and row['state'] == 'done' and row['got'] == 2 and len(got) == 2 and all(r.get('birth') == '1990-01-01' and r.get('summary') for r in got) and not subs,
+               f"보낸 링크 {row}, 옮긴 결과 {[(r['testId'], r.get('birth')) for r in got]}, 남은 답 {list(subs)}")
+            await shot('send-after')
+            await unlock('result')
+            await pg.goto(base + 'me.html')
+            await pg.wait_for_timeout(1500)
+            tagged = await pg.locator('.record', has_text='링크둘').locator('.tag', has_text='링크로 받음').count()
+            ok('검사 결과의 링크 표시', tagged == 2, f'링크로 받음 표시 {tagged}개')
+            # 첫 화면에서도 옮긴다: 새 링크에 답이 들어온 것처럼 저장소에 넣고 첫 화면을 연다
+            seeded = await pg.evaluate("""async () => {
+              const B = await import('./assets/js/backend.js');
+              const def = (await import('./tests/hspnow/index.js')).default;
+              const { token } = await B.createInvite({ name: '링크셋', tests: ['hspnow'], ownerName: '점검' });
+              const answers = {}; def.parts.forEach((p) => p.items.forEach((it) => { answers[it.id] = p.scale[2].value; }));
+              await B.submitInvite(token, 'hspnow', { testId: 'hspnow', version: def.version, answers, name: '링크셋', birth: '1991-02-02', durationSec: 120, submittedAt: Date.now() });
+              const bad = await B.createInvite({ name: '링크넷', tests: ['hspnow'], ownerName: '점검' });
+              await B.submitInvite(bad.token, 'hspnow', { testId: 'hspnow', version: def.version, answers: { [def.parts[0].items[0].id]: 99 }, name: '링크넷', birth: '1991-02-02', durationSec: 120, submittedAt: Date.now() });
+              return { token, bad: bad.token };
+            }""")
+            await unlock('test')
+            await pg.goto(base + 'index.html')
+            await pg.wait_for_timeout(2500)
+            st = await pg.evaluate(db_js)
+            res = st['db'].get('results', {}).get(st['uid'], {}) or {}
+            home_got = [r for r in res.values() if r.get('name') == '링크셋' and r.get('via') == 'link']
+            bad_got = [r for r in res.values() if r.get('name') == '링크넷']
+            bad_mark = ((st['db'].get('inviteIndex') or {}).get(st['uid'], {}).get(seeded['bad'], {}).get('bad') or {}).get('hspnow')
+            ok('첫 화면에서 옮기기, 어긋난 답은 막기', len(home_got) == 1 and home_got[0].get('birth') == '1991-02-02' and not bad_got and bad_mark,
+               f"링크셋 결과 {len(home_got)}건, 어긋난 답으로 만든 결과 {len(bad_got)}건, 어긋남 표시 {bad_mark}")
+            # 멈춘 링크, 기한 지난 링크, 없는 링크
+            await pg.goto(base + 'send.html')
+            await pg.wait_for_timeout(2000)
+            stop = pg.locator(f'[data-token="{seeded["bad"]}"] [data-act="cancel"]')
+            if await stop.count():
+                await stop.click()
+                await pg.wait_for_selector('.modal-actions [data-i="1"]', timeout=4000)
+                await pg.click('.modal-actions [data-i="1"]')
+                await pg.wait_for_timeout(800)
+            await pc.goto(base + f'take.html?k={seeded["bad"]}')
+            await pc.wait_for_selector('.take-card h1', timeout=8000)
+            stopped = await pc.inner_text('.take-card h1')
+            await pg.evaluate("""(t) => { const db = JSON.parse(localStorage.getItem('azit:demo:db')); db.invites[t].expiresAt = Date.now() - 1000; localStorage.setItem('azit:demo:db', JSON.stringify(db)); }""", seeded['token'])
+            await pc.goto(base + f'take.html?k={seeded["token"]}')
+            await pc.wait_for_selector('.take-card h1', timeout=8000)
+            expired = await pc.inner_text('.take-card h1')
+            await pc.goto(base + 'take.html?k=NoSuchLinkAbCdEfGhJk2345')
+            await pc.wait_for_selector('.take-card h1', timeout=8000)
+            missing = await pc.inner_text('.take-card h1')
+            ok('멈춘·기한 지난·없는 링크', '멈춘' in stopped and '기한이 지난' in expired and '찾을 수 없어요' in missing, f"'{stopped}' / '{expired}' / '{missing}'")
+            await pc.close()
+            # 목록에서 지우기: 링크와 목록 기록이 사라진다(옮긴 결과는 남는다)
+            rm = pg.locator(f'[data-token="{token}"] [data-act="remove"]')
+            if await rm.count():
+                await rm.click()
+                await pg.wait_for_selector('.modal-actions [data-i="1"]', timeout=4000)
+                await pg.click('.modal-actions [data-i="1"]')
+                await pg.wait_for_timeout(1000)
+            st = await pg.evaluate(db_js)
+            gone_inv = token not in (st['db'].get('invites') or {}) and token not in ((st['db'].get('inviteIndex') or {}).get(st['uid']) or {})
+            kept = len([r for r in (st['db'].get('results', {}).get(st['uid'], {}) or {}).values() if r.get('name') == '링크둘'])
+            ok('보낸 링크 지우기', token and gone_inv and kept == 2 and not await pg.locator(f'[data-token="{token}"]').count(), f"링크 {'지워짐' if gone_inv else '남음'}, 옮긴 결과 {kept}건 남음")
+            # 뒷정리: 이 점검에서 만든 링크·답·결과를 지운다
+            await pg.evaluate("""() => {
+              const u = JSON.parse(localStorage.getItem('azit:demo:user'));
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const names = ['링크둘', '링크셋', '링크넷'];
+              Object.entries((db.results || {})[u.uid] || {}).forEach(([k, r]) => { if (names.includes(r.name)) delete db.results[u.uid][k]; });
+              delete db.invites; delete db.submissions; delete db.inviteIndex;
               localStorage.setItem('azit:demo:db', JSON.stringify(db));
             }""")
 

@@ -84,6 +84,97 @@
         ".write": "auth != null && ((!data.exists() && newData.child('createdBy').val() === auth.uid && ((newData.child('ownerUid').val() === auth.uid && (root.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))) || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))) || (data.exists() && !newData.exists() && (data.child('ownerUid').val() === auth.uid || data.child('createdBy').val() === auth.uid || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))))",
         ".validate": "!newData.exists() || ($token.length >= 20 && newData.hasChildren(['ownerUid', 'resultId', 'createdBy', 'createdAt', 'payload']))"
       }
+    },
+
+    "invites": {
+      "$token": {
+        ".read": true,
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && (root.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))) || (data.exists() && (data.child('uid').val() === auth.uid || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))))",
+        ".validate": "!newData.exists() || ($token.length >= 20 && newData.hasChildren(['uid', 'ownerName', 'name', 'tests', 'order', 'createdAt', 'expiresAt']) && (!data.exists() || newData.child('uid').val() === data.child('uid').val()) && newData.child('expiresAt').val() <= newData.child('createdAt').val() + 691200000)",
+        "uid": {
+          ".validate": "newData.isString()"
+        },
+        "ownerName": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+        },
+        "needBirth": {
+          ".validate": "newData.isBoolean()"
+        },
+        "tests": {
+          "$test": {
+            ".validate": "newData.val() === true && $test.length <= 20"
+          }
+        },
+        "order": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "cancelledAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+
+    "submissions": {
+      "$token": {
+        ".read": "auth != null && (root.child('invites').child($token).child('uid').val() === auth.uid || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))",
+        ".write": "auth != null && !newData.exists() && (root.child('invites').child($token).child('uid').val() === auth.uid || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))",
+        "$test": {
+          ".write": "(!data.exists() && newData.exists() && root.child('invites').child($token).exists() && !root.child('invites').child($token).child('cancelledAt').exists() && root.child('invites').child($token).child('expiresAt').val() > now && root.child('invites').child($token).child('tests').child($test).val() === true) || (auth != null && !newData.exists() && (root.child('invites').child($token).child('uid').val() === auth.uid || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true)))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['testId', 'version', 'answers', 'submittedAt']) && newData.child('testId').val() === $test)",
+          "testId": {
+            ".validate": "newData.isString()"
+          },
+          "version": {
+            ".validate": "newData.isString() && newData.val().length <= 10"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "birth": {
+            ".validate": "newData.isString() && newData.val().length === 10"
+          },
+          "durationSec": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 86400"
+          },
+          "submittedAt": {
+            ".read": true,
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "answers": {
+            "$item": {
+              ".validate": "$item.length <= 40 && (newData.isNumber() || (newData.isString() && newData.val().length <= 2000) || newData.hasChildren())",
+              "$i": {
+                ".validate": "$i.length <= 2 && newData.isString() && newData.val().length <= 20"
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+
+    "inviteIndex": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && (root.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))",
+        ".write": "auth != null && auth.uid === $uid && (root.child('members').child(auth.uid).exists() || root.child('admins').child(auth.uid).exists() || (auth.token.email === 'petter350329@gmail.com' && auth.token.email_verified === true))",
+        "$token": {
+          ".validate": "$token.length >= 20 && newData.hasChildren(['name', 'tests', 'createdAt', 'expiresAt'])"
+        }
+      }
     }
   }
 }

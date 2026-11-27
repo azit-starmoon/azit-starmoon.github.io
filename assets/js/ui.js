@@ -185,7 +185,8 @@ export function mountHeader(active = '') {
     <a class="brand" href="index.html" aria-label="${esc(SITE.name)} 처음으로">${brandHTML()}</a>
     <nav class="site-nav" aria-label="주 메뉴">
       <a href="index.html" data-member-link hidden ${active === 'home' ? 'aria-current="page"' : ''}>검사</a>
-      <a href="me.html" data-member-link hidden ${active === 'me' ? 'aria-current="page"' : ''}>검사 결과</a>
+      <a href="send.html" data-member-link hidden aria-label="검사 링크 보내기" ${active === 'send' ? 'aria-current="page"' : ''}><span class="nav-wide">링크 </span>보내기</a>
+      <a href="me.html" data-member-link hidden aria-label="검사 결과" ${active === 'me' ? 'aria-current="page"' : ''}><span class="nav-wide">검사 </span>결과</a>
       <a href="admin.html" data-admin-link hidden ${active === 'admin' ? 'aria-current="page"' : ''}>관리<span class="nav-badge" data-req-badge hidden></span></a>
     </nav>
     <div class="account" data-account></div>

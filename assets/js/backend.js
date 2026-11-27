@@ -436,11 +436,12 @@ export async function listMyResultsFrom(from) {
   return out;
 }
 
-export async function saveResult(record) {
+// opts.rid, opts.createdAt: 링크로 받은 검사를 옮길 때 (같은 답을 두 번 옮기지 않게 키를 정해 두고, 낸 시각을 남긴다)
+export async function saveResult(record, opts = {}) {
   const u = requireUser();
   await ready();
-  const rid = newKey(`results/${u.uid}`);
-  const data = { ...record, uid: u.uid, email: u.email, createdAt: Date.now() };
+  const rid = opts.rid || newKey(`results/${u.uid}`);
+  const data = { ...record, uid: u.uid, email: u.email, createdAt: opts.createdAt || Date.now() };
   await dbSet(`results/${u.uid}/${rid}`, data);
   return { uid: u.uid, rid };
 }
@@ -553,4 +554,110 @@ export function resultUrl(uid, rid) {
 // 종합 결과지: 그 검사자의 결과 한 건을 기준으로 연다 (주소에 이름을 넣지 않는다)
 export function personUrl(uid, rid) {
   return `person.html?u=${encodeURIComponent(uid)}&r=${encodeURIComponent(rid)}`;
+}
+
+// ── 검사 링크 (내담자에게 보내서 혼자 답하게 하는 검사) ──────────
+// invites/{토큰}            링크를 연 사람이 읽는 것: 보낸 상담사 이름, 받는 분 이름, 검사 목록, 기한. 토큰을 아는 사람만 읽는다
+// submissions/{토큰}/{검사}  내담자가 낸 답. 링크가 열려 있는 동안 검사마다 한 번만 쓸 수 있고, 링크를 만든 상담사만 읽는다
+// inviteIndex/{계정}/{토큰}  상담사가 보낸 링크 목록. 생년월일처럼 링크에 싣지 않는 것은 여기에만 둔다
+// 채점은 상담사가 사이트를 열 때 그 기기에서 한다(links.js). 그래서 내담자가 점수를 꾸며 넣을 수 없다.
+export const INVITE_DAYS = 7;
+export const validToken = (t) => /^[A-Za-z0-9]{20,40}$/.test(String(t || ''));
+// 링크의 검사 차례: 링크(invites)는 order와 tests 표, 보낸 목록(inviteIndex)은 tests 글자로 적혀 있다
+export const inviteTests = (inv) => {
+  if (!inv) return [];
+  const list = String(inv.order || (typeof inv.tests === 'string' ? inv.tests : '')).split(',').filter(Boolean);
+  return inv.tests && typeof inv.tests === 'object' ? list.filter((id) => inv.tests[id] === true) : list;
+};
+
+export async function createInvite({ name, birth = '', tests = [], bundle = '', ownerName = '' }) {
+  const u = requireUser();
+  const clean = String(name || '').trim().slice(0, 20);
+  if (!clean) throw new Error('받는 분 이름을 적어 주세요.');
+  const list = [...new Set(tests)].filter(Boolean).slice(0, 6);
+  if (!list.length) throw new Error('보낼 검사를 골라 주세요.');
+  const token = newToken();
+  const now = Date.now();
+  const expiresAt = now + INVITE_DAYS * 864e5;
+  const owner = String(ownerName || u.name || '').trim().slice(0, 30) || '상담사';
+  const order = list.join(',');
+  await dbSet(`inviteIndex/${u.uid}/${token}`, {
+    name: clean, ...(birth ? { birth } : {}), tests: order, ...(bundle ? { bundle } : {}), ownerName: owner, createdAt: now, expiresAt,
+  });
+  try {
+    await dbSet(`invites/${token}`, {
+      uid: u.uid, ownerName: owner, name: clean, needBirth: !birth, tests: Object.fromEntries(list.map((id) => [id, true])), order, createdAt: now, expiresAt,
+    });
+  } catch (e) {
+    await dbRemove(`inviteIndex/${u.uid}/${token}`).catch(() => {});
+    throw e;
+  }
+  return { token, expiresAt };
+}
+
+// 내담자: 링크 읽기 (로그인 없이)
+export async function getInvite(token) {
+  if (!validToken(token)) return null;
+  return dbGet(`invites/${token}`);
+}
+
+// 내담자: 이 검사를 이미 냈는지 (낸 시각, 없으면 null). 답은 못 읽고 낸 시각만 읽을 수 있다
+export async function inviteSubmittedAt(token, testId) {
+  if (!validToken(token)) return null;
+  const v = await dbGet(`submissions/${token}/${testId}/submittedAt`);
+  return typeof v === 'number' ? v : null;
+}
+
+// 내담자: 답 내기 (검사마다 한 번). 건너뛴 문항(null)은 0으로 바꿔 저장한다
+export async function submitInvite(token, testId, data) {
+  if (!validToken(token)) throw new Error('링크가 올바르지 않아요.');
+  await dbSet(`submissions/${token}/${testId}`, { ...data, answers: encodeAnswers(data.answers) });
+}
+
+// 상담사: 내가 보낸 링크
+export async function listMyInvites() {
+  const u = requireUser();
+  const tree = (await dbGet(`inviteIndex/${u.uid}`)) || {};
+  return Object.entries(tree).map(([token, v]) => ({ token, ...v })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+// 상담사: 내 링크로 들어온 답 (아직 옮기지 않은 것)
+export async function readSubmissions(token) {
+  if (!validToken(token)) return {};
+  const v = (await dbGet(`submissions/${token}`)) || {};
+  return Object.fromEntries(Object.entries(v).map(([id, s]) => [id, { ...s, answers: decodeAnswers(s.answers) }]));
+}
+
+export async function dropSubmission(token, testId) {
+  if (!validToken(token)) return;
+  await dbRemove(`submissions/${token}/${testId}`);
+}
+
+// 상담사: 보낸 링크 기록 고치기 (patch의 키는 'got/emotion'처럼 그 아래 자리)
+export async function markInvite(token, patch) {
+  const u = requireUser();
+  if (!validToken(token)) return;
+  for (const [k, v] of Object.entries(patch)) await dbSet(`inviteIndex/${u.uid}/${token}/${k}`, v);
+}
+
+// 상담사: 보내기 멈추기 (링크를 열면 '멈춘 링크'라고 나온다)
+export async function cancelInvite(token) {
+  const u = requireUser();
+  if (!validToken(token)) return;
+  const now = Date.now();
+  await dbSet(`invites/${token}/cancelledAt`, now);
+  await dbSet(`inviteIndex/${u.uid}/${token}/cancelledAt`, now);
+}
+
+// 상담사: 목록에서 지우기 (남은 답 → 링크 → 목록 차례로. 링크가 먼저 사라지면 답을 지울 권한을 확인할 수 없다)
+export async function removeInvite(token) {
+  const u = requireUser();
+  if (!validToken(token)) return;
+  await dbRemove(`submissions/${token}`).catch(() => {});
+  await dbRemove(`invites/${token}`).catch(() => {});
+  await dbRemove(`inviteIndex/${u.uid}/${token}`);
+}
+
+export function inviteUrl(token) {
+  return new URL(`take.html?k=${encodeURIComponent(token)}`, location.href).href;
 }

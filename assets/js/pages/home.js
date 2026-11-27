@@ -3,6 +3,7 @@ import { constellation, b5Star } from '../charts.js';
 import { TESTS, groupIds, BUNDLES } from '../registry.js';
 import { greetingName, currentUser, listDrafts, deleteDraft } from '../backend.js';
 import { findFinished, draftIdOf } from '../drafts.js';
+import { importLinks } from '../links.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock } from '../lock.js';
 import { fmtBirth } from '../examinee.js';
@@ -107,6 +108,8 @@ const GLYPH = {
 
   drawBundles(meta);
   drawResume();
+  // 링크로 받은 답이 있으면 채점해서 결과로 옮긴다
+  importLinks().then((r) => { if (r.imported) toast(`링크로 받은 검사 결과 ${r.imported}개를 '검사 결과'로 옮겼어요.`, 4600); }).catch(() => {});
   // 뒤로 가기로 다시 열리면(브라우저가 담아 둔 화면) 그사이 끝낸 검사가 남아 보이지 않게 다시 그린다
   window.addEventListener('pageshow', (e) => { if (e.persisted) drawResume(); });
 
@@ -188,7 +191,7 @@ function drawBundles(meta) {
     }).join('');
     return `<p class="bd-desc">${esc(b.desc)}</p>
       <ol class="bd-steps" data-n="${b.tests.length}">${steps}</ol>
-      <div class="bd-foot"><span class="bd-total">검사 ${b.tests.length}개, 모두 약 ${total}분</span><a class="btn" href="test.html?t=${esc(b.tests[0])}&amp;b=${esc(b.id)}">묶음으로 시작하기</a></div>`;
+      <div class="bd-foot"><span class="bd-total">검사 ${b.tests.length}개, 모두 약 ${total}분</span><span class="bd-go"><a class="btn btn--ghost" href="send.html?b=${esc(b.id)}">링크로 보내기</a><a class="btn" href="test.html?t=${esc(b.tests[0])}&amp;b=${esc(b.id)}">묶음으로 시작하기</a></span></div>`;
   };
   box.innerHTML = `<div class="bd-tabs" role="tablist" aria-label="고민별 추천 묶음">${list.map((b, i) => `<button type="button" role="tab" id="bd-tab-${b.id}" aria-controls="bd-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-bundle="${b.id}">${esc(b.name)}</button>`).join('')}</div>
     <div class="bd-panel" id="bd-panel" role="tabpanel" aria-labelledby="bd-tab-${list[0].id}" tabindex="0">${panel(list[0])}</div>`;

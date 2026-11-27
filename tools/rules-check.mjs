@@ -175,6 +175,18 @@ const TREE = {
   drafts: { mem: { d1: draft() } },
 };
 
+// 검사 링크: 상담1(mem)이 보낸 링크 셋 (열린 것, 기한 지난 것, 멈춘 것). 열린 링크로 스트레스 대처 방식 답이 하나 들어와 있다
+const INV = 'InVtAbCdEfGhJkMnPqRs2345';
+const EXP = 'ExPiReDaBcDeFgHjKmNpQr23';
+const CAN = 'CaNcElLeDaBcDeFgHjKmNp23';
+const NEWINV = 'NeWiNvAbCdEfGhJkMnPqRs67';
+const invite = (uid, extra = {}) => ({ uid, ownerName: '상담1', name: '내담자', needBirth: true, tests: { coping: true, emotion: true }, order: 'coping,emotion', createdAt: NOW - 1000, expiresAt: NOW + 7 * 864e5, ...extra });
+const sub = (testId, extra = {}) => ({ testId, version: '1.0', answers: { q1: 3, q2: 0, r1: ['away', 'act', 'heart'], t1: '적은 글' }, name: '내담자', birth: '1990-01-01', durationSec: 300, submittedAt: NOW - 1000, ...extra });
+const sent = () => ({ name: '내담자', tests: 'coping,emotion', createdAt: NOW, expiresAt: NOW + 7 * 864e5 });
+TREE.invites = { [INV]: invite('mem'), [EXP]: invite('mem', { createdAt: NOW - 9 * 864e5, expiresAt: NOW - 2 * 864e5 }), [CAN]: invite('mem', { cancelledAt: NOW }) };
+TREE.submissions = { [INV]: { coping: sub('coping') } };
+TREE.inviteIndex = { mem: { [INV]: sent() } };
+
 // [설명, 누구, 읽기/쓰기, 자리, (쓸 값), 기대]
 const CASES = [
   ['담당자: 모든 결과 보기', 'owner', 'read', 'results', true],
@@ -247,6 +259,40 @@ const CASES = [
   ['로그인 안 함: 공유 링크 보기', 'anon', 'read', `shares/${TOKEN}`, true],
   ['로그인 안 함: 결과 보기', 'anon', 'read', 'results/mem/r1', false],
   ['로그인 안 함: 공유 링크 만들기', 'anon', 'write', `shares/${NEWTOK}`, share('mem', 'mem', 'r1'), false],
+
+  ['상담사: 검사 링크 만들기', 'member', 'write', `invites/${NEWINV}`, invite('mem'), true],
+  ['상담사: 다른 계정 이름으로 검사 링크 만들기', 'member', 'write', `invites/${NEWINV}`, invite('mem2'), false],
+  ['상담사: 기한이 8일 넘는 검사 링크', 'member', 'write', `invites/${NEWINV}`, invite('mem', { expiresAt: NOW + 9 * 864e5 }), false],
+  ['상담사: 검사 링크에 다른 칸 넣기', 'member', 'write', `invites/${NEWINV}`, { ...invite('mem'), email: 'mem@example.com' }, false],
+  ['상담사: 보낸 링크 목록에 넣기', 'member', 'write', `inviteIndex/mem/${NEWINV}`, sent(), true],
+  ['상담사: 보낸 링크 목록 보기', 'member', 'read', 'inviteIndex/mem', true],
+  ['상담사: 남의 보낸 링크 목록 보기', 'member', 'read', 'inviteIndex/mem2', false],
+  ['상담사: 내 링크로 들어온 답 보기', 'member', 'read', `submissions/${INV}`, true],
+  ['상담사: 옮긴 답 지우기', 'member', 'write', `submissions/${INV}/coping`, null, true],
+  ['상담사: 들어온 답 고치기', 'member', 'write', `submissions/${INV}/coping/answers/q1`, 1, false],
+  ['상담사: 내 링크 보내기 멈추기', 'member', 'write', `invites/${INV}/cancelledAt`, NOW, true],
+  ['상담사: 내 링크를 남의 계정으로 넘기기', 'member', 'write', `invites/${INV}/uid`, 'mem2', false],
+  ['상담사: 내 링크 지우기 (남은 답 → 링크 → 목록)', 'member', 'write', [[`submissions/${INV}`, null], [`invites/${INV}`, null], [`inviteIndex/mem/${INV}`, null]], true],
+  ['관리자: 남의 링크로 들어온 답 보기', 'admin', 'read', `submissions/${INV}`, false],
+  ['관리자: 남의 링크 멈추기', 'admin', 'write', `invites/${INV}/cancelledAt`, NOW, false],
+  ['담당자: 남의 링크 지우기', 'owner', 'write', [[`submissions/${INV}`, null], [`invites/${INV}`, null]], true],
+  ['승인 전: 검사 링크 만들기', 'pending', 'write', `invites/${NEWINV}`, invite('req'), false],
+  ['로그인 안 함: 검사 링크 보기', 'anon', 'read', `invites/${INV}`, true],
+  ['로그인 안 함: 검사 링크 목록 보기', 'anon', 'read', 'invites', false],
+  ['로그인 안 함: 검사 링크 고치기', 'anon', 'write', `invites/${INV}/tests/schema`, true, false],
+  ['로그인 안 함: 링크로 답 내기', 'anon', 'write', `submissions/${INV}/emotion`, sub('emotion'), true],
+  ['로그인 안 함: 같은 검사 두 번 내기', 'anon', 'write', `submissions/${INV}/coping`, sub('coping'), false],
+  ['로그인 안 함: 링크에 없는 검사 내기', 'anon', 'write', `submissions/${INV}/schema`, sub('schema'), false],
+  ['로그인 안 함: 기한 지난 링크로 내기', 'anon', 'write', `submissions/${EXP}/emotion`, sub('emotion'), false],
+  ['로그인 안 함: 멈춘 링크로 내기', 'anon', 'write', `submissions/${CAN}/emotion`, sub('emotion'), false],
+  ['로그인 안 함: 없는 링크로 내기', 'anon', 'write', `submissions/${NEWINV}/emotion`, sub('emotion'), false],
+  ['로그인 안 함: 답에 점수 칸 넣기', 'anon', 'write', `submissions/${INV}/emotion`, sub('emotion', { scores: { a: 99 } }), false],
+  ['로그인 안 함: 앞날 시각으로 내기', 'anon', 'write', `submissions/${INV}/emotion`, sub('emotion', { submittedAt: NOW + 864e5 }), false],
+  ['로그인 안 함: 답 한 칸만 넣기', 'anon', 'write', `submissions/${INV}/emotion/answers/q1`, 1, false],
+  ['로그인 안 함: 들어온 답 보기', 'anon', 'read', `submissions/${INV}/coping`, false],
+  ['로그인 안 함: 냈는지 보기 (낸 시각만)', 'anon', 'read', `submissions/${INV}/coping/submittedAt`, true],
+  ['로그인 안 함: 들어온 답 지우기', 'anon', 'write', `submissions/${INV}/coping`, null, false],
+  ['로그인 안 함: 보낸 링크 목록 보기', 'anon', 'read', 'inviteIndex/mem', false],
 ];
 
 const split = (p) => p.split('/').filter(Boolean);

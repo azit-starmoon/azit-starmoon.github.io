@@ -5,6 +5,7 @@ import { personKey, fmtBirth, matchPerson } from '../examinee.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { summaryOf } from '../summaries.js';
+import { importLinks } from '../links.js';
 
 const box = document.querySelector('[data-list]');
 const title = (id) => (TESTS.find((t) => t.id === id) || {}).title || id;
@@ -26,6 +27,9 @@ let list = [];
 
 async function load() {
   box.innerHTML = '<p class="loading">결과를 불러오고 있어요</p>';
+  // 링크로 받은 답을 먼저 결과로 옮겨 둔다 (오래 걸리면 기다리지 않는다)
+  const got = await Promise.race([importLinks().catch(() => ({ imported: 0 })), new Promise((r) => setTimeout(() => r({ imported: 0 }), 8000))]);
+  if (got.imported) toast(`링크로 받은 검사 결과 ${got.imported}개를 옮겼어요.`, 4200);
   try {
     list = await listMyResults();
   } catch (e) {
@@ -71,7 +75,7 @@ function drawRows() {
     .map((r) => `<li class="record record--plain" data-rid="${esc(r.rid)}">
       <div class="meta">
         <div class="rec-head"><strong>${esc(r.name || '이름 없음')}${r.birth ? `<span class="born">${esc(fmtBirth(r.birth))}</span>` : ''}</strong><span class="rec-when">${esc(fmtDate(r.createdAt, true))}</span></div>
-        <p class="rec-test">${testLine(r.testId)}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</p>
+        <p class="rec-test">${testLine(r.testId)}${r.via === 'link' ? '<span class="tag">링크로 받음</span>' : ''}${r.shareToken ? '<span class="tag tag--brand">공유 중</span>' : ''}</p>
         <p class="rec-sum">${esc(summaryOf(r))}</p>
       </div>
       <div class="acts">
