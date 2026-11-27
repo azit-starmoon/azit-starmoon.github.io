@@ -1,5 +1,5 @@
 {
- "v": "20261127-032441",
+ "v": "20261127-040316",
  "files": [
   "./",
   "admin.html",
@@ -23,6 +23,7 @@
   "assets/js/registry.js",
   "assets/js/runner.js",
   "assets/js/toc.js",
+  "assets/js/tracks.js",
   "assets/js/ui.js",
   "assets/js/update.js",
   "index.html",
@@ -89,6 +90,10 @@
   "tests/hsp/items.js",
   "tests/hsp/report.js",
   "tests/hsp/scoring.js",
+  "tests/hspnow/content.js",
+  "tests/hspnow/index.js",
+  "tests/hspnow/report.js",
+  "tests/hspnow/scoring.js",
   "tests/lifestory/chart.js",
   "tests/lifestory/content.js",
   "tests/lifestory/index.js",

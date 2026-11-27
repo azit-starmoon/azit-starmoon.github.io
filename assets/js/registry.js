@@ -58,6 +58,17 @@ export const TESTS = [
     gets: ['민감성 점수', '네 갈래 프로필', '섬세함의 힘과 무게', '요즘 상태 지도', '맞는 환경', '상담 메모'],
   },
   {
+    id: 'hspnow',
+    status: 'open',
+    title: '요즘의 나 체크',
+    code: 'AZ-SN',
+    desc: '최근 2주 동안 얼마나 지쳐 있는지와 쉬어 갈 틈이 있는지를 2분 안에 재요. 한 달에 한 번처럼 정해 두고 하면 지난번과 달라진 점을 볼 수 있어요.',
+    items: 12,
+    minutes: 2,
+    parts: 1,
+    gets: ['요즘 상태 지도', '부담 신호와 회복 자원', '문장별로 짚어 보기', '이번 주에 해 볼 것', '지난 체크와 비교'],
+  },
+  {
     id: 'strengths',
     status: 'open',
     title: '성격 강점 검사',
@@ -184,7 +195,7 @@ export const TESTS = [
 // 어느 묶음에도 없는 열린 검사는 '그 밖의 검사'로 따로 보인다.
 export const GROUPS = [
   { id: 'self', name: '성격과 기질', question: '나는 어떤 사람일까', desc: '타고난 기질과 성격의 결을 살펴요.', tests: ['enneagram', 'bigfive', 'temperament', 'hsp'] },
-  { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['esteem', 'emotion', 'coping', 'resilience'] },
+  { id: 'mind', name: '마음 건강', question: '요즘 내 마음은 괜찮을까', desc: '나를 대하는 마음과 감정, 스트레스를 다루는 힘을 살펴요.', tests: ['hspnow', 'esteem', 'emotion', 'coping', 'resilience'] },
   { id: 'relation', name: '관계와 내면', question: '관계 속 나는 왜 그럴까', desc: '가족과 가까운 사람, 하나님과의 관계에서의 내 모습과 마음 깊이 자리 잡은 규칙을 살펴요.', tests: ['attachment', 'godattach', 'differentiation', 'schema'] },
   { id: 'growth', name: '강점과 삶의 방향', question: '무엇을 향해 나아갈까', desc: '내가 가진 힘과 중요하게 여기는 것, 마음이 끌리는 일, 그리고 내 삶의 이야기를 살펴요.', tests: ['strengths', 'values', 'career', 'lifestory'] },
 ];

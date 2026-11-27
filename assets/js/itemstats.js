@@ -38,6 +38,7 @@ export const SCALE_DEFS = {
     { id: 'domain', label: '영역', key: (it) => (schema.SCHEMAS[it.s] || {}).d, name: (k) => (schema.DOMAINS.find((d) => d.id === k) || {}).name, order: schema.DOMAINS.map((d) => d.id) },
   ],
   hsp: [{ id: 'facet', label: '요인', key: (it) => it.facet || it.scale, name: (k) => nm(hsp.FACETS, k) || ({ load: '부담 신호', rest: '회복 자원' })[k], order: [...hsp.FACET_ORDER, 'load', 'rest'] }],
+  hspnow: [{ id: 'facet', label: '요인', key: (it) => it.scale, name: (k) => ({ load: '부담 신호', rest: '회복 자원' })[k], order: ['load', 'rest'] }],
   strengths: [
     { id: 'strength', label: '강점', key: (it) => it.strength, name: (k) => nm(strengths.STRENGTHS, k), order: strengths.STRENGTH_ORDER },
     { id: 'virtue', label: '덕목', key: (it) => (strengths.STRENGTHS[it.strength] || {}).virtue, name: (k) => nm(strengths.VIRTUES, k), order: strengths.VIRTUE_ORDER },

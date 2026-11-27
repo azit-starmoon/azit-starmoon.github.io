@@ -597,7 +597,9 @@ function exportCsv() {
       r.testId === 'schema' && s.schemas ? SCH.map(([k, n]) => `${n} ${s.schemas[k] ? s.schemas[k].score : ''}`).join('; ') : '',
       ...(r.testId === 'hsp' && s.facets
         ? [s.total, HSP_LV[s.level] || '', ...['d', 'o', 'e', 's'].map((f) => (s.facets[f] ? s.facets[f].score : '')), s.load, s.rest, HSP_ST[s.state] || '']
-        : ['', '', '', '', '', '', '', '', '']),
+        : r.testId === 'hspnow' // 요즘의 나 체크: 감각처리 민감성 검사 2부와 같은 문장·계산이라 같은 '요즘' 열에 넣는다
+          ? ['', '', '', '', '', '', s.load, s.rest, HSP_ST[s.state] || '']
+          : ['', '', '', '', '', '', '', '', '']),
       ...(r.testId === 'strengths' && s.strengths
         ? [(s.sig || []).map((k) => SG[k]).join(', '), SGV[s.topVirtue] || '', (s.order || []).map((k) => `${SG[k]} ${s.strengths[k] ? s.strengths[k].score : ''}`).join('; ')]
         : ['', '', '']),

@@ -111,7 +111,20 @@ RENDER_FUZZ_JS = r"""async ({ ids, n }) => {
     if (!A || !B || !A.length || !B.length) continue;
     A.forEach((a, i) => { try { p.render(a, B[(i * 7) % B.length]); } catch (e) { const k = `${p.a}+${p.b}: ${e.message}`; pairFails[k] = (pairFails[k] || 0) + 1; } });
   }
-  return { out, pairFails };
+  // 달라진 점: 같은 검사를 2~4번 한 것처럼 점수를 이어 그려 본다(흐름이 정해진 검사, 정해지지 않은 검사 모두)
+  const { buildTracks, renderTrack } = await import('./assets/js/tracks.js');
+  const meta = (id) => ({ title: id });
+  const trackFails = {}; let trackRenders = 0;
+  for (const id of ids) {
+    const S = samples[id] || [];
+    for (let i = 0; i + 1 < S.length; i += 3) {
+      const k = 2 + (i % 3);
+      const list = S.slice(i, i + k).map((sc, j) => ({ testId: id, version: '1.0', createdAt: 1.7e12 + j * 864e6, summary: '요약 (점검)', scores: sc }));
+      if (id === 'hspnow' && samples.hsp && samples.hsp.length) list.push({ testId: 'hsp', version: '1.0', createdAt: 1.6e12, summary: '요약 (점검)', scores: samples.hsp[i % samples.hsp.length] });
+      try { buildTracks(list).tracks.forEach((t) => { renderTrack(t, meta); trackRenders++; }); } catch (e) { const key = `${id}: ${e.message}`; trackFails[key] = (trackFails[key] || 0) + 1; }
+    }
+  }
+  return { out, pairFails, trackFails, trackRenders };
 }"""
 
 
@@ -370,6 +383,42 @@ async def run(args):
                 ok(f'결과지 목차 표시 ({title})', len(actives) >= min(3, toc), f'{len(actives)}개 항목이 차례로 표시됨')
                 await shot(f'result-{title}')
 
+            # 달라진 점: 요즘의 나 체크를 한 사람에게 한 달 전 감각처리 민감성 검사, 2주 전 체크를 더해(체험 저장소에 복사) 종합 결과지에서 한 줄로 이어지는지 본다
+            trend = await pg.evaluate("""() => {
+              const u = JSON.parse(localStorage.getItem('azit:demo:user') || 'null');
+              const db = JSON.parse(localStorage.getItem('azit:demo:db') || '{}');
+              const rs = u && db.results && db.results[u.uid];
+              if (!rs) return null;
+              const all = Object.entries(rs);
+              const now = all.find(([, r]) => r.testId === 'hspnow');
+              const hsp = all.find(([, r]) => r.testId === 'hsp');
+              if (!now || !hsp) return null;
+              const [rid, r] = now;
+              const a = { ...hsp[1], name: r.name, birth: r.birth, createdAt: r.createdAt - 864e5 * 30, scores: { ...hsp[1].scores, load: 83, rest: 21, state: 'overload' } };
+              const b = { ...r, createdAt: r.createdAt - 864e5 * 14, scores: { ...r.scores, load: 67, rest: 38, state: 'overload' } };
+              delete a.shareToken; delete b.shareToken;
+              rs['smoke-trend-a'] = a; rs['smoke-trend-b'] = b;
+              localStorage.setItem('azit:demo:db', JSON.stringify(db));
+              return { uid: u.uid, rid };
+            }""")
+            if trend:
+                await unlock('result')
+                await pg.goto(base + f"person.html?u={trend['uid']}&r={trend['rid']}")
+                try:
+                    await pg.wait_for_selector('.pp-trend', timeout=8000)
+                    info = await pg.evaluate("""() => {
+                      const c = [...document.querySelectorAll('.pp-trend')].find((x) => x.querySelector('h3').textContent === '요즘의 나');
+                      if (!c) return null;
+                      return { chips: [...c.querySelectorAll('.pp-tl li span')].map((x) => x.textContent), rows: c.querySelectorAll('.pp-trows li').length,
+                        dots: c.querySelectorAll('.pp-spark circle').length, deltas: c.querySelectorAll('.pp-d').length,
+                        joined: (c.querySelector('.pp-note') || {}).textContent || '', read: (c.querySelector('.pp-tread') || {}).textContent || '' };
+                    }""")
+                    good = bool(info) and len(info['chips']) == 3 and info['chips'][0] == '과부하' and info['rows'] == 2 and info['dots'] == 6 and info['deltas'] == 2 and '한 줄로' in info['joined'] and info['read'].startswith('지난번')
+                    ok('달라진 점 (요즘의 나)', good, json.dumps(info, ensure_ascii=False) if info else '요즘의 나 흐름이 없음')
+                    await shot('person-trend')
+                except Exception:
+                    ok('달라진 점 (요즘의 나)', False, '종합 결과지에 달라진 점이 없음')
+
             # 생년월일을 받기 전에 저장된 예전 결과 1건을 흉내 낸다(체험 저장소의 결과 하나를 복사하고 birth를 뺀다)
             legacy = await pg.evaluate("""() => {
               const u = JSON.parse(localStorage.getItem('azit:demo:user') || 'null');
@@ -448,6 +497,7 @@ async def run(args):
                         detail = f"{r.get('renders', 0)}번 그림" + (f", 저장소에서 빠지는 칸 {', '.join(r['emptied'][:6])}" if r.get('emptied') else '')
                     ok(f"결과지 그리기 ({t['title']})", not fails, detail)
                 ok('짝 읽기 그리기', not fz['pairFails'], '; '.join(f'{k} {v}번' for k, v in fz['pairFails'].items()) or '함께 고른 검사의 짝 모두')
+                ok('달라진 점 그리기', not fz['trackFails'] and fz['trackRenders'] > 0, '; '.join(f'{k} {v}번' for k, v in fz['trackFails'].items()) or f"{fz['trackRenders']}번 그림")
 
             # 상담사 승인과 이름·소속 고치기: 별명으로 온 승인 요청을 흉내 내서, 승인 창에서 이름과 소속을 고쳐 승인하고 다시 고친다
             await unlock('result')

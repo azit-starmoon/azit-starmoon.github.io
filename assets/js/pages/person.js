@@ -1,13 +1,15 @@
 // AZIT : Star&Moon — 검사자별 종합 결과지
 // 결과 한 건(u, r)을 기준으로, 같은 상담사 계정 안에서 이름(띄어쓰기·대소문자 무시)과 생년월일이 같은 검사들을 한 장에 모은다.
 // 생년월일 없이 저장된 예전 결과는 이름끼리 따로 묶이고, 이름만 같은 다른 기록은 머리말 아래에 링크로 알려 준다.
-// 주소에는 이름을 넣지 않는다(방문 기록에 남지 않게). 생년월일은 화면에만 보이고 인쇄(PDF)에는 넣지 않는다. 짝이 되는 검사를 함께 했으면 나란히 읽어 준다. 공유 링크로는 열리지 않는다.
+// 주소에는 이름을 넣지 않는다(방문 기록에 남지 않게). 생년월일은 화면에만 보이고 인쇄(PDF)에는 넣지 않는다. 짝이 되는 검사를 함께 했으면 나란히 읽어 주고,
+// 같은 검사를 다시 했으면 '달라진 점'에서 지난 결과와 이어 준다(assets/js/tracks.js). 공유 링크로는 열리지 않는다.
 import { mountHeader, mountFooter, esc, fmtDate } from '../ui.js';
 import { listResultsOf, getMember, resultUrl, personUrl } from '../backend.js';
 import { TESTS, groupIds, codeOf } from '../registry.js';
 import { requireApproved } from '../guard.js';
 import { requireUnlock, watchLock } from '../lock.js';
 import { PAIRS } from '../pairs.js';
+import { buildTracks, renderTrack } from '../tracks.js';
 import { normName, personKey, fmtBirth } from '../examinee.js';
 
 const box = document.querySelector('[data-person]');
@@ -80,6 +82,13 @@ function render(name, list, { mine, owner, birth, others, viewer }) {
       <ul class="pp-cards">${g.tests.map((id) => card(id, byTest.get(id))).join('')}</ul>
     </div>`).join('');
 
+  const { tracks, dropped } = buildTracks(list);
+  const trend = tracks.length
+    ? `<p class="pp-lead">같은 검사를 다시 한 결과를 날짜순으로 이었어요. 화살표 왼쪽이 바로 앞 결과, 오른쪽이 가장 최근 결과예요. 같은 사람이 다시 해도 점수는 조금씩 달라져서, 그 정도의 차이는 '비슷함'으로 적었어요. 문항이 적은 점수일수록 그 폭이 넓어요(6문항 점수는 10점, 24문항 점수는 5점).</p>
+      ${tracks.map((t) => renderTrack(t, meta)).join('')}
+      ${dropped ? `<p class="pp-note">채점 기준이 바뀌기 전의 결과 ${dropped}건은 잇지 않았어요.</p>` : ''}`
+    : `<p class="pp-lead">같은 검사를 두 번 이상 하면 여기에서 지난 결과와 이어 볼 수 있어요. 요즘의 나 체크는 2분이면 끝나서, 한 달에 한 번처럼 정해 두고 하기 좋아요.</p>`;
+
   const pairs = PAIRS.filter((p) => latest.has(p.a) && latest.has(p.b)).map((p) => `<article class="pp-pair">
       <h3>${esc(p.title)}</h3>
       ${p.render(latest.get(p.a).scores || {}, latest.get(p.b).scores || {})}
@@ -117,6 +126,10 @@ function render(name, list, { mine, owner, birth, others, viewer }) {
       <p class="pp-lead">검사마다 가장 최근 결과의 한 줄 요약이에요. 자세한 내용은 각 결과지에서 볼 수 있어요.</p>
       ${groups}
     </section>
+    <section class="pp-sec${tracks.length ? ' pp-sec--trend' : ''}" aria-labelledby="pp-trend">
+      <h2 id="pp-trend">달라진 점</h2>
+      ${trend}
+    </section>
     <section class="pp-sec${pairs ? ' pp-sec--pairs' : ''}" aria-labelledby="pp-pairs">
       <h2 id="pp-pairs">함께 읽기</h2>
       ${pairs
@@ -125,6 +138,8 @@ function render(name, list, { mine, owner, birth, others, viewer }) {
     </section>
     ${nexts}`;
   box.querySelector('[data-print]').addEventListener('click', () => window.print());
+  // 접어 둔 '갈래별 점수'도 PDF에는 펼쳐서 넣는다
+  window.addEventListener('beforeprint', () => box.querySelectorAll('details').forEach((d) => { d.open = true; }));
 }
 
 function card(id, rs) {

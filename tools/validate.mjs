@@ -101,6 +101,7 @@ const NEAR = {
   esteem: { cat: 'type', cuts: [['worth', 55], ['lean', 55]] },
   lifestory: { cat: 'state', cuts: [['pr', 55], ['se', 55]] },
   hsp: { cat: 'state', cuts: [['load', 50], ['rest', 50]] },
+  hspnow: { cat: 'state', cuts: [['load', 50], ['rest', 50]] },
   temperament: { cat: 'ttype', cuts: [['dims.ns.score', 50], ['dims.ha.score', 50], ['dims.rd.score', 50]] },
 };
 
@@ -111,6 +112,7 @@ const CATS = {
   attachment: ['style'],
   schema: ['primaryCoping', 'top[0]'],
   hsp: ['level', 'state'],
+  hspnow: ['state'],
   strengths: ['order[0]'],
   values: ['top', 'topGroup'],
   career: ['top', 'codeText'],
@@ -131,6 +133,7 @@ function carefulRule(id, mod) {
   if (id === 'bigfive') return (s) => (s.check || {}).clashRatio >= 0.25;
   if (id === 'attachment') return (s) => (s.check || {}).sd < 0.5 || (s.check || {}).gap >= mod.GAP_LIMIT;
   if (id === 'schema') return (s) => (s.check || {}).sd < 0.5 || (s.check || {}).spread >= L;
+  if (id === 'hspnow') return (s) => (s.check || {}).sd < mod.FLAT_SD;
   if (L !== undefined && A !== undefined) return (s) => { const C = s.check || {}; return C.spread >= L || Math.abs(C.acq) >= A || C.sd < 0.5; };
   return null;
 }
